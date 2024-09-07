@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/main/main_screen.dart';
 
 import 'controllers/menu_app_controller.dart';
@@ -25,6 +25,7 @@ class MyApp extends StatelessWidget {
       // ),
       initialBinding: BindingsBuilder(() {
         Get.put(MenuAppController());
+        Get.put(DefaultController());
       }),
       home: const MainScreen(),
     );

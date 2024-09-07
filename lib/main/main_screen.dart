@@ -6,8 +6,8 @@ import 'package:real_web_rough_entry_system/expense_form_screen.dart';
 import 'package:real_web_rough_entry_system/memoiss_form_screen.dart';
 import 'package:real_web_rough_entry_system/memorec_form_screen.dart';
 import 'package:real_web_rough_entry_system/party/party_form_screen.dart';
-import 'package:real_web_rough_entry_system/purchase_form_screen.dart';
-import 'package:real_web_rough_entry_system/sale_form_screen.dart';
+import 'package:real_web_rough_entry_system/purchase/purchase_form_screen.dart';
+import 'package:real_web_rough_entry_system/sale/sale_form_screen.dart';
 import 'package:real_web_rough_entry_system/settings_screen.dart';
 // Import other screens as needed
 

@@ -2,6 +2,8 @@
 // import 'package:admin/screens/dashboard/components/my_fields.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
 import 'package:real_web_rough_entry_system/responsive.dart';
 
@@ -16,6 +18,7 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final MenuAppController menuController = Get.find<MenuAppController>();
     return Column(
       children: [
         const Header(title: 'Dashboard'),
@@ -23,10 +26,156 @@ class DashboardScreen extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               flex: 5,
               child: Column(
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.all(15.0),
+                    child: Row(
+                      // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            menuController.selectedIndex.value = 2;
+                          },
+                          icon: const Icon(
+                            Icons.people_alt_sharp,
+                            size: 24, // Size of the icon
+                            color: Colors.blue,
+                          ),
+                          label: const Text(
+                            'Party',
+                            style: TextStyle(
+                              fontSize: 16, // Font size of the text
+                              color: Colors.blue,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              side: const BorderSide(color: Colors.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              )),
+                        ),
+                        const SizedBox(width: 15,),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            menuController.selectedIndex.value = 1;
+                            // Add navigation or action here
+                          },
+                          icon: const Icon(
+                            Icons.shopping_bag,
+                            size: 24, // Size of the icon
+                            color: Colors.blue,
+                          ),
+                          label: const Text(
+                            'Purchase',
+                            style: TextStyle(
+                              fontSize: 16, // Font size of the text
+                              color: Colors.blue,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              side: const BorderSide(color: Colors.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              )),
+                        ),
+                        const SizedBox(width: 15,),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            menuController.selectedIndex.value = 3;
+                          },
+                          icon: const Icon(
+                            Icons.sell,
+                            size: 24, // Size of the icon
+                            color: Colors.blue,
+                          ),
+                          label: const Text(
+                            'Sale',
+                            style: TextStyle(
+                              fontSize: 16, // Font size of the text
+                              color: Colors.blue,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              side: const BorderSide(color: Colors.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              )),
+                        ),
+                        // OutlinedButton.icon(
+                        //   onPressed: () {
+                        //     // Add navigation or action here
+                        //   },
+                        //   icon: const Icon(
+                        //     Icons.people_alt_sharp,
+                        //     size: 24, // Size of the icon
+                        //     color: Colors.blue,
+                        //   ),
+                        //   label: const Text(
+                        //     'Party',
+                        //     style: TextStyle(
+                        //       fontSize: 16, // Font size of the text
+                        //       color: Colors.blue,
+                        //     ),
+                        //   ),
+                        //   style: OutlinedButton.styleFrom(
+                        //       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        //       side: const BorderSide(color: Colors.blue),
+                        //       shape: RoundedRectangleBorder(
+                        //         borderRadius: BorderRadius.circular(8),
+                        //       )),
+                        // ),
+                        // OutlinedButton.icon(
+                        //   onPressed: () {
+                        //     // Add navigation or action here
+                        //   },
+                        //   icon: const Icon(
+                        //     Icons.people_alt_sharp,
+                        //     size: 24, // Size of the icon
+                        //     color: Colors.blue,
+                        //   ),
+                        //   label: const Text(
+                        //     'Party',
+                        //     style: TextStyle(
+                        //       fontSize: 16, // Font size of the text
+                        //       color: Colors.blue,
+                        //     ),
+                        //   ),
+                        //   style: OutlinedButton.styleFrom(
+                        //       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        //       side: const BorderSide(color: Colors.blue),
+                        //       shape: RoundedRectangleBorder(
+                        //         borderRadius: BorderRadius.circular(8),
+                        //       )),
+                        // ),
+                      ],
+                    ),
+                  ),
+
+                  // GridView.builder(
+                  //     gridDelegate:
+                  //         const SliverGridDelegateWithFixedCrossAxisCount(
+                  //       crossAxisCount: 3, // Number of columns
+                  //       crossAxisSpacing: 10.0, // Space between columns
+                  //       mainAxisSpacing: 10.0, // Space between rows
+                  //       childAspectRatio: 1, // Aspect ratio of each item
+                  //     ),
+                  //     itemCount: 6,
+                  //     itemBuilder: (context, index) {
+                  //       return IconButton(
+                  //         onPressed: () {},
+                  //         icon: const Icon(Icons.file_copy_outlined),
+                  //       );
+                  //     })
+                  // GridTileBar(title: Text('Forms'),)
                   // PartyForm(),
                   // MyFiles(),
                   // const SizedBox(height: 16),
@@ -42,7 +191,9 @@ class DashboardScreen extends StatelessWidget {
               const Expanded(
                   flex: 2,
                   // child: StorageDetails(),
-                  child: Column(children: [],)),
+                  child: Column(
+                    children: [],
+                  )),
           ],
         )
       ],
