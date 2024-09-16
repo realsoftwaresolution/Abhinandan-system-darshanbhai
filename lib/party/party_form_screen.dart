@@ -17,36 +17,38 @@ class PartyFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Header(title: 'Party'),
-        // const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Expanded(
-              flex: 5,
-              child: Column(
-                children: [
-                  PartyForm(),
-                  // MyFiles(),
-                  // const SizedBox(height: 16),
-                  // RecentFiles(),
-                  // if (Responsive.isMobile(context)) const SizedBox(height: 16),
-                  // if (Responsive.isMobile(context)) StorageDetails(),
-                ],
-              ),
-            ),
-            if (!Responsive.isMobile(context)) const SizedBox(width: 16),
-            // On Mobile means if the screen is less than 850 we don't want to show it
-            if (!Responsive.isMobile(context))
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const Header(title: 'Party'),
+          // const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const Expanded(
-                  flex: 0,
-                  // child: StorageDetails(),
-                  child: Column(children: [],)),
-          ],
-        )
-      ],
+                flex: 5,
+                child: Column(
+                  children: [
+                    PartyForm(),
+                    // MyFiles(),
+                    // const SizedBox(height: 16),
+                    // RecentFiles(),
+                    // if (Responsive.isMobile(context)) const SizedBox(height: 16),
+                    // if (Responsive.isMobile(context)) StorageDetails(),
+                  ],
+                ),
+              ),
+              if (!Responsive.isMobile(context)) const SizedBox(width: 16),
+              // On Mobile means if the screen is less than 850 we don't want to show it
+              // if (!Responsive.isMobile(context))
+              //   const Expanded(
+              //       flex: 2,
+              //       // child: StorageDetails(),
+              //       child: Column(children: [],)),
+            ],
+          )
+        ],
+      ),
     );
   }
 }

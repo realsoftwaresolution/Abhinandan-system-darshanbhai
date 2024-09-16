@@ -15,11 +15,12 @@ class SideMenu extends StatelessWidget {
       child: ListView(
         children: [
           DrawerHeader(
-            padding: EdgeInsets.zero,
-            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.all(30),
+            margin: const EdgeInsets.all(30),
             child: SvgPicture.asset(
                 "assets/images/logo.svg",
-                color: Colors.black54,
+                height: 20,
+                // color: Colors.black54,
               ),
           ),
           DrawerListTile(
