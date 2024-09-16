@@ -714,9 +714,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
                                                                 if (allSelectedMemoIssue
                                                                     .isNotEmpty) {
-                                                                  if (kDebugMode) {
-                                                                    print(allSelectedMemoIssue.length);
-                                                                  }
                                                                   // Clear the rough details list to avoid duplicating data on subsequent calls
                                                                   allRoughDetails
                                                                       .clear();
@@ -738,9 +735,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
                                                                   if (allRoughDetails
                                                                       .isNotEmpty) {
-                                                                    if (kDebugMode) {
-                                                                      print(allRoughDetails.length);
-                                                                    }
                                                                     showDialog(
                                                                       context:
                                                                           context,
@@ -850,9 +844,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                                       },
                                                                     );
                                                                   } else {
-                                                                    if (kDebugMode) {
-                                                                      print(allRoughDetails.length);
-                                                                    }
                                                                     // Show snackbar if no matching details found
                                                                     Get.rawSnackbar(
                                                                       message:
@@ -860,14 +851,12 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                                     );
                                                                   }
                                                                 } else {
-                                                                  if (kDebugMode) {
-                                                                    print(allSelectedMemoIssue.length);
-                                                                  }
-                                                                // Show snackbar if no memo issue is selected
-                                                                Get.rawSnackbar(
-                                                                  message: 'No memo issue found for the selected party and broker.',
-                                                                );
-                                                              }
+                                                                  // Show snackbar if no memo issue is selected
+                                                                  Get.rawSnackbar(
+                                                                    message:
+                                                                        'No memo issue found for the selected party and broker.',
+                                                                  );
+                                                                }
                                                               }
                                                             }
                                                           : null,
@@ -1029,20 +1018,21 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         ),
                                         _buildRow([
                                           _buildTextField(
-                                              'REC WT', recWtController,
-                                              inputFormatterList: [
-                                                FilteringTextInputFormatter
-                                                    .allow(RegExp(
-                                                        r'^\d+\.?\d{0,3}')),
-                                              ],
-                                              isEnabled: _isEnabled,
-                                              /*onChanged: (val) {
+                                            'REC WT',
+                                            recWtController,
+                                            inputFormatterList: [
+                                              FilteringTextInputFormatter.allow(
+                                                  RegExp(r'^\d+\.?\d{0,3}')),
+                                            ],
+                                            isEnabled: _isEnabled,
+                                            /*onChanged: (val) {
                                             if (_formKey.currentState!
                                                     .validate() &&
                                                 val.isNotEmpty) {
                                               addEntry();
                                             }
-                                          }*/),
+                                          }*/
+                                          ),
                                           _buildTextField(
                                               'RATE', rateController,
                                               inputFormatterList: [
@@ -1064,7 +1054,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.end,
                                             children: [
-                                              IntrinsicWidth(
+                                              SizedBox(
+                                                width: 15,
+                                                height: 15,
                                                 child: OutlinedButton(
                                                   onPressed: () {
                                                     if (_formKey.currentState!

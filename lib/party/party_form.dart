@@ -3598,6 +3598,9 @@ class PartyFormState extends State<PartyForm> {
                           partyEntry.debitOpBalRs?.toString() ?? '';
                       _debitControllerDollor.text =
                           partyEntry.debitOpBalDollar?.toString() ?? '';
+                      setState(() {
+                        _isActive = partyEntry.active!;
+                      });
 
                       _selectedType.value = partyEntry.typeCode.toString();
                       _enableEditFields();
