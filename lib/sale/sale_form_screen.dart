@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -1038,6 +1037,10 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                   _selectedTypeParty.value = '';
                                   _selectedType.value = '';
                                   _selectedTypeBroker.value = '';
+                                  setState(() {
+                                    entries.length = 0;
+                                    _isFromEdit = false;
+                                  });
                                 },
                                 child: const Text("Cancel"),
                               ),

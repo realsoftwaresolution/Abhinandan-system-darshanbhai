@@ -1,11 +1,9 @@
 // import 'package:admin/responsive.dart';
 // import 'package:admin/screens/dashboard/components/my_fields.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
-import 'package:real_web_rough_entry_system/responsive.dart';
 
 // import '../../constants.dart';
 // import 'components/header.dart';
@@ -29,6 +27,7 @@ class DashboardScreen extends StatelessWidget {
             Expanded(
               flex: 5,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(15.0),
@@ -110,6 +109,56 @@ class DashboardScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               )),
                         ),
+                        const SizedBox(width: 15,),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            menuController.selectedIndex.value = 4;
+                          },
+                          icon: const Icon(
+                            Icons.checklist_sharp,
+                            size: 24, // Size of the icon
+                            color: Colors.blue,
+                          ),
+                          label: const Text(
+                            'Memo Issue',
+                            style: TextStyle(
+                              fontSize: 16, // Font size of the text
+                              color: Colors.blue,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              side: const BorderSide(color: Colors.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              )),
+                        ),
+                        const SizedBox(width: 15,),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            menuController.selectedIndex.value = 5;
+                          },
+                          icon: const Icon(
+                            Icons.checklist_sharp,
+                            size: 24, // Size of the icon
+                            color: Colors.blue,
+                          ),
+                          label: const Text(
+                            'Memo Receive',
+                            style: TextStyle(
+                              fontSize: 16, // Font size of the text
+                              color: Colors.blue,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              side: const BorderSide(color: Colors.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              )),
+                        ),
                         // OutlinedButton.icon(
                         //   onPressed: () {
                         //     // Add navigation or action here
@@ -156,9 +205,37 @@ class DashboardScreen extends StatelessWidget {
                         //         borderRadius: BorderRadius.circular(8),
                         //       )),
                         // ),
+                        // const SizedBox(width: 15,),
                       ],
                     ),
                   ),
+                  // Padding(
+                  //   padding: const EdgeInsets.only(left: 15.0, right: 15.0),
+                  //   child: OutlinedButton.icon(
+                  //     onPressed: () {
+                  //       menuController.selectedIndex.value = 5;
+                  //     },
+                  //     icon: const Icon(
+                  //       Icons.checklist_sharp,
+                  //       size: 24, // Size of the icon
+                  //       color: Colors.blue,
+                  //     ),
+                  //     label: const Text(
+                  //       'Memo Receive',
+                  //       style: TextStyle(
+                  //         fontSize: 16, // Font size of the text
+                  //         color: Colors.blue,
+                  //       ),
+                  //     ),
+                  //     style: OutlinedButton.styleFrom(
+                  //         padding: const EdgeInsets.symmetric(
+                  //             horizontal: 16, vertical: 16),
+                  //         side: const BorderSide(color: Colors.blue),
+                  //         shape: RoundedRectangleBorder(
+                  //           borderRadius: BorderRadius.circular(8),
+                  //         )),
+                  //   ),
+                  // ),
 
                   // GridView.builder(
                   //     gridDelegate:
@@ -185,15 +262,15 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (!Responsive.isMobile(context)) const SizedBox(width: 16),
-            // On Mobile means if the screen is less than 850 we don't want to show it
-            if (!Responsive.isMobile(context))
-              const Expanded(
-                  flex: 2,
-                  // child: StorageDetails(),
-                  child: Column(
-                    children: [],
-                  )),
+            // if (!Responsive.isMobile(context)) const SizedBox(width: 16),
+            // // On Mobile means if the screen is less than 850 we don't want to show it
+            // if (!Responsive.isMobile(context))
+            //   const Expanded(
+            //       flex: 2,
+            //       // child: StorageDetails(),
+            //       child: Column(
+            //         children: [],
+            //       )),
           ],
         )
       ],

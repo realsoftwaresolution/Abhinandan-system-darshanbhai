@@ -5,6 +5,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
+import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
+import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_details_model.dart';
+import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/party/party_type_model.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
@@ -17,12 +21,16 @@ class DefaultController extends GetxController {
   RxList<PartyMstModel> partyMstList = <PartyMstModel>[].obs;
   RxList<PurchaseDetailsModel> purchaseDataList = <PurchaseDetailsModel>[].obs;
   RxList<PolishSaleModel> polishSaleList = <PolishSaleModel>[].obs;
+  RxList<MemoIssueModel> memoIssueList = <MemoIssueModel>[].obs;
+  RxList<MemoRecModel> memoRecList = <MemoRecModel>[].obs;
 
   // RxList<RoughPurchaseModel> polishSaleList = <RoughPurchaseModel>[].obs;
   RxList<PartyTypeMstModel> partyTypeMstList = <PartyTypeMstModel>[].obs;
   RxList<RoughModel> roughModel = <RoughModel>[].obs;
   RxList<RoughDetailsModel> roughDetailsModel = <RoughDetailsModel>[].obs;
   RxList<SaleDetailsModel> saleDetailsList = <SaleDetailsModel>[].obs;
+  RxList<MemoIssueDetailsModel> memoIssueDetailsList = <MemoIssueDetailsModel>[].obs;
+  RxList<MemoRecDetailsModel> memoRecDetailsList = <MemoRecDetailsModel>[].obs;
   RxMap groupedData = {}.obs;
   RxBool isLoading = false.obs;
   RxInt companyCode = 0.obs;
@@ -34,7 +42,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/party',
+        'http://50.62.183.116:301/rough-entry/party',
       );
 
       if (response.statusCode == 200) {
@@ -62,7 +70,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/purchase',
+        'http://50.62.183.116:301/rough-entry/purchase',
       );
 
       if (response.statusCode == 200) {
@@ -90,7 +98,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/rough-details',
+        'http://50.62.183.116:301/rough-entry/rough-details',
       );
 
       if (response.statusCode == 200) {
@@ -136,7 +144,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/polish-sale',
+        'http://50.62.183.116:301/rough-entry/polish-sale',
       );
 
       if (response.statusCode == 200) {
@@ -156,6 +164,60 @@ class DefaultController extends GetxController {
       }
     }
   }
+  Future<void> getMemoIssueData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        'http://50.62.183.116:301/rough-entry/memo-issue',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        memoIssueList.value =
+            data.map((json) => MemoIssueModel.fromJson(json)).toList();
+      } else {
+        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> getMemoRecData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        'http://50.62.183.116:301/rough-entry/memo-rec',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        memoRecList.value =
+            data.map((json) => MemoRecModel.fromJson(json)).toList();
+      } else {
+        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
 
   Future<void> getSaleDetailsData() async {
     try {
@@ -164,7 +226,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/sale-details',
+        'http://50.62.183.116:301/rough-entry/sale-details',
       );
 
       if (response.statusCode == 200) {
@@ -185,6 +247,61 @@ class DefaultController extends GetxController {
     }
   }
 
+  Future<void> getMemoIssueDetailsData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        'http://50.62.183.116:301/rough-entry/memo-issue-details',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        memoIssueDetailsList.value =
+            data.map((json) => MemoIssueDetailsModel.fromJson(json)).toList();
+      } else {
+        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> getMemoRecDetailsData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        'http://50.62.183.116:301/rough-entry/memo-rec-details',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        memoRecDetailsList.value =
+            data.map((json) => MemoRecDetailsModel.fromJson(json)).toList();
+      } else {
+        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
   Future<void> getPartyTypeData() async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -192,7 +309,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/partyType',
+        'http://50.62.183.116:301/rough-entry/partyType',
       );
 
       if (response.statusCode == 200) {
@@ -220,7 +337,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:1433/rough-entry/rough',
+        'http://50.62.183.116:301/rough-entry/rough',
       );
 
       if (response.statusCode == 200) {
@@ -329,7 +446,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-        'http://50.62.183.116:1433/rough-entry/party/add',
+        'http://50.62.183.116:301/rough-entry/party/add',
         data: jsonEncode(params),
       );
 
@@ -434,7 +551,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-        'http://50.62.183.116:1433/rough-entry/party/$id',
+        'http://50.62.183.116:301/rough-entry/party/$id',
         data: jsonEncode(params),
       );
 
@@ -558,7 +675,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-          'http://50.62.183.116:1433/rough-entry/purchase/add',
+          'http://50.62.183.116:301/rough-entry/purchase/add',
           data: jsonEncode(params));
 
       // if (kDebugMode) {
@@ -582,8 +699,8 @@ class DefaultController extends GetxController {
         }));
         isLoading.value = false;
         Get.rawSnackbar(message: response.data['message']);
-        getPurchaseData();
-        getPurchaseDetailsData();
+        await getPurchaseData();
+        await getPurchaseDetailsData();
       } else {
         isLoading.value = false;
 
@@ -671,7 +788,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-          'http://50.62.183.116:1433/rough-entry/polish-sale/add',
+          'http://50.62.183.116:301/rough-entry/polish-sale/add',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -691,8 +808,229 @@ class DefaultController extends GetxController {
         }));
         isLoading.value = false;
         Get.rawSnackbar(message: response.data['message']);
-        getSaleData();
-        getSaleDetailsData();
+        await getSaleData();
+        await getSaleDetailsData();
+      } else {
+        isLoading.value = false;
+
+        Get.rawSnackbar(
+            message: 'Failed to Add Data: ${response.data['message']}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> addMemoIssueData(
+      {String? partyCode,
+        invoiceNo,
+        invoiceDate,
+        brokerCode,
+        dueDays,
+        dueDate,
+        roughName,
+        description,
+        wt,
+        rate,
+        amount,
+        double? totalAmt,
+        totalWt,
+        totalRate,
+        required List<Map<String, String>> entries}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "InvoiceNo": "$invoiceNo",
+        // "InvNo": 123,
+        "InvoiceDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "DueDay": dueDays,
+        // "DueDate": dueDate,
+        // "InvCode": "1",
+        // "SaleType": "LOCAL",
+        // "InsuranceName": "RELIANCE",
+        // "SGstPer": 12.453,
+        // "CGstPer": 12.453,
+        // "IGstPer": 12.453,
+        // "SGstAmount": 14.23,
+        // "CGstAmount": 12.23,
+        // "IGstAmount": 12.32,
+        // "SGstUsdAmount": 1.456,
+        // "CGstUsdAmount": 1.456,
+        // "IGstUsdAmount": 1.456,
+        "TotRsAmt": totalAmt, //total
+        "TotUsdAmt": totalAmt, // total
+        // "RoundRs": 0,
+        // "RoundUsd": 0,
+        "NetUsdAmount": totalAmt, //total
+        // "RdType": "RS",
+        // "DollarRate": 1,
+        // "PaymentRec": "N",
+        // "BroPer": 0,
+        // "BroRsAmount": 0,
+        // "BroUSDAmount": 0,
+        "BrokerCode": brokerCode,
+        // "BankCode": 0,
+        "PartyCode": partyCode,
+        "FinalRsAmount": totalAmt, //total
+        "FinalUsdAmount": totalAmt, //total
+        // "TPcs": 0,
+        "TWeight": totalWt, //total rough wt
+        "TRate": totalRate, // ang rate = total amt / total wt
+        "TAmount": totalAmt, // total
+        "TDRate": totalRate, // rate = toal amt / total wt
+        "TDAmount": totalAmt, // dollar amt total
+        "Sflag": "I",
+        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "LogID": 0, // userid
+        "PCID": "TESTWEB", // deviceId
+        "Ever": 0, // 0
+        "CompanyCode": companyCode.value // Global var Company Code
+      };
+
+      final response = await dio.post(
+          'http://50.62.183.116:301/rough-entry/memo-issue/add',
+          data: jsonEncode(params));
+
+      if (response.data['data'] != null) {
+        await Future.wait(entries.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          return _addMemoIssueRoughData(
+              wt: value['wt'],
+              rate: value['rate'],
+              amount: value['amount'],
+              roughName: value['rough'],
+              description: value['description'],
+              memoIssueMstID: response.data['data']['MemoIssueMstID'],
+              srNo: index + 1 // incremented srNo
+          );
+        }));
+        await getMemoIssueData();
+        await getMemoIssueDetailsData();
+        isLoading.value = false;
+        Get.rawSnackbar(message: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        Get.rawSnackbar(
+            message: 'Failed to Add Data: ${response.data['message']}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> addMemoRecData(
+      {String? partyCode,
+        invoiceNo,
+        invoiceDate,
+        brokerCode,
+        dueDays,
+        dueDate,
+        roughName,
+        description,
+        wt,
+        rate,
+        amount,
+        double? totalAmt,
+        totalWt,
+        totalRate,
+        required List<Map<String, String>> entries}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "InvoiceNo": "$invoiceNo",
+        // "InvNo": 123,
+        "InvoiceDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "DueDay": dueDays,
+        // "DueDate": dueDate,
+        // "InvCode": "1",
+        // "SaleType": "LOCAL",
+        // "InsuranceName": "RELIANCE",
+        // "SGstPer": 12.453,
+        // "CGstPer": 12.453,
+        // "IGstPer": 12.453,
+        // "SGstAmount": 14.23,
+        // "CGstAmount": 12.23,
+        // "IGstAmount": 12.32,
+        // "SGstUsdAmount": 1.456,
+        // "CGstUsdAmount": 1.456,
+        // "IGstUsdAmount": 1.456,
+        "TotRsAmt": totalAmt, //total
+        "TotUsdAmt": totalAmt, // total
+        // "RoundRs": 0,
+        // "RoundUsd": 0,
+        "NetUsdAmount": totalAmt, //total
+        // "RdType": "RS",
+        // "DollarRate": 1,
+        // "PaymentRec": "N",
+        // "BroPer": 0,
+        // "BroRsAmount": 0,
+        // "BroUSDAmount": 0,
+        "BrokerCode": brokerCode,
+        // "BankCode": 0,
+        "PartyCode": partyCode,
+        "FinalRsAmount": totalAmt, //total
+        "FinalUsdAmount": totalAmt, //total
+        // "TPcs": 0,
+        "TWeight": totalWt, //total rough wt
+        "TRate": totalRate, // ang rate = total amt / total wt
+        "TAmount": totalAmt, // total
+        "TDRate": totalRate, // rate = toal amt / total wt
+        "TDAmount": totalAmt, // dollar amt total
+        "Sflag": "I",
+        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "LogID": 0, // userid
+        "PCID": "TESTWEB", // deviceId
+        "Ever": 0, // 0
+        "CompanyCode": companyCode.value // Global var Company Code
+      };
+
+      final response = await dio.post(
+          'http://50.62.183.116:301/rough-entry/memo-rec/add',
+          data: jsonEncode(params));
+
+      if (response.data['data'] != null) {
+        await Future.wait(entries.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          return _addMemoRecRoughData(
+              wt: value['wt'],
+              recWt: value['recWt'],
+              rate: value['rate'],
+              amount: value['amount'],
+              roughName: value['rough'],
+              description: value['description'],
+              memoRecMstID: response.data['data']['MemoRecMstID'],
+              srNo: index + 1 // incremented srNo
+          );
+        }));
+        await getMemoRecData();
+        await getMemoRecDetailsData();
+        isLoading.value = false;
+        Get.rawSnackbar(message: response.data['message']);
       } else {
         isLoading.value = false;
 
@@ -813,7 +1151,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-          'http://50.62.183.116:1433/rough-entry/purchase/$id',
+          'http://50.62.183.116:301/rough-entry/purchase/$id',
           data: jsonEncode(params));
 
       // if (kDebugMode) {
@@ -854,8 +1192,8 @@ class DefaultController extends GetxController {
 
         isLoading.value = false;
         Get.rawSnackbar(message: response.data['message']);
-        getPurchaseData();
-        getPurchaseDetailsData();
+        await getPurchaseData();
+        await getPurchaseDetailsData();
       } else {
         isLoading.value = false;
 
@@ -944,7 +1282,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-          'http://50.62.183.116:1433/rough-entry/polish-sale/$id',
+          'http://50.62.183.116:301/rough-entry/polish-sale/$id',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -977,8 +1315,258 @@ class DefaultController extends GetxController {
         }));
         isLoading.value = false;
         Get.rawSnackbar(message: response.data['message']);
-        getSaleData();
-        getSaleDetailsData();
+        await getSaleData();
+        await getSaleDetailsData();
+      } else {
+        isLoading.value = false;
+
+        Get.rawSnackbar(
+            message: 'Failed to Add Data: ${response.data['message']}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+
+  Future<void> updateMemoIssueData(
+      {required int id,
+        String? partyCode,
+        invoiceNo,
+        invoiceDate,
+        brokerCode,
+        dueDays,
+        dueDate,
+        roughName,
+        description,
+        wt,
+        rate,
+        amount,
+        double? totalAmt,
+        totalWt,
+        totalRate,
+        required List<Map<String, String>> entries}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "InvoiceNo": "$invoiceNo",
+        // "InvNo": 123,
+        "InvoiceDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "DueDay": dueDays,
+        // "DueDate": dueDate,
+        // "InvCode": "1",
+        // "SaleType": "LOCAL",
+        // "InsuranceName": "RELIANCE",
+        // "SGstPer": 12.453,
+        // "CGstPer": 12.453,
+        // "IGstPer": 12.453,
+        // "SGstAmount": 14.23,
+        // "CGstAmount": 12.23,
+        // "IGstAmount": 12.32,
+        // "SGstUsdAmount": 1.456,
+        // "CGstUsdAmount": 1.456,
+        // "IGstUsdAmount": 1.456,
+        "TotRsAmt": totalAmt, //total
+        "TotUsdAmt": totalAmt, // total
+        // "RoundRs": 0,
+        // "RoundUsd": 0,
+        "NetUsdAmount": totalAmt, //total
+        // "RdType": "RS",
+        // "DollarRate": 1,
+        // "PaymentRec": "N",
+        // "BroPer": 0,
+        // "BroRsAmount": 0,
+        // "BroUSDAmount": 0,
+        "BrokerCode": brokerCode,
+        // "BankCode": 0,
+        "PartyCode": partyCode,
+        "FinalRsAmount": totalAmt, //total
+        "FinalUsdAmount": totalAmt, //total
+        // "TPcs": 0,
+        "TWeight": totalWt, //total rough wt
+        "TRate": totalRate, // ang rate = total amt / total wt
+        "TAmount": totalAmt, // total
+        "TDRate": totalRate, // rate = toal amt / total wt
+        "TDAmount": totalAmt, // dollar amt total
+        "Sflag": "U",
+        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "LogID": 0, // userid
+        "PCID": "TESTWEB", // deviceId
+        "Ever": 0, // 0
+        "CompanyCode": companyCode.value // Global var Company Code
+      };
+
+      final response = await dio.put(
+          'http://50.62.183.116:301/rough-entry/memo-issue/$id',
+          data: jsonEncode(params));
+
+      if (response.data['data'] != null) {
+        await Future.wait(entries.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          if (value.containsKey('id') && value['id'] != null) {
+            return _updateMemoIssueRoughData(
+                id: value['id'],
+                wt: value['wt'],
+                rate: value['rate'],
+                amount: value['amount'],
+                roughName: value['rough'],
+                description: value['description'],
+                memoIssueMstID: response.data['data']['MemoIssueMstID'],
+                srNo: index + 1 // incremented srNo
+            );
+          } else {
+            return _addMemoIssueRoughData(
+                wt: value['wt'],
+                rate: value['rate'],
+                amount: value['amount'],
+                description: value['description'],
+                roughName: value['rough'],
+                memoIssueMstID: response.data['data']['MemoIssueMstID'],
+                srNo: index + 1 // incremented srNo
+            );
+          }
+        }));
+        isLoading.value = false;
+        Get.rawSnackbar(message: response.data['message']);
+        await getMemoIssueData();
+        await getMemoIssueDetailsData();
+      } else {
+        isLoading.value = false;
+
+        Get.rawSnackbar(
+            message: 'Failed to Add Data: ${response.data['message']}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> updateMemoRecData(
+      {required int id,
+        String? partyCode,
+        invoiceNo,
+        invoiceDate,
+        brokerCode,
+        dueDays,
+        dueDate,
+        roughName,
+        description,
+        wt,
+        rate,
+        amount,
+        double? totalAmt,
+        totalWt,
+        totalRate,
+        required List<Map<String, String>> entries}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "InvoiceNo": "$invoiceNo",
+        // "InvNo": 123,
+        "InvoiceDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
+        // "DueDay": dueDays,
+        // "DueDate": dueDate,
+        // "InvCode": "1",
+        // "SaleType": "LOCAL",
+        // "InsuranceName": "RELIANCE",
+        // "SGstPer": 12.453,
+        // "CGstPer": 12.453,
+        // "IGstPer": 12.453,
+        // "SGstAmount": 14.23,
+        // "CGstAmount": 12.23,
+        // "IGstAmount": 12.32,
+        // "SGstUsdAmount": 1.456,
+        // "CGstUsdAmount": 1.456,
+        // "IGstUsdAmount": 1.456,
+        "TotRsAmt": totalAmt, //total
+        "TotUsdAmt": totalAmt, // total
+        // "RoundRs": 0,
+        // "RoundUsd": 0,
+        "NetUsdAmount": totalAmt, //total
+        // "RdType": "RS",
+        // "DollarRate": 1,
+        // "PaymentRec": "N",
+        // "BroPer": 0,
+        // "BroRsAmount": 0,
+        // "BroUSDAmount": 0,
+        "BrokerCode": brokerCode,
+        // "BankCode": 0,
+        "PartyCode": partyCode,
+        "FinalRsAmount": totalAmt, //total
+        "FinalUsdAmount": totalAmt, //total
+        // "TPcs": 0,
+        "TWeight": totalWt, //total rough wt
+        "TRate": totalRate, // ang rate = total amt / total wt
+        "TAmount": totalAmt, // total
+        "TDRate": totalRate, // rate = toal amt / total wt
+        "TDAmount": totalAmt, // dollar amt total
+        "Sflag": "U",
+        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "LogID": 0, // userid
+        "PCID": "TESTWEB", // deviceId
+        "Ever": 0, // 0
+        "CompanyCode": companyCode.value // Global var Company Code
+      };
+
+      final response = await dio.put(
+          'http://50.62.183.116:301/rough-entry/memo-rec/$id',
+          data: jsonEncode(params));
+
+      if (response.data['data'] != null) {
+        await Future.wait(entries.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          if (value.containsKey('id') && value['id'] != null) {
+            return _updateMemoRecRoughData(
+                id: value['id'],
+                wt: value['wt'],
+                recWt: value['recWt'],
+                rate: value['rate'],
+                amount: value['amount'],
+                roughName: value['rough'],
+                description: value['description'],
+                memoRecMstID: response.data['data']['MemoRecMstID'],
+                srNo: index + 1 // incremented srNo
+            );
+          } else {
+            return _addMemoRecRoughData(
+                wt: value['wt'],
+                rate: value['rate'],
+                amount: value['amount'],
+                description: value['description'],
+                roughName: value['rough'],
+                memoRecMstID: response.data['data']['MemoRecMstID'],
+                srNo: index + 1 // incremented srNo
+            );
+          }
+        }));
+        isLoading.value = false;
+        Get.rawSnackbar(message: response.data['message']);
+        await getMemoRecData();
+        await getMemoRecDetailsData();
       } else {
         isLoading.value = false;
 
@@ -1022,7 +1610,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-          'http://50.62.183.116:1433/rough-entry/rough-details/add',
+          'http://50.62.183.116:301/rough-entry/rough-details/add',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1068,7 +1656,100 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-          'http://50.62.183.116:1433/rough-entry/sale-details/add',
+          'http://50.62.183.116:301/rough-entry/sale-details/add',
+          data: jsonEncode(params));
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Added!');
+        }
+        // Get.rawSnackbar(message: response.data['message']);
+      } else {
+        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> _addMemoIssueRoughData(
+      {roughName, wt, rate, amount, description, srNo, memoIssueMstID}) async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "MemoIssueMstID": memoIssueMstID,
+        "SrNo": srNo,
+        // "ClarityCode": 1,
+        // "CharniCode": 1,
+        // "Pcs": 1,
+        "Carats": wt,
+        "RateRs": rate,
+        "AmountRs": amount,
+        "RateD": rate,
+        "AmountD": amount,
+        // "PenCarats": 12.232,
+        "Type": "ROUGH",
+        // "InvNo": "",
+        // "RoughPurMstID": 2,
+        "RoughTypeCode": int.parse(roughName),
+        "Description": description
+      };
+
+      final response = await dio.post(
+          'http://50.62.183.116:301/rough-entry/memo-issue-details/add',
+          data: jsonEncode(params));
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Added!');
+        }
+        // Get.rawSnackbar(message: response.data['message']);
+      } else {
+        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> _addMemoRecRoughData(
+      {roughName, wt, recWt, rate, amount, description, srNo, memoRecMstID}) async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "MemoRecMstID": memoRecMstID,
+        "SrNo": srNo,
+        // "ClarityCode": 1,
+        // "CharniCode": 1,
+        // "Pcs": 1,
+        "RecCarats": recWt,
+        "Carats": wt,
+        "RateRs": rate,
+        "AmountRs": amount,
+        "RateD": rate,
+        "AmountD": amount,
+        // "PenCarats": 12.232,
+        "Type": "ROUGH",
+        // "InvNo": "",
+        // "RoughPurMstID": 2,
+        "RoughTypeCode": int.parse(roughName),
+        "Description": description
+      };
+
+      final response = await dio.post(
+          'http://50.62.183.116:301/rough-entry/memo-rec-details/add',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1121,7 +1802,118 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-          'http://50.62.183.116:1433/rough-entry/sale-details/$id',
+          'http://50.62.183.116:301/rough-entry/sale-details/$id',
+          data: jsonEncode(params));
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Updated!');
+        }
+        // Get.rawSnackbar(message: response.data['message']);
+      } else {
+        Get.rawSnackbar(
+            message: 'Failed to Update Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+
+  Future<void> _updateMemoIssueRoughData(
+      {required id,
+        roughName,
+        wt,
+        description,
+        rate,
+        amount,
+        srNo,
+        memoIssueMstID}) async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "MemoIssueMstID": memoIssueMstID,
+        "SrNo": srNo,
+        // "ClarityCode": 1,
+        // "CharniCode": 1,
+        // "Pcs": 1,
+        "Carats": wt,
+        "RateRs": rate,
+        "AmountRs": amount,
+        "RateD": rate,
+        "AmountD": amount,
+        // "PenCarats": 12.232,
+        "Type": "ROUGH",
+        // "InvNo": "",
+        // "RoughPurMstID": 2,
+        "RoughTypeCode": int.parse(roughName),
+        "Description": description
+      };
+
+      final response = await dio.put(
+          'http://50.62.183.116:301/rough-entry/memo-issue-details/$id',
+          data: jsonEncode(params));
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Updated!');
+        }
+        // Get.rawSnackbar(message: response.data['message']);
+      } else {
+        Get.rawSnackbar(
+            message: 'Failed to Update Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> _updateMemoRecRoughData(
+      {required id,
+        roughName,
+        wt,
+        recWt,
+        description,
+        rate,
+        amount,
+        srNo,
+        memoRecMstID}) async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "MemoRecMstID": memoRecMstID,
+        "SrNo": srNo,
+        // "ClarityCode": 1,
+        // "CharniCode": 1,
+        // "Pcs": 1,
+        "Carats": wt,
+        "RecCarats": recWt,
+        "RateRs": rate,
+        "AmountRs": amount,
+        "RateD": rate,
+        "AmountD": amount,
+        // "PenCarats": 12.232,
+        "Type": "ROUGH",
+        // "InvNo": "",
+        // "RoughPurMstID": 2,
+        "RoughTypeCode": int.parse(roughName),
+        "Description": description
+      };
+
+      final response = await dio.put(
+          'http://50.62.183.116:301/rough-entry/memo-rec-details/$id',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1175,7 +1967,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-          'http://50.62.183.116:1433/rough-entry/rough-details/$id',
+          'http://50.62.183.116:301/rough-entry/rough-details/$id',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1203,13 +1995,13 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio
-          .delete('http://50.62.183.116:1433/rough-entry/rough-details/$id');
+          .delete('http://50.62.183.116:301/rough-entry/rough-details/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
           print('Deleted!');
         }
-        getPurchaseDetailsData();
+        await getPurchaseDetailsData();
         isLoading.value = false;
 
         // Get.rawSnackbar(message: response.data['message']);
@@ -1237,13 +2029,83 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio
-          .delete('http://50.62.183.116:1433/rough-entry/sale-details/$id');
+          .delete('http://50.62.183.116:301/rough-entry/sale-details/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
           print('Deleted!');
         }
-        getSaleDetailsData();
+        await getSaleDetailsData();
+        isLoading.value = false;
+
+        // Get.rawSnackbar(message: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        Get.rawSnackbar(
+            message: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deleteMemoIssueRoughData({required id}) async {
+    try {
+      isLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio
+          .delete('http://50.62.183.116:301/rough-entry/memo-issue-details/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+        await getMemoIssueDetailsData();
+        isLoading.value = false;
+
+        // Get.rawSnackbar(message: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        Get.rawSnackbar(
+            message: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deleteMemoRecRoughData({required id}) async {
+    try {
+      isLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio
+          .delete('http://50.62.183.116:301/rough-entry/memo-rec-details/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+        await getMemoRecDetailsData();
         isLoading.value = false;
 
         // Get.rawSnackbar(message: response.data['message']);
@@ -1272,13 +2134,13 @@ class DefaultController extends GetxController {
       }));
 
       final response =
-          await dio.delete('http://50.62.183.116:1433/rough-entry/party/$id');
+          await dio.delete('http://50.62.183.116:301/rough-entry/party/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
           print('Deleted!');
         }
-        getPartyData();
+        await getPartyData();
         isLoading.value = false;
 
         Get.rawSnackbar(message: response.data['message']);
@@ -1307,7 +2169,7 @@ class DefaultController extends GetxController {
       }));
 
       final response =
-      await dio.delete('http://50.62.183.116:1433/rough-entry/purchase/$id');
+      await dio.delete('http://50.62.183.116:301/rough-entry/purchase/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -1325,8 +2187,8 @@ class DefaultController extends GetxController {
         }
 
         // After processing deletion, refresh data and stop loading
-        getPurchaseDetailsData();
-        getPurchaseData();
+        await getPurchaseDetailsData();
+        await getPurchaseData();
         isLoading.value = false;
 
         Get.rawSnackbar(message: response.data['message']);
@@ -1352,7 +2214,7 @@ class DefaultController extends GetxController {
       }));
 
       final response =
-      await dio.delete('http://50.62.183.116:1433/rough-entry/polish-sale/$id');
+      await dio.delete('http://50.62.183.116:301/rough-entry/polish-sale/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -1370,8 +2232,98 @@ class DefaultController extends GetxController {
         }
 
         // After processing deletion, refresh data and stop loading
-        getSaleDetailsData();
-        getSaleData();
+        await getSaleDetailsData();
+        await getSaleData();
+        isLoading.value = false;
+
+        Get.rawSnackbar(message: response.data['message']);
+      } else {
+        isLoading.value = false;
+        Get.rawSnackbar(message: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+
+  Future<void> deleteMemoIssueData({required int id, required List entries}) async {
+    try {
+      isLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response =
+      await dio.delete('http://50.62.183.116:301/rough-entry/memo-issue/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        if (entries.isNotEmpty) {
+          // Ensure we create a list of Future<void> for Future.wait to process
+          await Future.wait(
+            entries.map((value) {
+              return deleteMemoIssueRoughData(id: value['id']);
+            }).toList(),
+          );
+        }
+
+        // After processing deletion, refresh data and stop loading
+        await getMemoIssueDetailsData();
+        await getMemoIssueData();
+        isLoading.value = false;
+
+        Get.rawSnackbar(message: response.data['message']);
+      } else {
+        isLoading.value = false;
+        Get.rawSnackbar(message: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> deleteMemoRecData({required int id, required List entries}) async {
+    try {
+      isLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response =
+      await dio.delete('http://50.62.183.116:301/rough-entry/memo-rec/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        if (entries.isNotEmpty) {
+          // Ensure we create a list of Future<void> for Future.wait to process
+          await Future.wait(
+            entries.map((value) {
+              return deleteMemoRecRoughData(id: value['id']);
+            }).toList(),
+          );
+        }
+
+        // After processing deletion, refresh data and stop loading
+        await getMemoRecDetailsData();
+        await getMemoRecData();
         isLoading.value = false;
 
         Get.rawSnackbar(message: response.data['message']);
@@ -1396,6 +2348,10 @@ class DefaultController extends GetxController {
     // await getPurchaseData();
     await getPartyTypeData();
     await getSaleDetailsData();
+    await getMemoIssueData();
+    await getMemoIssueDetailsData();
+    await getMemoRecData();
+    await getMemoRecDetailsData();
     await getSaleData();
     await getRoughData();
     await getPurchaseDetailsData();

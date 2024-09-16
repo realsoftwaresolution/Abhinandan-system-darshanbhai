@@ -2707,10 +2707,11 @@ class PartyFormState extends State<PartyForm> {
                 ),
                 Checkbox(
                   value: _isActive,
-                  onChanged: (value) {
+                  onChanged: _isEnabled ?  (value) {
                     setState(() {
                       _isActive = value!;
                     });
+                  } : (value){
                   },
                 ),
               ],
