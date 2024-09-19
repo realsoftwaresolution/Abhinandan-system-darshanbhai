@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
@@ -42,6 +42,11 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   final TextEditingController stockcontroller =
       TextEditingController(text: '0.0');
   final FocusNode _partyFocNode = FocusNode();
+  final FocusNode _brokerFocus = FocusNode();
+  final FocusNode _buttonFocus = FocusNode();
+  final FocusNode _keyBoardFocus = FocusNode();
+  final FocusNode _formKeyBoardFocus = FocusNode();
+  final FocusNode _searchKeyBoardFocus = FocusNode();
 
   final DataGridController _dataGridController = DataGridController();
 
@@ -55,14 +60,14 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   final RxString _selectedTypeBroker = ''.obs;
   final RxString _selectedTypeParty = ''.obs;
   final RxInt selectedMemoRecMstID = 0.obs;
-  final RxInt selectedMemoIssueDetID = 0.obs;
+  final RxString selectedMemoIssueDetID = ''.obs;
   final RxString selectedRoughId = ''.obs;
 
   DateTime? selectedDate;
   String? dueDate;
 
   double get totalWt =>
-      entries.fold(0.0, (prev, e) => prev + double.parse(e['wt']!));
+      recEntries.fold(0.0, (prev, e) => prev + double.parse(e['wt']!));
 
   double get totalRate => totalWt == 0 ? 0 : totalAmount / totalWt;
 
@@ -85,12 +90,16 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   final DefaultController defaultController = Get.find<DefaultController>();
   final MenuAppController menuController = Get.find<MenuAppController>();
 
-  void _enableFields() {
+  void _enableFields({bool? needFocus}) {
     setState(() {
-      _isEnabled = true;
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _partyFocNode.requestFocus(); // Move focus to the first input field
-      });
+      if (needFocus == null || needFocus) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _partyFocNode.requestFocus(); // Move focus to the first input field
+        });
+        _isEnabled = true;
+      } else {
+        _isEnabled = true;
+      }
     });
   }
 
@@ -99,6 +108,13 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
     issWtController.addListener(_updateAmount);
     recWtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _keyBoardFocus.requestFocus();
+      _formKeyBoardFocus.requestFocus();
+      if (_isSearch) {
+        _searchKeyBoardFocus.requestFocus();
+      }
+    });
     super.initState();
   }
 
@@ -109,6 +125,12 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
     recWtController.dispose();
     rateController.dispose();
     amountController.dispose();
+    _partyFocNode.dispose();
+    _brokerFocus.dispose();
+    _buttonFocus.dispose();
+    _searchKeyBoardFocus.dispose();
+    _keyBoardFocus.dispose();
+    _formKeyBoardFocus.dispose();
     super.dispose();
   }
 
@@ -132,10 +154,37 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
     }
   }
 
+  void _scrollToSelectedRow(double index) {
+    // Scroll to the currently selected row
+    _dataGridController.scrollToRow(index);
+  }
+
+  void _openDatePicker() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        selectedDate = pickedDate;
+        dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _brokerFocus.requestFocus(); // Move focus to the first input field
+        });
+      });
+      // _updateDueDate();
+    }
+  }
+
   void addEntry() {
     setState(() {
       recEntries.add({
         if (selectedRoughId.value.isNotEmpty) 'id': selectedRoughId.value,
+        if (selectedMemoIssueDetID.value.isNotEmpty)
+          'detId': selectedMemoIssueDetID.value.toString(),
         'rough': _selectedType.value,
         'description': descripController.text,
         'wt': issWtController.text,
@@ -154,6 +203,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
       rateController.clear();
       amountController.clear();
       stockcontroller.clear();
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _brokerFocus.requestFocus(); // Move focus to the first input field
+      });
     });
     // print("${entries.length}FROM ...");
   }
@@ -161,8 +213,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   @override
   Widget build(BuildContext context) {
     return _isSearch == true
-        ? SingleChildScrollView(
-            child: Column(
+        ? Column(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -178,310 +229,421 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
               const SizedBox(
                 height: 10,
               ),
-              SizedBox(
-                height: MediaQuery.of(context).size.width - 550,
-                child: Obx(
-                  () => SfDataGrid(
-                    // onCellTap: (DataGridCellTapDetails details) {
-                    //   if (details.rowColumnIndex.rowIndex != 0 &&
-                    //       details.rowColumnIndex.columnIndex != 0 ) {
-                    //     _dataGridController.beginEdit(
-                    //       details.rowColumnIndex,
-                    //     );
-                    //   }
-                    // },
-                    // allowEditing: true,
-                    controller: _dataGridController,
-                    source: MemoReceiveDataGridSource(
-                        defaultController.memoRecList),
-                    columns: <GridColumn>[
-                      GridColumn(
-                        columnName: 'ID',
-                        label: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'ID',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      // GridColumn(
-                      //   columnName: 'Invoice No',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Invoice No',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      GridColumn(
-                        columnName: 'Date',
-                        label: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Date',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      // GridColumn(
-                      //   columnName: 'Rec Date',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Rec Date',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      GridColumn(
-                        columnName: 'Party',
-                        label: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Party',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      GridColumn(
-                        columnName: 'Broker',
-                        label: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Broker',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      // GridColumn(
-                      //   columnName: 'Rs /\$',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Rs /\$',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Exchange',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Exchange',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      GridColumn(
-                        columnName: 'Tot Wt',
-                        label: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Tot Wt',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      GridColumn(
-                        columnName: 'Tot Amt Rs',
-                        label: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Tot Amt Rs',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      // GridColumn(
-                      //   columnName: 'Tot Amt (\$)',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Tot Amt (\$)',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Bill Type',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Bill Type',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Lin Fix Rs',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Lin Fix Rs',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Tot Exp Fix Rs',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Tot Exp Fix Rs',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Add Fix Rs',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Add Fix Rs',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Less Fix Rs',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Less Fix Rs',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Final Net Amt Dollar',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Final Net Amt Dollar',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GridColumn(
-                      //   columnName: 'Final Net Amt Rs',
-                      //   label: Container(
-                      //     padding: const EdgeInsets.all(8.0),
-                      //     alignment: Alignment.center,
-                      //     child: const Text(
-                      //       'Final Net Amt Rs',
-                      //       style: TextStyle(fontWeight: FontWeight.bold),
-                      //     ),
-                      //   ),
-                      // ),
-                    ],
-                    rowHeight: 30,
-                    headerRowHeight: 40,
-                    gridLinesVisibility: GridLinesVisibility.both,
-                    headerGridLinesVisibility: GridLinesVisibility.both,
-                    showSortNumbers: true,
-                    // allowSorting: true,
-                    // allowMultiColumnSorting: true,
-                    allowFiltering: true,
-                    selectionMode: SelectionMode.singleDeselect,
-                    onSelectionChanged: (List<DataGridRow> addedRows,
-                        List<DataGridRow> removedRows) {
-                      setState(() {
-                        recEntries.clear();
-                        _isFromEdit = true;
-                      });
-                      if (addedRows.isNotEmpty) {
-                        final DataGridRow selectedRow = addedRows.first;
-                        List<MemoRecDetailsModel> roughData =
-                            defaultController.memoRecDetailsList;
-                        List<MemoRecModel> partyData =
-                            defaultController.memoRecList;
+              Obx(
+                () => Expanded(
+                  child: KeyboardListener(
+                    focusNode: _searchKeyBoardFocus,
+                    autofocus: true,
+                    onKeyEvent: (KeyEvent event) {
+                      if (event is KeyDownEvent) {
+                        final int currentIndex =
+                            _dataGridController.selectedIndex;
+                        final int totalRows = defaultController.memoRecList
+                            .length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
 
-                        // Extract the selected polishSaleMstID from the selectedRow
-                        selectedMemoRecMstID.value = selectedRow
-                            .getCells()[0]
-                            .value; // Assuming the ID is in the first cell
+                        // Handle the Enter key
+                        if (event.logicalKey == LogicalKeyboardKey.enter) {
+                          final DataGridRow? selectedRow =
+                              _dataGridController.selectedRow;
+                          setState(() {
+                            recEntries.clear();
+                            _isFromEdit = true;
+                          });
+                          List<MemoRecDetailsModel> roughData =
+                              defaultController.memoRecDetailsList;
+                          List<MemoRecModel> partyData =
+                              defaultController.memoRecList;
 
-                        // Find the corresponding party data entry with the matching polishSaleMstID
-                        MemoRecModel partyEntry = partyData.firstWhere(
-                          (entry) =>
-                              entry.memoRecMstID == selectedMemoRecMstID.value,
-                          // orElse: () => null,
-                        );
+                          // Extract the selected polishSaleMstID from the selectedRow
+                          selectedMemoRecMstID.value = selectedRow!
+                              .getCells()[0]
+                              .value; // Assuming the ID is in the first cell
 
-                        // Collect rough data entries with the matching polishSaleMstID
-                        List<MemoRecDetailsModel> roughEntries = roughData
-                            .where((entry) =>
+                          // Find the corresponding party data entry with the matching polishSaleMstID
+                          MemoRecModel partyEntry = partyData.firstWhere(
+                            (entry) =>
                                 entry.memoRecMstID ==
-                                selectedMemoRecMstID.value)
-                            .toList();
-                        // invNoController.text = partyEntry.invoiceNo!;
-                        selectedDate = dateFormat(partyEntry.invoiceDate!);
-                        // dueDate = formatDateWithTime(partyEntry.dueDate!);
-                        dateController.text =
-                            formatDate(partyEntry.invoiceDate!);
-                        // dueDateController.text =
-                        //     formatDate(partyEntry.dueDate!);
-                        // dueDaysController.text = partyEntry.dueDay.toString();
-                        _selectedTypeParty.value =
-                            partyEntry.partyCode.toString();
-                        _selectedTypeBroker.value =
-                            partyEntry.brokerCode.toString();
-                        // _selectedTypeParty.value = partyEntry.partyCode;
-                        setState(() {
-                          for (var roughEntry in roughEntries) {
-                            recEntries.add({
-                              'id': roughEntry.memoRecDetID.toString(),
-                              'rough': roughEntry.roughTypeCode.toString(),
-                              'description': roughEntry.description.toString(),
-                              'wt': roughEntry.carats.toString(),
-                              'recWt': roughEntry.recCarats.toString(),
-                              'rate': roughEntry.rateRs.toString(),
-                              'amount': (double.parse(
-                                          roughEntry.recCarats.toString()) *
-                                      double.parse(
-                                          roughEntry.rateRs.toString()))
-                                  .toStringAsFixed(2),
-                            });
-                          }
-                        });
+                                selectedMemoRecMstID.value,
+                            // orElse: () => null,
+                          );
 
-                        _enableFields();
-                        setState(() {
-                          _isSearch = false;
-                        });
+                          // Collect rough data entries with the matching polishSaleMstID
+                          List<MemoRecDetailsModel> roughEntries = roughData
+                              .where((entry) =>
+                                  entry.memoRecMstID ==
+                                  selectedMemoRecMstID.value)
+                              .toList();
+                          // invNoController.text = partyEntry.invoiceNo!;
+                          selectedDate = dateFormat(partyEntry.invoiceDate!);
+                          // dueDate = formatDateWithTime(partyEntry.dueDate!);
+                          dateController.text =
+                              formatDate(partyEntry.invoiceDate!);
+                          // dueDateController.text =
+                          //     formatDate(partyEntry.dueDate!);
+                          // dueDaysController.text = partyEntry.dueDay.toString();
+                          _selectedTypeParty.value =
+                              partyEntry.partyCode.toString();
+                          _selectedTypeBroker.value =
+                              partyEntry.brokerCode.toString();
+                          // _selectedTypeParty.value = partyEntry.partyCode;
+                          setState(() {
+                            for (var roughEntry in roughEntries) {
+                              recEntries.add({
+                                'id': roughEntry.memoRecDetID.toString(),
+                                'rough': roughEntry.roughTypeCode.toString(),
+                                'description':
+                                    roughEntry.description.toString(),
+                                'wt': roughEntry.carats.toString(),
+                                'recWt': roughEntry.recCarats.toString(),
+                                'rate': roughEntry.rateRs.toString(),
+                                'amount': (double.parse(
+                                            roughEntry.recCarats.toString()) *
+                                        double.parse(
+                                            roughEntry.rateRs.toString()))
+                                    .toStringAsFixed(2),
+                              });
+                            }
+                          });
+
+                          _enableFields(needFocus: true);
+                          setState(() {
+                            _isSearch = false;
+                          });
+                        }
+
+                        // Handle the down arrow key to go to the next row
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                          if (currentIndex < totalRows - 1) {
+                            _dataGridController.selectedIndex =
+                                currentIndex + 1; // Select the next row
+                            _scrollToSelectedRow(double.parse(
+                                _dataGridController.selectedIndex
+                                    .toString())); // Scroll to the selected row
+                          }
+                        }
+
+                        // Handle the up arrow key to go to the previous row
+                        if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                          if (currentIndex > 0) {
+                            _dataGridController.selectedIndex =
+                                currentIndex - 1; // Select the previous row
+                            _scrollToSelectedRow(double.parse(
+                                _dataGridController.selectedIndex
+                                    .toString())); // Scroll to the selected row
+                          }
+                        }
+
+                        if (event.logicalKey == LogicalKeyboardKey.keyE) {
+                          setState(() {
+                            _isSearch = false;
+                          });
+                        }
                       }
                     },
+                    child: SfDataGrid(
+                      // onCellTap: (DataGridCellTapDetails details) {
+                      //   if (details.rowColumnIndex.rowIndex != 0 &&
+                      //       details.rowColumnIndex.columnIndex != 0 ) {
+                      //     _dataGridController.beginEdit(
+                      //       details.rowColumnIndex,
+                      //     );
+                      //   }
+                      // },
+                      // allowEditing: true,
+                      controller: _dataGridController,
+                      source: MemoReceiveDataGridSource(
+                          defaultController.memoRecList),
+                      columns: <GridColumn>[
+                        GridColumn(
+                          columnName: 'ID',
+                          label: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'ID',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        // GridColumn(
+                        //   columnName: 'Invoice No',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Invoice No',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        GridColumn(
+                          columnName: 'Date',
+                          label: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Date',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        // GridColumn(
+                        //   columnName: 'Rec Date',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Rec Date',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        GridColumn(
+                          columnName: 'Party',
+                          label: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Party',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Broker',
+                          label: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Broker',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        // GridColumn(
+                        //   columnName: 'Rs /\$',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Rs /\$',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Exchange',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Exchange',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        GridColumn(
+                          columnName: 'Tot Wt',
+                          label: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Tot Wt',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Tot Amt Rs',
+                          label: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Tot Amt Rs',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        // GridColumn(
+                        //   columnName: 'Tot Amt (\$)',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Tot Amt (\$)',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Bill Type',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Bill Type',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Lin Fix Rs',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Lin Fix Rs',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Tot Exp Fix Rs',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Tot Exp Fix Rs',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Add Fix Rs',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Add Fix Rs',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Less Fix Rs',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Less Fix Rs',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Final Net Amt Dollar',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Final Net Amt Dollar',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                        // GridColumn(
+                        //   columnName: 'Final Net Amt Rs',
+                        //   label: Container(
+                        //     padding: const EdgeInsets.all(8.0),
+                        //     alignment: Alignment.center,
+                        //     child: const Text(
+                        //       'Final Net Amt Rs',
+                        //       style: TextStyle(fontWeight: FontWeight.bold),
+                        //     ),
+                        //   ),
+                        // ),
+                      ],
+                      rowHeight: 30,
+                      headerRowHeight: 40,
+                      gridLinesVisibility: GridLinesVisibility.both,
+                      headerGridLinesVisibility: GridLinesVisibility.both,
+                      showSortNumbers: true,
+                      // allowSorting: true,
+                      // allowMultiColumnSorting: true,
+                      allowFiltering: true,
+                      selectionMode: SelectionMode.singleDeselect,
+                      onSelectionChanged: (List<DataGridRow> addedRows,
+                          List<DataGridRow> removedRows) {
+                        setState(() {
+                          recEntries.clear();
+                          _isFromEdit = true;
+                        });
+                        if (addedRows.isNotEmpty) {
+                          final DataGridRow selectedRow = addedRows.first;
+                          List<MemoRecDetailsModel> roughData =
+                              defaultController.memoRecDetailsList;
+                          List<MemoRecModel> partyData =
+                              defaultController.memoRecList;
 
-                    columnWidthMode: ColumnWidthMode.auto,
-                    frozenColumnsCount: 1,
-                    // gridLineStrokeWidth: 1.5,
-                    // gridLineColor: Colors.grey.shade400,
-                    // backgroundColor: Colors.white,
+                          // Extract the selected polishSaleMstID from the selectedRow
+                          selectedMemoRecMstID.value = selectedRow
+                              .getCells()[0]
+                              .value; // Assuming the ID is in the first cell
+
+                          // Find the corresponding party data entry with the matching polishSaleMstID
+                          MemoRecModel partyEntry = partyData.firstWhere(
+                            (entry) =>
+                                entry.memoRecMstID ==
+                                selectedMemoRecMstID.value,
+                            // orElse: () => null,
+                          );
+
+                          // Collect rough data entries with the matching polishSaleMstID
+                          List<MemoRecDetailsModel> roughEntries = roughData
+                              .where((entry) =>
+                                  entry.memoRecMstID ==
+                                  selectedMemoRecMstID.value)
+                              .toList();
+                          // invNoController.text = partyEntry.invoiceNo!;
+                          selectedDate = dateFormat(partyEntry.invoiceDate!);
+                          // dueDate = formatDateWithTime(partyEntry.dueDate!);
+                          dateController.text =
+                              formatDate(partyEntry.invoiceDate!);
+                          // dueDateController.text =
+                          //     formatDate(partyEntry.dueDate!);
+                          // dueDaysController.text = partyEntry.dueDay.toString();
+                          _selectedTypeParty.value =
+                              partyEntry.partyCode.toString();
+                          _selectedTypeBroker.value =
+                              partyEntry.brokerCode.toString();
+                          // _selectedTypeParty.value = partyEntry.partyCode;
+                          setState(() {
+                            for (var roughEntry in roughEntries) {
+                              recEntries.add({
+                                'id': roughEntry.memoRecDetID.toString(),
+                                'rough': roughEntry.roughTypeCode.toString(),
+                                'description':
+                                    roughEntry.description.toString(),
+                                'wt': roughEntry.carats.toString(),
+                                'recWt': roughEntry.recCarats.toString(),
+                                'rate': roughEntry.rateRs.toString(),
+                                'amount': (double.parse(
+                                            roughEntry.recCarats.toString()) *
+                                        double.parse(
+                                            roughEntry.rateRs.toString()))
+                                    .toStringAsFixed(2),
+                              });
+                            }
+                          });
+
+                          _enableFields(needFocus: true);
+                          setState(() {
+                            _isSearch = false;
+                          });
+                        }
+                      },
+
+                      columnWidthMode: ColumnWidthMode.auto,
+                      frozenColumnsCount: 1,
+                      // gridLineStrokeWidth: 1.5,
+                      // gridLineColor: Colors.grey.shade400,
+                      // backgroundColor: Colors.white,
+                    ),
                   ),
                 ),
               ),
             ],
-          ))
+          )
         : SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
@@ -496,594 +658,947 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                          border:
-                                              Border.all(color: Colors.grey)),
-                                      child: Column(
-                                        children: [
-                                          _buildRow([
-                                            Row(
-                                              children: [
-                                                const Text(
-                                                  'PARTY',
-                                                  style: TextStyle(
-                                                    color: Colors.black,
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize:
-                                                        12, // Font size for the label
+                            child: KeyboardListener(
+                              focusNode: _formKeyBoardFocus,
+                              autofocus: true,
+                              onKeyEvent: (KeyEvent event) {
+                                if (event is KeyDownEvent) {
+                                  if (!HardwareKeyboard
+                                          .instance.isShiftPressed &&
+                                      event.logicalKey ==
+                                          LogicalKeyboardKey.keyS) {
+                                    if (_isFromEdit) {
+                                      if (recEntries.isNotEmpty) {
+                                        defaultController
+                                            .updateMemoRecData(
+                                                id: selectedMemoRecMstID.value,
+                                                partyCode:
+                                                    _selectedTypeParty.value,
+                                                // invoiceNo:
+                                                //     invNoController.text,
+                                                invoiceDate: selectedDate,
+                                                brokerCode:
+                                                    _selectedTypeBroker.value,
+                                                // dueDays:
+                                                //     dueDaysController.text,
+                                                // dueDate: dueDate,
+                                                entries: recEntries,
+                                                totalAmt: totalRecAmount,
+                                                totalWt: totalRecWt,
+                                                totalRate: totalRecRate)
+                                            .then((onValue) {
+                                          setState(() {
+                                            recEntries.clear();
+                                            _isFromEdit = false;
+                                            _isEnabled = false;
+                                          });
+                                        });
+
+                                        dateController.clear();
+                                        // dueDateController.clear();
+                                        // dueDaysController.clear();
+                                        dateController.clear();
+                                        // invNoController.clear();
+                                        _selectedTypeParty.value = '';
+                                        _selectedType.value = '';
+                                        _selectedTypeBroker.value = '';
+                                      } else {
+                                        infoDialog(
+                                            messageText:
+                                                'Please Add Rough Data');
+                                      }
+                                    } else {
+                                      if (recEntries.isNotEmpty) {
+                                        defaultController
+                                            .addMemoRecData(
+                                                partyCode:
+                                                    _selectedTypeParty.value,
+                                                // invoiceNo:
+                                                //     invNoController.text,
+                                                invoiceDate: selectedDate,
+                                                brokerCode:
+                                                    _selectedTypeBroker.value,
+                                                // dueDays:
+                                                //     dueDaysController.text,
+                                                dueDate: dueDate,
+                                                entries: recEntries,
+                                                totalAmt: totalRecAmount,
+                                                totalWt: totalRecWt,
+                                                totalRate: totalRecRate)
+                                            .then((onValue) {
+                                          setState(() {
+                                            recEntries.clear();
+                                            entries.clear();
+                                            _isEnabled = false;
+                                          });
+                                        });
+
+                                        dateController.clear();
+                                        // dueDateController.clear();
+                                        // dueDaysController.clear();
+                                        dateController.clear();
+                                        // invNoController.clear();
+                                        _selectedTypeParty.value = '';
+                                        _selectedType.value = '';
+                                        _selectedTypeBroker.value = '';
+                                      } else {
+                                        infoDialog(
+                                            messageText:
+                                                'Please Add Rough Data');
+                                      }
+                                    }
+                                  }
+                                  if (event.logicalKey ==
+                                      LogicalKeyboardKey.keyA) {
+                                    _enableFields();
+                                  }
+                                  if (event.logicalKey ==
+                                      LogicalKeyboardKey.keyD) {
+                                    if (_isFromEdit) {
+                                      defaultController
+                                          .deleteMemoRecData(
+                                              id: selectedMemoRecMstID.value,
+                                              entries: recEntries)
+                                          .then((onValue) {
+                                        dateController.clear();
+                                        // dueDateController.clear();
+                                        // dueDaysController.clear();
+                                        // invNoController.clear();
+                                        _selectedTypeParty.value = '';
+                                        _selectedType.value = '';
+                                        _selectedTypeBroker.value = '';
+                                        setState(() {
+                                          _isFromEdit = false;
+                                          recEntries.clear();
+                                        });
+                                      });
+                                    } else {
+                                      infoDialog(
+                                          messageText:
+                                              'Please Select Memo Rec Entry to Delete.');
+                                    }
+                                  }
+                                  if (event.logicalKey ==
+                                      LogicalKeyboardKey.keyC) {
+                                    dateController.clear();
+                                    // dueDateController.clear();
+                                    // invNoController.clear();
+                                    // dueDaysController.clear();
+                                    dateController.clear();
+                                    issWtController.clear();
+                                    amountController.clear();
+                                    descripController.clear();
+                                    rateController.clear();
+                                    _selectedTypeParty.value = '';
+                                    _selectedType.value = '';
+                                    _selectedTypeBroker.value = '';
+                                    recWtController.clear();
+                                    setState(() {
+                                      entries.clear();
+                                      recEntries.clear();
+                                      _isFromEdit = false;
+                                      _isEnabled = false;
+                                    });
+                                  }
+                                  if (event.logicalKey ==
+                                      LogicalKeyboardKey.keyE) {
+                                    menuController.selectedIndex.value = 0;
+                                  }
+                                  if (HardwareKeyboard
+                                          .instance.isShiftPressed &&
+                                      event.logicalKey ==
+                                          LogicalKeyboardKey.keyS) {
+                                    setState(() {
+                                      _isSearch = true;
+                                    });
+                                  }
+                                }
+                              },
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            top: BorderSide(color: Colors.grey),
+                                            left:
+                                                BorderSide(color: Colors.grey),
+                                            right:
+                                                BorderSide(color: Colors.grey),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            _buildRow([
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'PARTY',
+                                                    style: TextStyle(
+                                                      color: Colors.black,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      fontSize:
+                                                          12, // Font size for the label
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Obx(() {
-                                                    return DropdownButtonFormField<
-                                                        String>(
-                                                      focusNode: _partyFocNode,
-                                                      style: const TextStyle(
-                                                          fontSize: 12),
-                                                      value: _selectedTypeParty
-                                                              .value.isEmpty
-                                                          ? null
-                                                          : _selectedTypeParty
-                                                              .value,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                        errorStyle: TextStyle(
-                                                            height: 0,
-                                                            fontSize: 0),
-                                                        focusedErrorBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                                  color: Colors
-                                                                      .red,
-                                                                  width: 1.0),
-                                                          borderRadius:
-                                                              BorderRadius.zero,
-                                                        ),
-                                                        errorBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                                  color: Colors
-                                                                      .red,
-                                                                  width: 1.0),
-                                                          borderRadius:
-                                                              BorderRadius.zero,
-                                                        ),
-                                                        focusedBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                                  color: Colors
-                                                                      .blue,
-                                                                  width: 1.0),
-                                                          borderRadius:
-                                                              BorderRadius.zero,
-                                                        ),
-                                                        enabledBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                                  color: Colors
-                                                                      .grey,
-                                                                  width: 1.0),
-                                                          borderRadius:
-                                                              BorderRadius.zero,
-                                                        ),
-                                                        isDense: true,
-                                                        contentPadding:
-                                                            EdgeInsets
-                                                                .symmetric(
-                                                                    vertical: 8,
-                                                                    horizontal:
-                                                                        8),
-                                                      ),
-                                                      items: dropdownItemsParty,
-                                                      onChanged: _isEnabled
-                                                          ? (value) {
-                                                              _selectedTypeParty
-                                                                      .value =
-                                                                  value ??
-                                                                      ''; // Handle null case
-                                                            }
-                                                          : null,
-                                                    );
-                                                  }),
-                                                ),
-                                              ],
-                                            ),
-                                            // _buildTextField(
-                                            //     'INVOICE NO.', invNoController,
-                                            //     isEnabled: _isEnabled),
-
-                                            Row(
-                                              children: [
-                                                const Text(
-                                                  'BROKER',
-                                                  style: TextStyle(
-                                                    color: Colors.black,
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize:
-                                                        12, // Font size for the label
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Obx(() {
-                                                    return DropdownButtonFormField<
-                                                        String>(
-                                                      style: const TextStyle(
-                                                          fontSize: 12),
-                                                      value: _selectedTypeBroker
-                                                              .value.isEmpty
-                                                          ? null
-                                                          : _selectedTypeBroker
-                                                              .value,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                        errorStyle: TextStyle(
-                                                          height: 0,
-                                                          // Hides the error message
-                                                          fontSize:
-                                                              0, // Ensures no space is taken by the error message
-                                                        ),
-                                                        focusedErrorBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.red,
-                                                            width:
-                                                                1.0, // Thin border width
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Obx(() {
+                                                      return DropdownButtonFormField<
+                                                          String>(
+                                                        focusNode:
+                                                            _partyFocNode,
+                                                        style: const TextStyle(
+                                                            fontSize: 12),
+                                                        value: _selectedTypeParty
+                                                                .value.isEmpty
+                                                            ? null
+                                                            : _selectedTypeParty
+                                                                .value,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                          errorStyle: TextStyle(
+                                                              height: 0,
+                                                              fontSize: 0),
+                                                          focusedErrorBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                                    color: Colors
+                                                                        .red,
+                                                                    width: 1.0),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero,
                                                           ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        errorBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.red,
-                                                            width:
-                                                                1.0, // Thin border width
+                                                          errorBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                                    color: Colors
+                                                                        .red,
+                                                                    width: 1.0),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero,
                                                           ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        focusedBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.blue,
-                                                            width:
-                                                                1.0, // Thin border width
+                                                          focusedBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                                    color: Colors
+                                                                        .blue,
+                                                                    width: 1.0),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero,
                                                           ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        enabledBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.grey,
-                                                            width:
-                                                                1.0, // Thin border width
+                                                          enabledBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                                    color: Colors
+                                                                        .grey,
+                                                                    width: 1.0),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero,
                                                           ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
+                                                          isDense: true,
+                                                          contentPadding:
+                                                              EdgeInsets
+                                                                  .symmetric(
+                                                                      vertical:
+                                                                          8,
+                                                                      horizontal:
+                                                                          8),
                                                         ),
-                                                        isDense: true,
-                                                        contentPadding:
-                                                            EdgeInsets
-                                                                .symmetric(
-                                                          vertical: 8,
-                                                          horizontal: 8,
-                                                        ),
-                                                      ),
-                                                      items:
-                                                          dropdownItemsBroker,
-                                                      // onChanged: null,
-                                                      onChanged: _isEnabled
-                                                          ? (value) {
-                                                              if (_selectedTypeParty
-                                                                  .isEmpty) {
-                                                                Get.rawSnackbar(
-                                                                  message:
-                                                                      'Please Select Party.',
-                                                                );
-                                                              } else {
-                                                                _selectedTypeBroker
-                                                                        .value =
-                                                                    value ?? '';
-                                                                allSelectedMemoIssue
-                                                                    .clear();
-                                                                allSelectedMemoIssue
-                                                                        .value =
-                                                                    getMemoIssueByPartyAndBroker(
-                                                                        int.parse(_selectedTypeParty
-                                                                            .value),
-                                                                        int.parse(
-                                                                            _selectedTypeBroker.value))!; // Handle null case
-
-                                                                if (allSelectedMemoIssue
-                                                                    .isNotEmpty) {
-                                                                  // Clear the rough details list to avoid duplicating data on subsequent calls
-                                                                  allRoughDetails
-                                                                      .clear();
-
-                                                                  for (var memo
-                                                                      in allSelectedMemoIssue) {
-                                                                    // Filter the rough details matching the selected memoIssueMstID
-                                                                    List<MemoIssueDetailsModel> roughDetails = defaultController
-                                                                        .memoIssueDetailsList
-                                                                        .where((detail) =>
-                                                                            detail.memoIssueMstID ==
-                                                                            memo.memoIssueMstID)
-                                                                        .toList();
-
-                                                                    allRoughDetails
-                                                                        .addAll(
-                                                                            roughDetails); // Add the filtered results
+                                                        items:
+                                                            dropdownItemsParty,
+                                                        onChanged: _isFromEdit
+                                                            ? null
+                                                            : _isEnabled
+                                                                ? (value) {
+                                                                    _selectedTypeParty
+                                                                            .value =
+                                                                        value ??
+                                                                            '';
+                                                                    Future.delayed(
+                                                                        const Duration(
+                                                                            milliseconds:
+                                                                                100),
+                                                                        () {
+                                                                      _brokerFocus
+                                                                          .requestFocus(); // Move focus to the first input field
+                                                                    }); // Handle null case
                                                                   }
+                                                                : null,
+                                                      );
+                                                    }),
+                                                  ),
+                                                ],
+                                              ),
+                                              // _buildTextField(
+                                              //     'INVOICE NO.', invNoController,
+                                              //     isEnabled: _isEnabled),
 
-                                                                  if (allRoughDetails
-                                                                      .isNotEmpty) {
-                                                                    showDialog(
-                                                                      context:
-                                                                          context,
-                                                                      builder:
-                                                                          (BuildContext
-                                                                              cnt) {
-                                                                        return AlertDialog(
-                                                                          title:
-                                                                              const Text('Select Entry to Receive'),
-                                                                          content:
-                                                                              SizedBox(
-                                                                            width:
-                                                                                double.maxFinite,
-                                                                            child:
-                                                                                Obx(
-                                                                              () => SfDataGrid(
-                                                                                controller: _dataGridController,
-                                                                                source: MemoIssueDetailsDataGridSource(allRoughDetails),
-                                                                                columns: <GridColumn>[
-                                                                                  GridColumn(
-                                                                                    columnName: 'Wt',
-                                                                                    label: Container(
-                                                                                      padding: const EdgeInsets.all(8.0),
-                                                                                      alignment: Alignment.center,
-                                                                                      child: const Text(
-                                                                                        'Wt',
-                                                                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                                                                      ),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'BROKER',
+                                                    style: TextStyle(
+                                                      color: Colors.black,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      fontSize:
+                                                          12, // Font size for the label
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Obx(() {
+                                                      return DropdownButtonFormField<
+                                                          String>(
+                                                        focusNode: _brokerFocus,
+                                                        style: const TextStyle(
+                                                            fontSize: 12),
+                                                        value: _selectedTypeBroker
+                                                                .value.isEmpty
+                                                            ? null
+                                                            : _selectedTypeBroker
+                                                                .value,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                          errorStyle: TextStyle(
+                                                            height: 0,
+                                                            // Hides the error message
+                                                            fontSize:
+                                                                0, // Ensures no space is taken by the error message
+                                                          ),
+                                                          focusedErrorBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                              color: Colors.red,
+                                                              width:
+                                                                  1.0, // Thin border width
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero, // Squared corners
+                                                          ),
+                                                          errorBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                              color: Colors.red,
+                                                              width:
+                                                                  1.0, // Thin border width
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero, // Squared corners
+                                                          ),
+                                                          focusedBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                              color:
+                                                                  Colors.blue,
+                                                              width:
+                                                                  1.0, // Thin border width
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero, // Squared corners
+                                                          ),
+                                                          enabledBorder:
+                                                              UnderlineInputBorder(
+                                                            borderSide:
+                                                                BorderSide(
+                                                              color:
+                                                                  Colors.grey,
+                                                              width:
+                                                                  1.0, // Thin border width
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .zero, // Squared corners
+                                                          ),
+                                                          isDense: true,
+                                                          contentPadding:
+                                                              EdgeInsets
+                                                                  .symmetric(
+                                                            vertical: 8,
+                                                            horizontal: 8,
+                                                          ),
+                                                        ),
+                                                        items:
+                                                            dropdownItemsBroker,
+                                                        // onChanged: null,
+                                                        onChanged: _isFromEdit
+                                                            ? null
+                                                            : _isEnabled
+                                                                ? (value) {
+                                                                    if (_selectedTypeParty
+                                                                        .isEmpty) {
+                                                                      infoDialog(
+                                                                          messageText:
+                                                                              'Please Select Party.');
+                                                                    } else {
+                                                                      _selectedTypeBroker
+                                                                              .value =
+                                                                          value ??
+                                                                              '';
+                                                                      allSelectedMemoIssue
+                                                                          .clear();
+                                                                      allSelectedMemoIssue.value = getMemoIssueByPartyAndBroker(
+                                                                          int.parse(_selectedTypeParty
+                                                                              .value),
+                                                                          int.parse(
+                                                                              _selectedTypeBroker.value))!; // Handle null case
+
+                                                                      if (allSelectedMemoIssue
+                                                                          .isNotEmpty) {
+                                                                        // Clear the rough details list to avoid duplicating data on subsequent calls
+                                                                        allRoughDetails
+                                                                            .clear();
+
+                                                                        for (var memo
+                                                                            in allSelectedMemoIssue) {
+                                                                          // Filter the rough details matching the selected memoIssueMstID
+                                                                          List<MemoIssueDetailsModel>
+                                                                              roughDetails =
+                                                                              defaultController.memoIssueDetailsList.where((detail) => detail.memoIssueMstID == memo.memoIssueMstID).toList();
+
+                                                                          allRoughDetails
+                                                                              .addAll(roughDetails); // Add the filtered results
+                                                                        }
+
+                                                                        if (allRoughDetails
+                                                                            .isNotEmpty) {
+                                                                          showDialog(
+                                                                            barrierDismissible:
+                                                                                false,
+                                                                            context:
+                                                                                context,
+                                                                            builder:
+                                                                                (BuildContext cnt) {
+                                                                              return AlertDialog(
+                                                                                title: const Text('Select Entry to Receive'),
+                                                                                content: SizedBox(
+                                                                                  width: MediaQuery.of(context).size.width * 0.5,
+                                                                                  // Adjusts width dynamically
+                                                                                  height: MediaQuery.of(context).size.height * 0.2,
+                                                                                  // Adjusts height dynamically
+                                                                                  child: KeyboardListener(
+                                                                                    focusNode: _keyBoardFocus,
+                                                                                    autofocus: true,
+                                                                                    onKeyEvent: (KeyEvent event) {
+                                                                                      if (event is KeyDownEvent) {
+                                                                                        final int currentIndex = _dataGridController.selectedIndex;
+                                                                                        final int totalRows = allRoughDetails.length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
+
+                                                                                        // Handle the Enter key
+                                                                                        if (event.logicalKey == LogicalKeyboardKey.enter) {
+                                                                                          final DataGridRow? selectedRow = _dataGridController.selectedRow;
+
+                                                                                          if (selectedRow != null) {
+                                                                                            // Get the Memo Issue Detail ID from the selected row
+                                                                                            selectedMemoIssueDetID.value = selectedRow.getCells()[3].value.toString();
+
+                                                                                            // Find the corresponding rough data for the selected memo issue detail
+                                                                                            MemoIssueDetailsModel roughEntry = defaultController.memoIssueDetailsList.firstWhere((entry) => entry.memoIssueDetID == int.parse(selectedMemoIssueDetID.value));
+
+                                                                                            // Update the form fields with the selected rough entry details
+                                                                                            _selectedType.value = roughEntry.roughTypeCode.toString();
+                                                                                            issWtController.text = roughEntry.carats.toString();
+                                                                                            rateController.text = roughEntry.rateRs.toString();
+                                                                                            recWtController.text = roughEntry.carats.toString();
+                                                                                            descripController.text = roughEntry.description.toString();
+                                                                                            dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
+                                                                                            selectedDate = DateTime.now();
+
+                                                                                            Future.delayed(const Duration(milliseconds: 100), () {
+                                                                                              _buttonFocus.requestFocus();
+                                                                                            });
+                                                                                            Get.back();
+
+                                                                                            // Enable the fields and close the dialog
+                                                                                            _enableFields(needFocus: false);
+                                                                                          }
+                                                                                        }
+
+                                                                                        // Handle the down arrow key to go to the next row
+                                                                                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                                                                                          if (currentIndex < totalRows - 1) {
+                                                                                            _dataGridController.selectedIndex = currentIndex + 1; // Select the next row
+                                                                                            _scrollToSelectedRow(double.parse(_dataGridController.selectedIndex.toString())); // Scroll to the selected row
+                                                                                          }
+                                                                                        }
+
+                                                                                        // Handle the up arrow key to go to the previous row
+                                                                                        if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                                                                                          if (currentIndex > 0) {
+                                                                                            _dataGridController.selectedIndex = currentIndex - 1; // Select the previous row
+                                                                                            _scrollToSelectedRow(double.parse(_dataGridController.selectedIndex.toString())); // Scroll to the selected row
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    },
+                                                                                    child: Obx(
+                                                                                      () => SfDataGrid(
+                                                                                          controller: _dataGridController,
+                                                                                          source: MemoIssueDetailsDataGridSource(allRoughDetails),
+                                                                                          columns: <GridColumn>[
+                                                                                            GridColumn(
+                                                                                              columnName: 'Wt',
+                                                                                              label: Container(
+                                                                                                padding: const EdgeInsets.all(8.0),
+                                                                                                alignment: Alignment.center,
+                                                                                                child: const Text(
+                                                                                                  'Wt',
+                                                                                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+                                                                                            GridColumn(
+                                                                                              columnName: 'Rough',
+                                                                                              label: Container(
+                                                                                                padding: const EdgeInsets.all(8.0),
+                                                                                                alignment: Alignment.center,
+                                                                                                child: const Text(
+                                                                                                  'Rough',
+                                                                                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+                                                                                            GridColumn(
+                                                                                              columnName: 'Issue ID',
+                                                                                              label: Container(
+                                                                                                padding: const EdgeInsets.all(8.0),
+                                                                                                alignment: Alignment.center,
+                                                                                                child: const Text(
+                                                                                                  'Issue ID',
+                                                                                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+                                                                                            GridColumn(
+                                                                                              columnName: 'Detail ID',
+                                                                                              label: Container(
+                                                                                                padding: const EdgeInsets.all(8.0),
+                                                                                                alignment: Alignment.center,
+                                                                                                child: const Text(
+                                                                                                  'Detail ID',
+                                                                                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+                                                                                          ],
+                                                                                          rowHeight: 30,
+                                                                                          headerRowHeight: 40,
+                                                                                          gridLinesVisibility: GridLinesVisibility.both,
+                                                                                          headerGridLinesVisibility: GridLinesVisibility.both,
+                                                                                          selectionMode: SelectionMode.singleDeselect,
+                                                                                          onSelectionChanged: (List<DataGridRow> addedRows, List<DataGridRow> removedRows) {
+                                                                                            if (addedRows.isNotEmpty) {
+                                                                                              final DataGridRow selectedRow = addedRows.first;
+
+                                                                                              // Retrieve the selected memo issue detail ID from the selected row
+                                                                                              selectedMemoIssueDetID.value = selectedRow.getCells()[3].value.toString();
+
+                                                                                              // Find the corresponding rough data for the selected memo issue detail
+                                                                                              MemoIssueDetailsModel roughEntry = defaultController.memoIssueDetailsList.firstWhere((entry) => entry.memoIssueDetID == int.parse(selectedMemoIssueDetID.value));
+
+                                                                                              // Update the form fields with the selected rough entry details
+                                                                                              _selectedType.value = roughEntry.roughTypeCode.toString();
+                                                                                              issWtController.text = roughEntry.carats.toString();
+                                                                                              rateController.text = roughEntry.rateRs.toString();
+                                                                                              recWtController.text = roughEntry.carats.toString();
+                                                                                              descripController.text = roughEntry.description.toString();
+                                                                                              dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
+                                                                                              selectedDate = DateTime.now();
+                                                                                              _enableFields();
+                                                                                              Get.back(); // Close the dialog
+                                                                                            }
+                                                                                            Future.delayed(const Duration(milliseconds: 100), () {
+                                                                                              _buttonFocus.requestFocus(); // Move focus to the first input field
+                                                                                            });
+                                                                                          },
+                                                                                          // onSelectionChanged: (List<DataGridRow> addedRows, List<DataGridRow> removedRows) {
+                                                                                          //   if (addedRows.isNotEmpty) {
+                                                                                          //     final DataGridRow selectedRow = addedRows.first;
+                                                                                          //   }
+                                                                                          // },
+                                                                                          columnWidthMode: ColumnWidthMode.fill,
+                                                                                          frozenColumnsCount: 1,
+                                                                                          isScrollbarAlwaysShown: true,
+                                                                                          allowFiltering: true,
+                                                                                          tableSummaryRows: [
+                                                                                            GridTableSummaryRow(
+                                                                                              showSummaryInRow: true,
+                                                                                              title: 'Total',
+                                                                                              titleColumnSpan: 1,
+                                                                                              columns: <GridSummaryColumn>[
+                                                                                                const GridSummaryColumn(
+                                                                                                  name: 'WtSum',
+                                                                                                  columnName: 'Wt',
+                                                                                                  summaryType: GridSummaryType.count,
+                                                                                                ),
+                                                                                                // const GridSummaryColumn(
+                                                                                                //   name: 'WtCount',
+                                                                                                //   columnName: 'Wt',
+                                                                                                //   summaryType: GridSummaryType.count,
+                                                                                                // ),
+                                                                                                // const GridSummaryColumn(
+                                                                                                //   name: 'WtAvg',
+                                                                                                //   columnName: 'Wt',
+                                                                                                //   summaryType: GridSummaryType.average,
+                                                                                                // ),
+                                                                                                // const GridSummaryColumn(
+                                                                                                //   name: 'WtMin',
+                                                                                                //   columnName: 'Wt',
+                                                                                                //   summaryType: GridSummaryType.minimum,
+                                                                                                // ),
+                                                                                              ],
+                                                                                              position: GridTableSummaryRowPosition.bottom, // Keep the summary row at the bottom
+                                                                                            ),
+                                                                                          ]),
                                                                                     ),
                                                                                   ),
-                                                                                  GridColumn(
-                                                                                    columnName: 'Rough Type',
-                                                                                    label: Container(
-                                                                                      padding: const EdgeInsets.all(8.0),
-                                                                                      alignment: Alignment.center,
-                                                                                      child: const Text(
-                                                                                        'Rough Type',
-                                                                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  GridColumn(
-                                                                                    columnName: 'Memo Issue ID',
-                                                                                    label: Container(
-                                                                                      padding: const EdgeInsets.all(8.0),
-                                                                                      alignment: Alignment.center,
-                                                                                      child: const Text(
-                                                                                        'Memo Issue ID',
-                                                                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  GridColumn(
-                                                                                    columnName: 'Memo Issue Detail ID',
-                                                                                    label: Container(
-                                                                                      padding: const EdgeInsets.all(8.0),
-                                                                                      alignment: Alignment.center,
-                                                                                      child: const Text(
-                                                                                        'Memo Issue Detail ID',
-                                                                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                                                                      ),
-                                                                                    ),
+                                                                                ),
+                                                                                actions: <Widget>[
+                                                                                  OutlinedButton(
+                                                                                    child: const Text('Cancel'),
+                                                                                    onPressed: () {
+                                                                                      Get.back();
+                                                                                    },
                                                                                   ),
                                                                                 ],
-                                                                                rowHeight: 30,
-                                                                                headerRowHeight: 40,
-                                                                                gridLinesVisibility: GridLinesVisibility.both,
-                                                                                headerGridLinesVisibility: GridLinesVisibility.both,
-                                                                                selectionMode: SelectionMode.singleDeselect,
-                                                                                onSelectionChanged: (List<DataGridRow> addedRows, List<DataGridRow> removedRows) {
-                                                                                  if (addedRows.isNotEmpty) {
-                                                                                    final DataGridRow selectedRow = addedRows.first;
-
-                                                                                    // Retrieve the selected memo issue detail ID from the selected row
-                                                                                    selectedMemoIssueDetID.value = selectedRow.getCells()[3].value;
-
-                                                                                    // Find the corresponding rough data for the selected memo issue detail
-                                                                                    MemoIssueDetailsModel roughEntry = defaultController.memoIssueDetailsList.firstWhere((entry) => entry.memoIssueDetID == selectedMemoIssueDetID.value);
-
-                                                                                    // Update the form fields with the selected rough entry details
-                                                                                    _selectedType.value = roughEntry.roughTypeCode.toString();
-                                                                                    issWtController.text = roughEntry.carats.toString();
-                                                                                    rateController.text = roughEntry.rateRs.toString();
-                                                                                    recWtController.text = roughEntry.carats.toString();
-                                                                                    descripController.text = roughEntry.description.toString();
-                                                                                    dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
-                                                                                    selectedDate = DateTime.now();
-
-                                                                                    _enableFields();
-                                                                                    Get.back(); // Close the dialog
-                                                                                  }
-                                                                                },
-                                                                                columnWidthMode: ColumnWidthMode.auto,
-                                                                                frozenColumnsCount: 1,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                          actions: <Widget>[
-                                                                            OutlinedButton(
-                                                                              child: const Text('Cancel'),
-                                                                              onPressed: () {
-                                                                                Get.back();
-                                                                              },
-                                                                            ),
-                                                                          ],
-                                                                        );
-                                                                      },
-                                                                    );
-                                                                  } else {
-                                                                    // Show snackbar if no matching details found
-                                                                    Get.rawSnackbar(
-                                                                      message:
-                                                                          'No memo issue details found for the selected broker.',
-                                                                    );
+                                                                              );
+                                                                            },
+                                                                          );
+                                                                        } else {
+                                                                          // Show snackbar if no matching details found
+                                                                          infoDialog(
+                                                                              messageText: 'No memo issue details found for the selected broker.');
+                                                                        }
+                                                                      } else {
+                                                                        // Show snackbar if no memo issue is selected
+                                                                        infoDialog(
+                                                                            messageText:
+                                                                                'No memo issue found for the selected party and broker.');
+                                                                      }
+                                                                    }
                                                                   }
-                                                                } else {
-                                                                  // Show snackbar if no memo issue is selected
-                                                                  Get.rawSnackbar(
-                                                                    message:
-                                                                        'No memo issue found for the selected party and broker.',
-                                                                  );
-                                                                }
-                                                              }
-                                                            }
-                                                          : null,
-                                                    );
-                                                  }),
+                                                                : null,
+                                                      );
+                                                    }),
+                                                  ),
+                                                ],
+                                              ),
+                                              Focus(
+                                                onKeyEvent: _isFromEdit
+                                                    ? null
+                                                    : (node, event) {
+                                                        if (HardwareKeyboard
+                                                            .instance
+                                                            .isLogicalKeyPressed(
+                                                                LogicalKeyboardKey
+                                                                    .enter)) {
+                                                          _openDatePicker(); // Open date picker when Enter key is pressed
+                                                          return KeyEventResult
+                                                              .handled;
+                                                        }
+                                                        return KeyEventResult
+                                                            .ignored;
+                                                      },
+                                                child: buildTextField(
+                                                  'DATE',
+                                                  dateController,
+                                                  isEnabled: _isFromEdit
+                                                      ? false
+                                                      : _isEnabled,
+                                                  onTap: _isFromEdit
+                                                      ? null
+                                                      : () {
+                                                          _openDatePicker();
+                                                        },
                                                 ),
-                                              ],
-                                            ),
-                                            _buildTextField(
-                                              'DATE',
-                                              dateController,
-                                              isEnabled: _isEnabled,
-                                              onTap: () async {
-                                                DateTime? pickedDate =
-                                                    await showDatePicker(
-                                                  context: context,
-                                                  initialDate: DateTime.now(),
-                                                  firstDate: DateTime(2000),
-                                                  lastDate: DateTime(2101),
-                                                );
-
-                                                if (pickedDate != null) {
-                                                  setState(() {
-                                                    selectedDate = pickedDate;
-                                                    dateController.text =
-                                                        DateFormat('dd-MM-yyyy')
-                                                            .format(pickedDate);
-                                                  });
-                                                  // _updateDueDate();
-                                                }
-                                              },
-                                            ),
-                                            // _buildTextField('PURID', 'AUTO', purIdController),
-                                          ]),
-                                        ],
-                                      )),
-                                  // const SizedBox(height: 10),
-                                  Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: const BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(color: Colors.grey),
-                                        right: BorderSide(color: Colors.grey),
-                                        left: BorderSide(color: Colors.grey),
-                                        // bottom: BorderSide.none, // Bottom border is not added
-                                      ),
-                                    ),
-                                    child: Column(
+                                              ),
+                                              // _buildTextField('PURID', 'AUTO', purIdController),
+                                            ]),
+                                          ],
+                                        )),
+                                    // const SizedBox(height: 10),
+                                    Table(
+                                      border:
+                                          TableBorder.all(color: Colors.grey),
+                                      columnWidths: const {
+                                        0: FlexColumnWidth(
+                                            1), // ROUGH Type column
+                                        1: FlexColumnWidth(
+                                            3), // DESCRIPTION column
+                                        2: FlexColumnWidth(1), // WT column
+                                        3: FlexColumnWidth(1), // RATE column
+                                        4: FlexColumnWidth(1), // RATE column
+                                        5: FlexColumnWidth(1), // AMOUNT column
+                                        6: FlexColumnWidth(
+                                            0.25), // AMOUNT column
+                                      },
                                       children: [
-                                        _buildRow(
-                                          [
-                                            Row(
-                                              children: [
-                                                const Text(
-                                                  'ROUGH',
+                                        // Header Row
+                                        const TableRow(
+                                          // decoration: BoxDecoration(
+                                          //     color: Colors.grey.shade200),
+                                          children: [
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('ROUGH',
                                                   style: TextStyle(
                                                     color: Colors.black,
                                                     fontWeight: FontWeight.w900,
                                                     fontSize:
                                                         12, // Font size for the label
                                                   ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Obx(() {
-                                                    return DropdownButtonFormField<
-                                                        String>(
-                                                      style: const TextStyle(
-                                                          fontSize: 12),
-                                                      value: _selectedType
-                                                              .value.isEmpty
-                                                          ? null
-                                                          : _selectedType.value,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                        errorStyle: TextStyle(
-                                                          height: 0,
-                                                          // Hides the error message
-                                                          fontSize:
-                                                              0, // Ensures no space is taken by the error message
-                                                        ),
-                                                        focusedErrorBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.red,
-                                                            width:
-                                                                1.0, // Thin border width
-                                                          ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        errorBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.red,
-                                                            width:
-                                                                1.0, // Thin border width
-                                                          ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        focusedBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.blue,
-                                                            width:
-                                                                1.0, // Thin border width
-                                                          ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        enabledBorder:
-                                                            UnderlineInputBorder(
-                                                          borderSide:
-                                                              BorderSide(
-                                                            color: Colors.grey,
-                                                            width:
-                                                                1.0, // Thin border width
-                                                          ),
-                                                          borderRadius: BorderRadius
-                                                              .zero, // Squared corners
-                                                        ),
-                                                        isDense: true,
-                                                        contentPadding:
-                                                            EdgeInsets
-                                                                .symmetric(
-                                                          vertical: 8,
-                                                          horizontal: 8,
-                                                        ),
-                                                      ),
-                                                      items: dropdownItems,
-                                                      onChanged: /*_isEnabled
-                                                          ? (value) {
-                                                              updateStockControllerBasedOnType(
-                                                                  value);
-                                                            }
-                                                          :*/
-                                                          null,
-                                                    );
-                                                  }),
-                                                ),
-                                              ],
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('DESCRIPTION',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('WT',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('REC WT',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('RATE',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('AMOUNT',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                          ],
+                                        ),
+
+                                        // Input Row
+                                        TableRow(
+                                          children: [
+                                            TableCell(
+                                              child: Obx(() {
+                                                return DropdownButtonFormField<
+                                                    String>(
+                                                  style: const TextStyle(
+                                                      fontSize: 12),
+                                                  value: _selectedType
+                                                          .value.isEmpty
+                                                      ? null
+                                                      : _selectedType.value,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                    border: InputBorder.none,
+                                                    errorStyle: TextStyle(
+                                                      height: 0,
+                                                      // Hides the error message
+                                                      fontSize:
+                                                          0, // Ensures no space is taken by the error message
+                                                    ),
+                                                    // focusedErrorBorder:
+                                                    //     UnderlineInputBorder(
+                                                    //   borderSide: BorderSide(
+                                                    //     color: Colors.red,
+                                                    //     width:
+                                                    //         1.0, // Thin border width
+                                                    //   ),
+                                                    //   borderRadius: BorderRadius
+                                                    //       .zero, // Squared corners
+                                                    // ),
+                                                    // errorBorder:
+                                                    //     UnderlineInputBorder(
+                                                    //   borderSide: BorderSide(
+                                                    //     color: Colors.red,
+                                                    //     width:
+                                                    //         1.0, // Thin border width
+                                                    //   ),
+                                                    //   borderRadius: BorderRadius
+                                                    //       .zero, // Squared corners
+                                                    // ),
+                                                    // focusedBorder:
+                                                    //     UnderlineInputBorder(
+                                                    //   borderSide: BorderSide(
+                                                    //     color: Colors.blue,
+                                                    //     width:
+                                                    //         1.0, // Thin border width
+                                                    //   ),
+                                                    //   borderRadius: BorderRadius
+                                                    //       .zero, // Squared corners
+                                                    // ),
+                                                    // enabledBorder:
+                                                    //     UnderlineInputBorder(
+                                                    //   borderSide: BorderSide(
+                                                    //     color: Colors.grey,
+                                                    //     width:
+                                                    //         1.0, // Thin border width
+                                                    //   ),
+                                                    //   borderRadius: BorderRadius
+                                                    //       .zero, // Squared corners
+                                                    // ),
+                                                    isDense: true,
+                                                    contentPadding:
+                                                        EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                      horizontal: 8,
+                                                    ),
+                                                  ),
+                                                  items: dropdownItems,
+                                                  onChanged: /*_isEnabled
+                                                        ? (value) {
+                                                            updateStockControllerBasedOnType(
+                                                                value);
+                                                          }
+                                                        :*/
+                                                      null,
+                                                );
+                                              }),
                                             ),
-                                            _buildTextField('DESCRIPTION',
-                                                descripController,
-                                                isEnabled: false),
-                                            _buildTextField(
-                                                'ISS WT', issWtController,
+                                            TableCell(
+                                              child: buildTextField2(
+                                                  'DESCRIPTION',
+                                                  descripController,
+                                                  isEnabled: false),
+                                            ),
+                                            TableCell(
+                                              child: buildTextField2(
+                                                  'ISS WT', issWtController,
+                                                  inputFormatterList: [
+                                                    FilteringTextInputFormatter
+                                                        .allow(RegExp(
+                                                            r'^\d+\.?\d{0,3}')),
+                                                  ],
+                                                  isEnabled: false),
+                                            ),
+                                            TableCell(
+                                              child: buildTextField2(
+                                                'REC WT',
+                                                recWtController,
                                                 inputFormatterList: [
                                                   FilteringTextInputFormatter
                                                       .allow(RegExp(
                                                           r'^\d+\.?\d{0,3}')),
                                                 ],
-                                                isEnabled: false),
+                                                isEnabled: _isEnabled,
+                                              ),
+                                            ),
+                                            TableCell(
+                                              child: buildTextField2(
+                                                  'RATE', rateController,
+                                                  inputFormatterList: [
+                                                    FilteringTextInputFormatter
+                                                        .allow(RegExp(
+                                                            r'^\d+\.?\d{0,3}')),
+                                                  ],
+                                                  isEnabled: false),
+                                            ),
+                                            TableCell(
+                                              child: buildTextField2(
+                                                  'AMOUNT', amountController,
+                                                  isEnabled: false),
+                                            ),
+                                            TableCell(
+                                                child: InkWell(
+                                              focusNode: _buttonFocus,
+                                              onTap: () {
+                                                if (_formKey.currentState!
+                                                    .validate()) {
+                                                  addEntry();
+                                                }
+                                              },
+                                              child: const Text(
+                                                '...',
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            )),
                                           ],
                                         ),
-                                        _buildRow([
-                                          _buildTextField(
-                                            'REC WT',
-                                            recWtController,
-                                            inputFormatterList: [
-                                              FilteringTextInputFormatter.allow(
-                                                  RegExp(r'^\d+\.?\d{0,3}')),
-                                            ],
-                                            isEnabled: _isEnabled,
-                                            /*onChanged: (val) {
-                                            if (_formKey.currentState!
-                                                    .validate() &&
-                                                val.isNotEmpty) {
-                                              addEntry();
-                                            }
-                                          }*/
-                                          ),
-                                          _buildTextField(
-                                              'RATE', rateController,
-                                              inputFormatterList: [
-                                                FilteringTextInputFormatter
-                                                    .allow(RegExp(
-                                                        r'^\d+\.?\d{0,3}')),
-                                              ],
-                                              isEnabled: false),
-                                          _buildTextField(
-                                              'AMOUNT', amountController,
-                                              isEnabled: false),
-                                          // _buildTextField(
-                                          //   'STOCK',
-                                          //   stockcontroller,
-                                          //   isEnabled:
-                                          //       false, // Disable input since it's auto-filled
-                                          // ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              SizedBox(
-                                                width: 15,
-                                                height: 15,
-                                                child: OutlinedButton(
-                                                  onPressed: () {
-                                                    if (_formKey.currentState!
-                                                        .validate()) {
-                                                      addEntry();
-                                                    }
-                                                  },
-                                                  child: const Text("..."),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        ])
                                       ],
-                                    ),
-                                  ),
-                                ],
+                                    )
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Container(
-                                decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey)),
-                                // padding: const EdgeInsets.all(8.0),
-                                child: _buildMemoRecDataTable()),
+                              decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey)),
+                              // padding: const EdgeInsets.all(8.0),
+                              // child: _buildDataTable(),
+                              child: _buildRoughTable(),
+                            ),
                           ),
                           // PartyForm(),
                           // MyFiles(),
@@ -1095,14 +1610,22 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               OutlinedButton(
-                                // onPressed: _enableFields,
                                 onPressed: _enableFields,
-                                child: const Text("Add"),
-                              ),
-                              const SizedBox(width: 8),
-                              OutlinedButton(
-                                onPressed: () {},
-                                child: const Text("Edit"),
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'A', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'dd', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
@@ -1131,6 +1654,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                             setState(() {
                                               recEntries.clear();
                                               _isFromEdit = false;
+                                              _isEnabled = false;
                                             });
                                           });
 
@@ -1143,8 +1667,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           _selectedType.value = '';
                                           _selectedTypeBroker.value = '';
                                         } else {
-                                          Get.rawSnackbar(
-                                              message: 'Please Add Rough Data');
+                                          infoDialog(
+                                              messageText:
+                                                  'Please Add Rough Data');
                                         }
                                       }
                                     : () async {
@@ -1169,6 +1694,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                             setState(() {
                                               recEntries.clear();
                                               entries.clear();
+                                              _isEnabled = false;
                                             });
                                           });
 
@@ -1181,14 +1707,30 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           _selectedType.value = '';
                                           _selectedTypeBroker.value = '';
                                         } else {
-                                          Get.rawSnackbar(
-                                              message: 'Please Add Rough Data');
+                                          infoDialog(
+                                              messageText:
+                                                  'Please Add Rough Data');
                                         }
                                       },
                                 child: Obx(
                                   () => defaultController.isLoading.value
                                       ? const CupertinoActivityIndicator()
-                                      : const Text("Save"),
+                                      : const Text.rich(
+                                          TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: 'S', // Underlined "A"
+                                                style: TextStyle(
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: 'ave', // Normal "dd"
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1212,14 +1754,29 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                             recEntries.clear();
                                           });
                                         })
-                                      : Get.rawSnackbar(
-                                          message:
-                                              'Please Select Sale Entry to Delete.');
+                                      : infoDialog(
+                                          messageText:
+                                              'Please Select Memo Rec Entry to Delete.');
                                 },
                                 child: Obx(
-                                  () => defaultController.isLoading.value
+                                  () => defaultController.isDeleteLoading.value
                                       ? const CupertinoActivityIndicator()
-                                      : const Text("Delete"),
+                                      : const Text.rich(
+                                          TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: 'D', // Underlined "A"
+                                                style: TextStyle(
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: 'elete', // Normal "dd"
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1242,16 +1799,45 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                     entries.clear();
                                     recEntries.clear();
                                     _isFromEdit = false;
+                                    _isEnabled = false;
                                   });
                                 },
-                                child: const Text("Cancel"),
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'C', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'ancel', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
                                   menuController.selectedIndex.value = 0;
                                 },
-                                child: const Text("Exit"),
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'E', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'xit', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
@@ -1260,7 +1846,21 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                     _isSearch = true;
                                   });
                                 },
-                                child: const Text("Search"),
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'S', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'earch', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ],
                           )
@@ -1309,451 +1909,267 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   //   }
   // }
 
-  Widget _buildTextField(String label, TextEditingController? controller,
-      {List<TextInputFormatter>? inputFormatterList,
-      VoidCallback? onTap,
-      bool? isEnabled,
-      ValueChanged<String>? onChanged,
-      FocusNode? focusNode}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+  Widget _buildRoughTable() {
+    return Table(
+      border: TableBorder.all(color: Colors.grey, width: 0.25),
+      columnWidths: const {
+        0: FixedColumnWidth(50), // Adjust this based on your needs
+        1: FlexColumnWidth(60),
+        2: FlexColumnWidth(150),
+        3: FixedColumnWidth(80),
+        4: FixedColumnWidth(80),
+        5: FixedColumnWidth(80),
+        6: FixedColumnWidth(80),
+        7: FixedColumnWidth(40),
+        8: FixedColumnWidth(40),
+        9: FixedColumnWidth(40),
+      },
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w900,
-            fontSize: 12, // Font size for the label
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: SizedBox(
-            width: 50,
-            child: TextFormField(
-              onTap: onTap,
-              controller: controller,
-              keyboardType: TextInputType.number,
-              enabled: isEnabled,
-              focusNode: focusNode,
-              textInputAction: TextInputAction.next,
-              inputFormatters: inputFormatterList,
-              decoration: const InputDecoration(
-                errorStyle: TextStyle(
-                  height: 0, // Hides the error message
-                  fontSize: 0, // Ensures no space is taken by the error message
-                ),
-                focusedErrorBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    // Red border when focused with an error
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                errorBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    // Red border for errors
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.blue,
-                    // Black border when focused without error
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.grey,
-                    // Light grey border when enabled
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                // filled: true,
-                // Fill the background
-                // fillColor: Colors.white,
-                // White background
-                isDense: true,
-                // Reduces the overall height of the TextField
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 8,
-                ), // Remove top padding, minimal horizontal padding
-              ),
-              cursorColor: Colors.black,
-              // Black cursor color
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 12, // Consistent font size with label
-              ),
-              onChanged: onChanged,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return ''; // Validation still occurs, but no message is shown
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-      ],
-    ); /*TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: label,
-        border: const UnderlineInputBorder(),
-      ),
-    );*/
-  }
-
-  Widget _buildDataTable() {
-    return DataTable(
-      columnSpacing: 10,
-      headingRowHeight: 20,
-      horizontalMargin: 10,
-      dataRowHeight: 30.0,
-      columns: const [
-        DataColumn(
-          label: Text(
-            'SR.NO',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-        ),
-        DataColumn(
-            label: Text(
-          'ROUGH TYPE',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'DESCRIPTION',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'WT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'RATE',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'AMOUNT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        // DataColumn(
-        //     label: Text(
-        //   '',
-        //   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        // )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-      ],
-      rows: List<DataRow>.generate(
-        entries.length,
-        (index) => DataRow(
-          cells: [
-            DataCell(
-              Text(
-                (index + 1).toString(),
-                style: const TextStyle(fontSize: 12),
+        // Table Header Row
+        const TableRow(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'SR.NO',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
               ),
             ),
-            DataCell(Text(
-              getRoughName(entries[index]['rough']!),
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['description']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['wt']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['rate']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['amount']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            // DataCell(
-            //   Obx(
-            //     () => defaultController.isLoading.value
-            //         ? const CupertinoActivityIndicator()
-            //         : IconButton(
-            //             icon: const Icon(Icons.delete),
-            //             onPressed: () {
-            //               setState(() {
-            //                 defaultController
-            //                     .deleteMemoIssueRoughData(
-            //                         id: int.parse(entries[index]['id']!))
-            //                     .then((onValue) {
-            //                   setState(() {
-            //                     entries.removeAt(index);
-            //                   });
-            //                 });
-            //
-            //                 // _updateTotals(); // Recalculate totals after deletion
-            //               });
-            //             },
-            //           ),
-            //   ),
-            // ),
-            DataCell(
-              IconButton(
-                icon: const Icon(
-                  Icons.edit,
-                  size: 15,
-                ),
-                onPressed: () {
-                  selectedRoughId.value = entries[index]['id']!;
-                  _selectedType.value = entries[index]['rough']!;
-                  issWtController.text = entries[index]['wt']!;
-                  recWtController.text = entries[index]['wt']!;
-                  rateController.text = entries[index]['rate']!;
-                  descripController.text = entries[index]['description']!;
-                  updateStockControllerBasedOnType(entries[index]['rough']!);
-                  setState(() {
-                    entries.removeAt(index);
-                  });
-                },
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'ROUGH',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
               ),
             ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'DESCRIPTION',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'WT',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'REC WT',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'RATE',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'AMOUNT',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                '',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                '',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ), // Placeholder for edit icon
           ],
         ),
-      )..add(
-          DataRow(
-            cells: [
-              const DataCell(Text('')),
-              const DataCell(Text('')),
-              const DataCell(Text('TOTAL',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-              DataCell(
-                Text(
-                  totalWt.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
+        // Data Rows
+        for (int index = 0; index < recEntries.length; index++)
+          TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  (index + 1).toString(),
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
                 ),
               ),
-              DataCell(Text(
-                totalRate.toStringAsFixed(2),
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              )),
-              DataCell(
-                Text(
-                  totalAmount.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  getRoughName(recEntries[index]['rough']!),
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
                 ),
               ),
-              // const DataCell(Text(
-              //   '',
-              //   style: TextStyle(fontSize: 12),
-              // )),
-              const DataCell(Text(
-                '',
-                style: TextStyle(fontSize: 12),
-              )),
-            ],
-          ),
-        ),
-    );
-  }
-
-  Widget _buildMemoRecDataTable() {
-    return DataTable(
-      columnSpacing: 10,
-      headingRowHeight: 25,
-      horizontalMargin: 20,
-      dataRowHeight: 30.0,
-      columns: const [
-        DataColumn(
-          label: Text(
-            'SR.NO',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-        ),
-        DataColumn(
-            label: Text(
-          'ROUGH',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'DESCRIPTION',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'WT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'REC WT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'RATE',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'AMOUNT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-      ],
-      rows: List<DataRow>.generate(
-        recEntries.length,
-        (index) => DataRow(
-          cells: [
-            DataCell(
-              Text(
-                (index + 1).toString(),
-                style: const TextStyle(fontSize: 12),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  recEntries[index]['description']!,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
+                ),
               ),
-            ),
-            DataCell(Text(
-              getRoughName(recEntries[index]['rough']!),
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              recEntries[index]['description']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              recEntries[index]['wt']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              recEntries[index]['recWt']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              recEntries[index]['rate']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              recEntries[index]['amount']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(
-              Obx(
-                () => defaultController.isLoading.value
-                    ? const CupertinoActivityIndicator()
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          size: 15,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            defaultController
-                                .deleteMemoRecRoughData(
-                                    id: int.parse(recEntries[index]['id']!))
-                                .then((onValue) {
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  recEntries[index]['wt']!,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  recEntries[index]['recWt']!,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  recEntries[index]['rate']!,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  recEntries[index]['amount']!,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Obx(
+                  () => defaultController.isDeleteLoading.value
+                      ? const CupertinoActivityIndicator(radius: 10)
+                      : GestureDetector(
+                          child: const Icon(
+                            Icons.delete,
+                            size: 15,
+                          ),
+                          onTap: () {
+                            if (_isFromEdit) {
+                              defaultController
+                                  .deleteMemoRecRoughData(
+                                      id: int.parse(recEntries[index]['id']!))
+                                  .then((onValue) {
+                                setState(() {
+                                  recEntries.removeAt(index);
+                                });
+                              });
+                            } else {
                               setState(() {
                                 recEntries.removeAt(index);
                               });
-                            });
-
-                            // _updateTotals(); // Recalculate totals after deletion
-                          });
-                        },
-                      ),
-              ),
-            ),
-            DataCell(
-              IconButton(
-                icon: const Icon(
-                  Icons.edit,
-                  size: 15,
-                ),
-                onPressed: () {
-                  selectedRoughId.value = recEntries[index]['id']!;
-                  _selectedType.value = recEntries[index]['rough']!;
-                  issWtController.text = recEntries[index]['wt']!;
-                  recWtController.text = recEntries[index]['recWt']!;
-                  rateController.text = recEntries[index]['rate']!;
-                  // amountController.text = recEntries[index]['amount']!;
-                  descripController.text = recEntries[index]['description']!;
-                  updateStockControllerBasedOnType(recEntries[index]['rough']!);
-                  setState(() {
-                    recEntries.removeAt(index);
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      )..add(
-          DataRow(
-            cells: [
-              const DataCell(Text('')),
-              const DataCell(Text('')),
-              const DataCell(Text('TOTAL',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-              DataCell(
-                Text(
-                  totalRecWt.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
+                            }
+                          },
+                        ),
                 ),
               ),
-              DataCell(Text(
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: GestureDetector(
+                  child: const Icon(
+                    Icons.edit,
+                    size: 15,
+                  ),
+                  onTap: () {
+                    if (_isFromEdit) {
+                      selectedRoughId.value = recEntries[index]['id']!;
+                    }
+                    _selectedType.value = recEntries[index]['rough']!;
+                    issWtController.text = recEntries[index]['wt']!;
+                    recWtController.text = recEntries[index]['recWt']!;
+                    rateController.text = recEntries[index]['rate']!;
+                    // amountController.text = recEntries[index]['amount']!;
+                    descripController.text = recEntries[index]['description']!;
+                    setState(() {
+                      recEntries.removeAt(index);
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        // Total Row
+        TableRow(
+          children: [
+            const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
+            const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
+            const Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'TOTAL',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                textAlign: TextAlign.end,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: Text(
+                totalWt.toStringAsFixed(2),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: Text(
+                totalRecWt.toStringAsFixed(2),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: Text(
                 totalRecRate.toStringAsFixed(2),
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              )),
-              DataCell(
-                Text(
-                  totalRecAmount.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
-                ),
+                textAlign: TextAlign.start,
               ),
-              const DataCell(Text(
-                '',
-                style: TextStyle(fontSize: 12),
-              )),
-              const DataCell(Text(
-                '',
-                style: TextStyle(fontSize: 12),
-              )),
-              const DataCell(Text(
-                '',
-                style: TextStyle(fontSize: 12),
-              )),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: Text(
+                totalRecAmount.toStringAsFixed(2),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
+            const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
+          ],
         ),
+      ],
     );
   }
 
@@ -1830,49 +2246,5 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
             memo.partyCode == selectedPartyCode &&
             memo.brokerCode == selectedBrokerCode)
         .toList();
-  }
-
-  // void displayRoughDetails(List<MemoIssueDetailsModel> roughDetails) {
-  //   setState(() {
-  //     // Clear the existing entries if needed
-  //     entries.clear();
-  //
-  //     // Loop through each rough detail and add it to the entries
-  //     for (var roughDetail in roughDetails) {
-  //       entries.add({
-  //         if (selectedRoughId.value.isNotEmpty) 'id': selectedRoughId.value,
-  //         'rough': _selectedType.value,
-  //         // assuming _selectedType contains the rough type
-  //         'description': descripController.text,
-  //         'wt': roughDetail.carats.toString(),
-  //         // assuming `wt` is part of MemoIssueDetailsModel
-  //         'rate': roughDetail.rateRs.toString(),
-  //         // assuming `rate` is part of MemoIssueDetailsModel
-  //         'amount':
-  //             (roughDetail.carats! * roughDetail.rateRs!).toStringAsFixed(2),
-  //       });
-  //     }
-  //   });
-  //
-  //   // Optional: log or display entries in UI
-  //   if (kDebugMode) {
-  //     print(entries);
-  //   } // or update UI with entries
-  // }
-
-  void updateStockControllerBasedOnType(String? value) {
-    _selectedType.value = value ?? '';
-
-    if (value != null) {
-      // Find the corresponding total weight from groupedData
-      int code = int.parse(value);
-      if (defaultController.groupedData.containsKey(code)) {
-        // Update the TextEditingController with the total weight
-        stockcontroller.text =
-            defaultController.groupedData[code]!.toStringAsFixed(3);
-      } else {
-        stockcontroller.text = '0.0'; // Default to 0 if not found
-      }
-    }
   }
 }

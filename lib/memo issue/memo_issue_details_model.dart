@@ -19,6 +19,7 @@ class MemoIssueDetailsModel {
   // Null roughPurMstID;
   int? roughTypeCode;
   String? description;
+  String? rec;
 
   MemoIssueDetailsModel(
       {this.memoIssueDetID,
@@ -37,7 +38,7 @@ class MemoIssueDetailsModel {
       // this.invNo,
       // this.roughPurMstID,
       this.roughTypeCode,
-      this.description});
+      this.description, this.rec});
 
   MemoIssueDetailsModel.fromJson(Map<String, dynamic> json) {
     memoIssueDetID = json['MemoIssueDetID'];
@@ -57,6 +58,7 @@ class MemoIssueDetailsModel {
     // roughPurMstID = json['RoughPurMstID'];
     roughTypeCode = json['RoughTypeCode'];
     description = json['Description'];
+    rec = json['Rec'];
   }
 
   Map<String, dynamic> toJson() {
@@ -78,6 +80,7 @@ class MemoIssueDetailsModel {
     // data['RoughPurMstID'] = roughPurMstID;
     data['RoughTypeCode'] = roughTypeCode;
     data['Description'] = description;
+    data['Rec'] = rec;
     return data;
   }
 }

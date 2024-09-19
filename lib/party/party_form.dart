@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/party/party_datagrid.dart';
@@ -18,6 +19,7 @@ class PartyForm extends StatefulWidget {
 
 class PartyFormState extends State<PartyForm> {
   final FocusNode _partyFocusNode = FocusNode();
+  final FocusNode _nameFocusNode = FocusNode();
   bool _isEnabled = false;
 
   // bool _isFromEdit = false;
@@ -391,7 +393,10 @@ class PartyFormState extends State<PartyForm> {
                             onChanged: _isEnabled
                                 ? (value) {
                                     _selectedType.value =
-                                        value ?? ''; // Handle null case
+                                        value ?? '';
+                                    Future.delayed(const Duration(milliseconds: 100), () {
+                                      _nameFocusNode.requestFocus(); // Move focus to the first input field
+                                    });// Handle null case
                                   }
                                 : null,
                           );
@@ -422,6 +427,7 @@ class PartyFormState extends State<PartyForm> {
                           keyboardType: TextInputType.text,
                           textInputAction: TextInputAction.next,
                           enabled: _isEnabled,
+                          focusNode: _nameFocusNode,
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(
                                 RegExp(r'[a-zA-Z\s]')),
@@ -2707,12 +2713,13 @@ class PartyFormState extends State<PartyForm> {
                 ),
                 Checkbox(
                   value: _isActive,
-                  onChanged: _isEnabled ?  (value) {
-                    setState(() {
-                      _isActive = value!;
-                    });
-                  } : (value){
-                  },
+                  onChanged: _isEnabled
+                      ? (value) {
+                          setState(() {
+                            _isActive = value!;
+                          });
+                        }
+                      : (value) {},
                 ),
               ],
             ),
@@ -2731,8 +2738,8 @@ class PartyFormState extends State<PartyForm> {
                           if (_isFromEdit) {
                             _enableEditFields();
                           } else {
-                            Get.rawSnackbar(
-                                message: 'Please Select Party to Edit.');
+                            infoDialog(
+                                messageText: 'Please Select Party to Edit.');
                           }
                         },
                         child: const Text("Edit"),
@@ -2979,11 +2986,12 @@ class PartyFormState extends State<PartyForm> {
                                     _isFromEdit = false;
                                   });
                                 })
-                              : Get.rawSnackbar(
-                                  message: 'Please Select Party to Delete.');
+                              : infoDialog(
+                                  messageText:
+                                      'Please Select Party to Delete.');
                         },
                         child: Obx(
-                          () => defaultController.isLoading.value
+                          () => defaultController.isDeleteLoading.value
                               ? const CupertinoActivityIndicator()
                               : const Text("Delete"),
                         ),
@@ -3046,8 +3054,9 @@ class PartyFormState extends State<PartyForm> {
                               if (_isFromEdit) {
                                 _enableEditFields();
                               } else {
-                                Get.rawSnackbar(
-                                    message: 'Please Select Party to Edit.');
+                                infoDialog(
+                                    messageText:
+                                        'Please Select Party to Edit.');
                               }
                             },
                             child: const Text("Edit"),
@@ -3319,12 +3328,12 @@ class PartyFormState extends State<PartyForm> {
                                         _isFromEdit = false;
                                       });
                                     })
-                                  : Get.rawSnackbar(
-                                      message:
+                                  : infoDialog(
+                                      messageText:
                                           'Please Select Party to Delete.');
                             },
                             child: Obx(
-                              () => defaultController.isLoading.value
+                              () => defaultController.isDeleteLoading.value
                                   ? const CupertinoActivityIndicator()
                                   : const Text("Delete"),
                             ),
