@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_details_model.dart';
@@ -12,7 +13,7 @@ import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/party/party_type_model.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
-import 'package:real_web_rough_entry_system/rough/rough-details-model.dart';
+import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
@@ -29,10 +30,12 @@ class DefaultController extends GetxController {
   RxList<RoughModel> roughModel = <RoughModel>[].obs;
   RxList<RoughDetailsModel> roughDetailsModel = <RoughDetailsModel>[].obs;
   RxList<SaleDetailsModel> saleDetailsList = <SaleDetailsModel>[].obs;
-  RxList<MemoIssueDetailsModel> memoIssueDetailsList = <MemoIssueDetailsModel>[].obs;
+  RxList<MemoIssueDetailsModel> memoIssueDetailsList =
+      <MemoIssueDetailsModel>[].obs;
   RxList<MemoRecDetailsModel> memoRecDetailsList = <MemoRecDetailsModel>[].obs;
   RxMap groupedData = {}.obs;
   RxBool isLoading = false.obs;
+  RxBool isDeleteLoading = false.obs;
   RxInt companyCode = 0.obs;
 
   Future<void> getPartyData() async {
@@ -53,10 +56,10 @@ class DefaultController extends GetxController {
         partyMstList.value =
             data.map((json) => PartyMstModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -81,10 +84,10 @@ class DefaultController extends GetxController {
         purchaseDataList.value =
             data.map((json) => PurchaseDetailsModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -127,10 +130,10 @@ class DefaultController extends GetxController {
 
         // You can now use the groupedData map for further processing
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -155,15 +158,16 @@ class DefaultController extends GetxController {
         polishSaleList.value =
             data.map((json) => PolishSaleModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
+
   Future<void> getMemoIssueData() async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -182,15 +186,16 @@ class DefaultController extends GetxController {
         memoIssueList.value =
             data.map((json) => MemoIssueModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
+
   Future<void> getMemoRecData() async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -209,10 +214,10 @@ class DefaultController extends GetxController {
         memoRecList.value =
             data.map((json) => MemoRecModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -237,10 +242,10 @@ class DefaultController extends GetxController {
         saleDetailsList.value =
             data.map((json) => SaleDetailsModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -265,15 +270,16 @@ class DefaultController extends GetxController {
         memoIssueDetailsList.value =
             data.map((json) => MemoIssueDetailsModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
+
   Future<void> getMemoRecDetailsData() async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -292,10 +298,10 @@ class DefaultController extends GetxController {
         memoRecDetailsList.value =
             data.map((json) => MemoRecDetailsModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -320,10 +326,10 @@ class DefaultController extends GetxController {
         partyTypeMstList.value =
             data.map((json) => PartyTypeMstModel.fromJson(json)).toList();
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -353,10 +359,10 @@ class DefaultController extends GetxController {
         //   print(roughModel.length);
         // }
       } else {
-        Get.rawSnackbar(message: 'Failed to load data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -452,15 +458,15 @@ class DefaultController extends GetxController {
 
       if (response.statusCode == 200) {
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
         await getPartyData();
       } else {
         isLoading.value = false;
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
       }
     } catch (error) {
       isLoading.value = false;
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -558,14 +564,14 @@ class DefaultController extends GetxController {
       if (response.statusCode == 200) {
         await getPartyData();
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
         isLoading.value = false;
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
       }
     } catch (error) {
       isLoading.value = false;
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -698,18 +704,18 @@ class DefaultController extends GetxController {
               );
         }));
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
         await getPurchaseData();
         await getPurchaseDetailsData();
+        successDialog(messageText: response.data['message']);
       } else {
         isLoading.value = false;
 
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -807,19 +813,18 @@ class DefaultController extends GetxController {
               );
         }));
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
         await getSaleData();
         await getSaleDetailsData();
+        successDialog(messageText: response.data['message']);
       } else {
         isLoading.value = false;
-
-        Get.rawSnackbar(
-            message: 'Failed to Add Data: ${response.data['message']}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -828,20 +833,20 @@ class DefaultController extends GetxController {
 
   Future<void> addMemoIssueData(
       {String? partyCode,
-        invoiceNo,
-        invoiceDate,
-        brokerCode,
-        dueDays,
-        dueDate,
-        roughName,
-        description,
-        wt,
-        rate,
-        amount,
-        double? totalAmt,
-        totalWt,
-        totalRate,
-        required List<Map<String, String>> entries}) async {
+      invoiceNo,
+      invoiceDate,
+      brokerCode,
+      dueDays,
+      dueDate,
+      roughName,
+      description,
+      wt,
+      rate,
+      amount,
+      double? totalAmt,
+      totalWt,
+      totalRate,
+      required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
       final dio = Dio(BaseOptions(headers: {
@@ -913,23 +918,21 @@ class DefaultController extends GetxController {
               roughName: value['rough'],
               description: value['description'],
               memoIssueMstID: response.data['data']['MemoIssueMstID'],
-              srNo: index + 1 // incremented srNo
-          );
+              srNo: index + 1,
+              rec: 'N' // incremented srNo
+              );
         }));
         await getMemoIssueData();
         await getMemoIssueDetailsData();
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
         isLoading.value = false;
-
-        Get.rawSnackbar(
-            message: 'Failed to Add Data: ${response.data['message']}');
+        errorDialog(messageText: response.data['message']);
       }
     } catch (error) {
       isLoading.value = false;
-
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -938,20 +941,21 @@ class DefaultController extends GetxController {
 
   Future<void> addMemoRecData(
       {String? partyCode,
-        invoiceNo,
-        invoiceDate,
-        brokerCode,
-        dueDays,
-        dueDate,
-        roughName,
-        description,
-        wt,
-        rate,
-        amount,
-        double? totalAmt,
-        totalWt,
-        totalRate,
-        required List<Map<String, String>> entries}) async {
+      invoiceNo,
+      invoiceDate,
+      brokerCode,
+      dueDays,
+      dueDate,
+      roughName,
+      description,
+      wt,
+      rate,
+      amount,
+      double? totalAmt,
+      totalWt,
+      totalRate,
+      memoIssueDetailId,
+      required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
       final dio = Dio(BaseOptions(headers: {
@@ -1025,22 +1029,30 @@ class DefaultController extends GetxController {
               description: value['description'],
               memoRecMstID: response.data['data']['MemoRecMstID'],
               srNo: index + 1 // incremented srNo
+              );
+        }));
+        await Future.wait(entries.asMap().entries.map((entry) {
+          var value = entry.value;
+          return _updateMemoIssueRoughData(
+              id: value['detId'],
+              rec: 'Y',
           );
         }));
         await getMemoRecData();
         await getMemoRecDetailsData();
+        await getMemoIssueDetailsData();
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
         isLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Add Data: ${response.data['message']}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1191,18 +1203,19 @@ class DefaultController extends GetxController {
         }));
 
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
         await getPurchaseData();
         await getPurchaseDetailsData();
       } else {
         isLoading.value = false;
 
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.statusCode}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1314,43 +1327,43 @@ class DefaultController extends GetxController {
           }
         }));
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
+
         await getSaleData();
         await getSaleDetailsData();
       } else {
         isLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Add Data: ${response.data['message']}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
 
-
   Future<void> updateMemoIssueData(
       {required int id,
-        String? partyCode,
-        invoiceNo,
-        invoiceDate,
-        brokerCode,
-        dueDays,
-        dueDate,
-        roughName,
-        description,
-        wt,
-        rate,
-        amount,
-        double? totalAmt,
-        totalWt,
-        totalRate,
-        required List<Map<String, String>> entries}) async {
+      String? partyCode,
+      invoiceNo,
+      invoiceDate,
+      brokerCode,
+      dueDays,
+      dueDate,
+      roughName,
+      description,
+      wt,
+      rate,
+      amount,
+      double? totalAmt,
+      totalWt,
+      totalRate,
+      required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
       final dio = Dio(BaseOptions(headers: {
@@ -1424,8 +1437,9 @@ class DefaultController extends GetxController {
                 roughName: value['rough'],
                 description: value['description'],
                 memoIssueMstID: response.data['data']['MemoIssueMstID'],
-                srNo: index + 1 // incremented srNo
-            );
+                srNo: index + 1,
+                rec: 'N' // incremented srNo
+                );
           } else {
             return _addMemoIssueRoughData(
                 wt: value['wt'],
@@ -1434,24 +1448,26 @@ class DefaultController extends GetxController {
                 description: value['description'],
                 roughName: value['rough'],
                 memoIssueMstID: response.data['data']['MemoIssueMstID'],
-                srNo: index + 1 // incremented srNo
-            );
+                srNo: index + 1,
+                rec: 'N' // incremented srNo
+                );
           }
         }));
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
+
         await getMemoIssueData();
         await getMemoIssueDetailsData();
       } else {
         isLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Add Data: ${response.data['message']}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1460,21 +1476,21 @@ class DefaultController extends GetxController {
 
   Future<void> updateMemoRecData(
       {required int id,
-        String? partyCode,
-        invoiceNo,
-        invoiceDate,
-        brokerCode,
-        dueDays,
-        dueDate,
-        roughName,
-        description,
-        wt,
-        rate,
-        amount,
-        double? totalAmt,
-        totalWt,
-        totalRate,
-        required List<Map<String, String>> entries}) async {
+      String? partyCode,
+      invoiceNo,
+      invoiceDate,
+      brokerCode,
+      dueDays,
+      dueDate,
+      roughName,
+      description,
+      wt,
+      rate,
+      amount,
+      double? totalAmt,
+      totalWt,
+      totalRate,
+      required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
       final dio = Dio(BaseOptions(headers: {
@@ -1550,7 +1566,7 @@ class DefaultController extends GetxController {
                 description: value['description'],
                 memoRecMstID: response.data['data']['MemoRecMstID'],
                 srNo: index + 1 // incremented srNo
-            );
+                );
           } else {
             return _addMemoRecRoughData(
                 wt: value['wt'],
@@ -1560,23 +1576,24 @@ class DefaultController extends GetxController {
                 roughName: value['rough'],
                 memoRecMstID: response.data['data']['MemoRecMstID'],
                 srNo: index + 1 // incremented srNo
-            );
+                );
           }
         }));
         isLoading.value = false;
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
+
         await getMemoRecData();
         await getMemoRecDetailsData();
       } else {
         isLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Add Data: ${response.data['message']}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
       }
     } catch (error) {
       isLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1617,12 +1634,12 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Added!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1663,12 +1680,12 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Added!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1676,7 +1693,14 @@ class DefaultController extends GetxController {
   }
 
   Future<void> _addMemoIssueRoughData(
-      {roughName, wt, rate, amount, description, srNo, memoIssueMstID}) async {
+      {roughName,
+      wt,
+      rate,
+      amount,
+      description,
+      srNo,
+      memoIssueMstID,
+      rec}) async {
     try {
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -1698,7 +1722,8 @@ class DefaultController extends GetxController {
         // "InvNo": "",
         // "RoughPurMstID": 2,
         "RoughTypeCode": int.parse(roughName),
-        "Description": description
+        "Description": description,
+        "Rec": rec
       };
 
       final response = await dio.post(
@@ -1709,12 +1734,12 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Added!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1722,7 +1747,14 @@ class DefaultController extends GetxController {
   }
 
   Future<void> _addMemoRecRoughData(
-      {roughName, wt, recWt, rate, amount, description, srNo, memoRecMstID}) async {
+      {roughName,
+      wt,
+      recWt,
+      rate,
+      amount,
+      description,
+      srNo,
+      memoRecMstID}) async {
     try {
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -1756,12 +1788,12 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Added!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(message: 'Failed to Add Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1809,51 +1841,51 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Updated!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(
-            message: 'Failed to Update Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Update Data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
 
-
   Future<void> _updateMemoIssueRoughData(
       {required id,
-        roughName,
-        wt,
-        description,
-        rate,
-        amount,
-        srNo,
-        memoIssueMstID}) async {
+      roughName,
+      wt,
+      description,
+      rate,
+      amount,
+      srNo,
+      rec,
+      memoIssueMstID}) async {
     try {
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
       var params = {
-        "MemoIssueMstID": memoIssueMstID,
-        "SrNo": srNo,
+        if (memoIssueMstID != null) "MemoIssueMstID": memoIssueMstID,
+        if (srNo != null) "SrNo": srNo,
         // "ClarityCode": 1,
         // "CharniCode": 1,
         // "Pcs": 1,
-        "Carats": wt,
-        "RateRs": rate,
-        "AmountRs": amount,
-        "RateD": rate,
-        "AmountD": amount,
+        if (wt != null) "Carats": wt,
+        if (rate != null) "RateRs": rate,
+        if (amount != null) "AmountRs": amount,
+        if (rate != null) "RateD": rate,
+        if (amount != null) "AmountD": amount,
         // "PenCarats": 12.232,
         "Type": "ROUGH",
         // "InvNo": "",
         // "RoughPurMstID": 2,
-        "RoughTypeCode": int.parse(roughName),
-        "Description": description
+        if (roughName != null) "RoughTypeCode": int.parse(roughName),
+        if (description != null) "Description": description,
+        "Rec": rec
       };
 
       final response = await dio.put(
@@ -1862,15 +1894,14 @@ class DefaultController extends GetxController {
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
-          print('Updated!');
+          print('Updated! $id');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(
-            message: 'Failed to Update Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Update Data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1879,14 +1910,14 @@ class DefaultController extends GetxController {
 
   Future<void> _updateMemoRecRoughData(
       {required id,
-        roughName,
-        wt,
-        recWt,
-        description,
-        rate,
-        amount,
-        srNo,
-        memoRecMstID}) async {
+      roughName,
+      wt,
+      recWt,
+      description,
+      rate,
+      amount,
+      srNo,
+      memoRecMstID}) async {
     try {
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -1920,13 +1951,12 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Updated!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(
-            message: 'Failed to Update Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Update Data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1974,13 +2004,12 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Updated!');
         }
-        // Get.rawSnackbar(message: response.data['message']);
       } else {
-        Get.rawSnackbar(
-            message: 'Failed to Update Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Update Data: ${response.statusCode}');
       }
     } catch (error) {
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -1989,7 +2018,7 @@ class DefaultController extends GetxController {
 
   Future<void> deletePurchaseRoughData({required id}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
@@ -2002,18 +2031,16 @@ class DefaultController extends GetxController {
           print('Deleted!');
         }
         await getPurchaseDetailsData();
-        isLoading.value = false;
-
-        // Get.rawSnackbar(message: response.data['message']);
+        isDeleteLoading.value = false;
       } else {
-        isLoading.value = false;
-        Get.rawSnackbar(
-            message: 'Failed to Delete Data: ${response.statusCode}');
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
+      isDeleteLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -2022,7 +2049,7 @@ class DefaultController extends GetxController {
 
   Future<void> deleteSaleRoughData({required id}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -2036,19 +2063,17 @@ class DefaultController extends GetxController {
           print('Deleted!');
         }
         await getSaleDetailsData();
-        isLoading.value = false;
-
-        // Get.rawSnackbar(message: response.data['message']);
+        isDeleteLoading.value = false;
       } else {
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Delete Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
+      isDeleteLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -2057,33 +2082,31 @@ class DefaultController extends GetxController {
 
   Future<void> deleteMemoIssueRoughData({required id}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
-      final response = await dio
-          .delete('http://50.62.183.116:301/rough-entry/memo-issue-details/$id');
+      final response = await dio.delete(
+          'http://50.62.183.116:301/rough-entry/memo-issue-details/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
           print('Deleted!');
         }
         await getMemoIssueDetailsData();
-        isLoading.value = false;
-
-        // Get.rawSnackbar(message: response.data['message']);
+        isDeleteLoading.value = false;
       } else {
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Delete Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
+      isDeleteLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -2092,7 +2115,7 @@ class DefaultController extends GetxController {
 
   Future<void> deleteMemoRecRoughData({required id}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -2106,19 +2129,16 @@ class DefaultController extends GetxController {
           print('Deleted!');
         }
         await getMemoRecDetailsData();
-        isLoading.value = false;
-
-        // Get.rawSnackbar(message: response.data['message']);
+        isDeleteLoading.value = false;
       } else {
-        isLoading.value = false;
-
-        Get.rawSnackbar(
-            message: 'Failed to Delete Data: ${response.statusCode}');
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
+      isDeleteLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -2127,7 +2147,7 @@ class DefaultController extends GetxController {
 
   Future<void> deletePartyData({required id}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -2141,35 +2161,35 @@ class DefaultController extends GetxController {
           print('Deleted!');
         }
         await getPartyData();
-        isLoading.value = false;
-
-        Get.rawSnackbar(message: response.data['message']);
+        isDeleteLoading.value = false;
+        successDialog(messageText: response.data['message']);
       } else {
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(
-            message: 'Failed to Delete Data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
+      isDeleteLoading.value = false;
 
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
 
-  Future<void> deletePurchaseData({required int id, required List entries}) async {
+  Future<void> deletePurchaseData(
+      {required int id, required List entries}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
       final response =
-      await dio.delete('http://50.62.183.116:301/rough-entry/purchase/$id');
+          await dio.delete('http://50.62.183.116:301/rough-entry/purchase/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2189,16 +2209,17 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getPurchaseDetailsData();
         await getPurchaseData();
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
-        isLoading.value = false;
-        Get.rawSnackbar(message: 'Failed to Delete Data: ${response.statusCode}');
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
@@ -2207,14 +2228,14 @@ class DefaultController extends GetxController {
 
   Future<void> deleteSaleData({required int id, required List entries}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
-      final response =
-      await dio.delete('http://50.62.183.116:301/rough-entry/polish-sale/$id');
+      final response = await dio
+          .delete('http://50.62.183.116:301/rough-entry/polish-sale/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2234,33 +2255,34 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getSaleDetailsData();
         await getSaleData();
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
-        isLoading.value = false;
-        Get.rawSnackbar(message: 'Failed to Delete Data: ${response.statusCode}');
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
 
-
-  Future<void> deleteMemoIssueData({required int id, required List entries}) async {
+  Future<void> deleteMemoIssueData(
+      {required int id, required List entries}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
-      final response =
-      await dio.delete('http://50.62.183.116:301/rough-entry/memo-issue/$id');
+      final response = await dio
+          .delete('http://50.62.183.116:301/rough-entry/memo-issue/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2280,31 +2302,34 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getMemoIssueDetailsData();
         await getMemoIssueData();
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
-        isLoading.value = false;
-        Get.rawSnackbar(message: 'Failed to Delete Data: ${response.statusCode}');
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
-  Future<void> deleteMemoRecData({required int id, required List entries}) async {
+
+  Future<void> deleteMemoRecData(
+      {required int id, required List entries}) async {
     try {
-      isLoading.value = true;
+      isDeleteLoading.value = true;
 
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
       final response =
-      await dio.delete('http://50.62.183.116:301/rough-entry/memo-rec/$id');
+          await dio.delete('http://50.62.183.116:301/rough-entry/memo-rec/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2324,28 +2349,27 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getMemoRecDetailsData();
         await getMemoRecData();
-        isLoading.value = false;
+        isDeleteLoading.value = false;
 
-        Get.rawSnackbar(message: response.data['message']);
+        successDialog(messageText: response.data['message']);
       } else {
-        isLoading.value = false;
-        Get.rawSnackbar(message: 'Failed to Delete Data: ${response.statusCode}');
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
-      isLoading.value = false;
-      Get.rawSnackbar(message: 'An unexpected error occurred.');
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
       }
     }
   }
 
-
   @override
   Future<void> onInit() async {
     await getPartyData();
     await getPurchaseData();
-    // await getPurchaseData();
     await getPartyTypeData();
     await getSaleDetailsData();
     await getMemoIssueData();
