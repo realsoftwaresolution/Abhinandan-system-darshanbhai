@@ -69,6 +69,7 @@ Future errorDialog ({required String messageText}){
 Widget buildTextField(String label, TextEditingController? controller,
     {List<TextInputFormatter>? inputFormatterList,
       VoidCallback? onTap,
+      bool? readOnly,
       bool? isEnabled,
       ValueChanged<String>? onChanged,
       VoidCallback? onEditingComplete,
@@ -89,6 +90,7 @@ Widget buildTextField(String label, TextEditingController? controller,
         child: SizedBox(
           width: 50,
           child: TextFormField(
+            readOnly: readOnly ?? false,
             onTap: onTap,
             controller: controller,
             keyboardType: TextInputType.number,

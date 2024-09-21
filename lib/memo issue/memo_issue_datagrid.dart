@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
@@ -16,7 +17,7 @@ class MemoIssueDataGridSource extends DataGridSource {
         // DataGridCell<String>(
         //     columnName: 'Invoice No', value: purchase.invoiceNo),
         DataGridCell<String>(
-            columnName: 'Invoice Date', value: purchase.invoiceDate),
+            columnName: 'Invoice Date', value: formatDateWithTime(purchase.invoiceDate!)),
         // DataGridCell<String>(
         //     columnName: 'Rec Date', value: purchase.recdate),
         DataGridCell<String>(
@@ -47,30 +48,36 @@ class MemoIssueDataGridSource extends DataGridSource {
     return party.partyName ?? 'Unknown';
   }
 
+  String formatDateWithTime(String date) {
+    // Parse the date string into a DateTime object
+    DateTime parsedDate = DateTime.parse(date);
+
+    // Format the DateTime object into the desired format
+    String formattedDate = DateFormat('dd-MM-yyyy hh:mm:ss a').format(parsedDate);
+
+    return formattedDate;
+  }
+
   @override
   List<DataGridRow> get rows => _dataGridRows;
 
   @override
-  DataGridRowAdapter? buildRow(DataGridRow row) {
-    return DataGridRowAdapter(cells: [
-      for (var cell in row.getCells())
-        cell.columnName == 'Active'
-            ? Container(
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(8.0),
-                child: Checkbox(
-                  value: cell.value as bool,
-                  onChanged: (value) {}, // Disable interaction
-                ),
-              )
-            : Container(
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  cell.value.toString(),
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-    ]);
+  DataGridRowAdapter buildRow(DataGridRow row) {
+    // Alternate row colors based on the index of the row
+    int rowIndex = rows.indexOf(row);
+
+    return DataGridRowAdapter(
+      color: rowIndex % 2 == 0
+          ? Colors.grey[200] // Light color for even rows
+          : null, // White for odd rows
+      cells: row.getCells().map<Widget>((dataGridCell) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 5.0),
+          child: Text(dataGridCell.value.toString(),
+            style: const TextStyle(fontSize: 12),),
+        );
+      }).toList(),
+    );
   }
 }

@@ -71,10 +71,19 @@ class SaleFormScreenState extends State<SaleFormScreen> {
   bool _isEnabled = false;
   bool _isSearch = false;
   bool _isFromEdit = false;
+  final RxBool _isFiltered = false.obs;
   final _formKey = GlobalKey<FormState>();
+
+  DateTime? fromDate;
+  DateTime? toDate;
+  final fromDateController = TextEditingController();
+  final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
   final MenuAppController menuController = Get.find<MenuAppController>();
+
+  RxList<PolishSaleModel> saleDataGridSource = <PolishSaleModel>[].obs;
+  RxList<PolishSaleModel> filteredDataGridSource = <PolishSaleModel>[].obs;
 
   void _enableFields({bool? needFocus}) {
     setState(() {
@@ -93,6 +102,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
   void initState() {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
+    saleDataGridSource.value = defaultController.polishSaleList;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _formKeyBoardFocus.requestFocus();
       if (_isSearch) {
@@ -119,6 +129,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
     _dueDaysFocus.dispose();
     _formKeyBoardFocus.dispose();
     _searchKeyBoardFocus.dispose();
+    fromDateController.dispose();
+    toDateController.dispose();
     super.dispose();
   }
 
@@ -132,6 +144,41 @@ class SaleFormScreenState extends State<SaleFormScreen> {
   void _scrollToSelectedRow(double index) {
     // Scroll to the currently selected row
     _dataGridController.scrollToRow(index);
+  }
+
+  void _applyDateFilter() {
+    if (fromDate != null && toDate != null) {
+      _isFiltered.value = true;
+      // setState(() {
+      filteredDataGridSource.value =
+          defaultController.polishSaleList.where((purchase) {
+        // Assuming invoiceDate is in 'yyyy-MM-dd' format; adjust as needed
+        final invoiceDate = DateTime.parse(purchase.invoiceDate!);
+
+        // Include the boundaries
+        return invoiceDate.isAfter(fromDate!) &&
+            invoiceDate.isBefore(toDate!.add(const Duration(days: 1)));
+      }).toList();
+      // Update the data grid source with the filtered data
+      saleDataGridSource.value = filteredDataGridSource;
+      _searchKeyBoardFocus.requestFocus();
+      // });
+    } else {
+      infoDialog(messageText: 'Please select both From Date and To Date');
+    }
+  }
+
+  void _removeDateFilter() {
+    // Reset the data grid source to the full list
+    saleDataGridSource.value = defaultController.polishSaleList;
+
+    // Clear filter values
+    toDateController.clear();
+    fromDateController.clear();
+    fromDate = null;
+    toDate = null;
+
+    _isFiltered.value = false;
   }
 
   void _openDatePicker() async {
@@ -185,426 +232,540 @@ class SaleFormScreenState extends State<SaleFormScreen> {
   @override
   Widget build(BuildContext context) {
     return _isSearch == true
-        ? Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Header(title: 'Sale Search'),
-              OutlinedButton(
-                onPressed: () {
+        ? KeyboardListener(
+            focusNode: _searchKeyBoardFocus,
+            autofocus: true,
+            onKeyEvent: (KeyEvent event) {
+              if (event is KeyDownEvent) {
+                final int currentIndex = _dataGridController.selectedIndex;
+                final int totalRows = defaultController.polishSaleList
+                    .length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
+
+                // Handle the Enter key
+                if (event.logicalKey == LogicalKeyboardKey.enter) {
+                  final DataGridRow? selectedRow =
+                      _dataGridController.selectedRow;
+                  setState(() {
+                    entries.length = 0;
+                    _isFromEdit = true;
+                  });
+                  List<SaleDetailsModel> roughData =
+                      defaultController.saleDetailsList;
+                  List<PolishSaleModel> partyData =
+                      defaultController.polishSaleList;
+
+                  // Extract the selected polishSaleMstID from the selectedRow
+                  selectedPolishSaleMstID.value = selectedRow!
+                      .getCells()[0]
+                      .value; // Assuming the ID is in the first cell
+
+                  // Find the corresponding party data entry with the matching polishSaleMstID
+                  PolishSaleModel partyEntry = partyData.firstWhere(
+                    (entry) =>
+                        entry.polishSaleMstID == selectedPolishSaleMstID.value,
+                    // orElse: () => null,
+                  );
+
+                  // Collect rough data entries with the matching polishSaleMstID
+                  List<SaleDetailsModel> roughEntries = roughData
+                      .where((entry) =>
+                          entry.polishSaleMstID ==
+                          selectedPolishSaleMstID.value)
+                      .toList();
+                  invNoController.text = partyEntry.invoiceNo!;
+                  selectedDate = dateFormat(partyEntry.invoiceDate!);
+                  dueDate = formatDateWithTime(partyEntry.dueDate!);
+                  dateController.text = formatDate(partyEntry.invoiceDate!);
+                  dueDateController.text = formatDate(partyEntry.dueDate!);
+                  dueDaysController.text = partyEntry.dueDay.toString();
+                  _selectedTypeParty.value = partyEntry.partyCode.toString();
+                  _selectedTypeBroker.value = partyEntry.brokerCode.toString();
+                  // _selectedTypeParty.value = partyEntry.partyCode;
+                  setState(() {
+                    for (var roughEntry in roughEntries) {
+                      entries.add({
+                        'id': roughEntry.polishSaleDetID.toString(),
+                        'rough': roughEntry.roughTypeCode.toString(),
+                        'description': roughEntry.description.toString(),
+                        'wt': roughEntry.carats.toString(),
+                        'rate': roughEntry.rateRs.toString(),
+                        'amount': (double.parse(roughEntry.carats.toString()) *
+                                double.parse(roughEntry.rateRs.toString()))
+                            .toStringAsFixed(2),
+                      });
+                    }
+                  });
+
+                  _enableFields();
                   setState(() {
                     _isSearch = false;
                   });
-                },
-                child: const Text("Exit"),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Obx(
-                () => Expanded(
-                  child: KeyboardListener(
-                    focusNode: _searchKeyBoardFocus,
-                    autofocus: true,
-                    onKeyEvent: (KeyEvent event) {
-                      if (event is KeyDownEvent) {
-                        final int currentIndex =
-                            _dataGridController.selectedIndex;
-                        final int totalRows = defaultController
-                            .polishSaleList
-                            .length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
+                }
 
-                        // Handle the Enter key
-                        if (event.logicalKey == LogicalKeyboardKey.enter) {
-                          final DataGridRow? selectedRow =
-                              _dataGridController.selectedRow;
+                // Handle the down arrow key to go to the next row
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  if (currentIndex < totalRows - 1) {
+                    _dataGridController.selectedIndex =
+                        currentIndex + 1; // Select the next row
+                    _scrollToSelectedRow(double.parse(_dataGridController
+                        .selectedIndex
+                        .toString())); // Scroll to the selected row
+                  }
+                }
+
+                // Handle the up arrow key to go to the previous row
+                if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  if (currentIndex > 0) {
+                    _dataGridController.selectedIndex =
+                        currentIndex - 1; // Select the previous row
+                    _scrollToSelectedRow(double.parse(_dataGridController
+                        .selectedIndex
+                        .toString())); // Scroll to the selected row
+                  }
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.keyE) {
+                  setState(() {
+                    _isSearch = false;
+                  });
+                }
+                if (event.logicalKey == LogicalKeyboardKey.keyR &&
+                    _isFiltered.value) {
+                  _removeDateFilter();
+                }
+                if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                  _applyDateFilter();
+                }
+              }
+            },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Header(title: 'Sale Search'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: buildTextField(
+                          'From Date',
+                          fromDateController,
+                          readOnly: true,
+                          onTap: () async {
+                            DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (pickedDate != null) {
+                              setState(() {
+                                fromDate = pickedDate;
+                                fromDateController.text =
+                                    DateFormat('dd-MM-yyyy').format(fromDate!);
+                                if (toDateController.text.isNotEmpty) {
+                                  _applyDateFilter();
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: buildTextField(
+                          'To Date',
+                          toDateController,
+                          readOnly: true,
+                          onTap: () async {
+                            DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (pickedDate != null) {
+                              setState(() {
+                                toDate = pickedDate;
+                                toDateController.text =
+                                    DateFormat('dd-MM-yyyy').format(toDate!);
+                                if (fromDateController.text.isNotEmpty) {
+                                  _applyDateFilter();
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: _applyDateFilter,
+                        // Method to filter data based on date
+                        child: const Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'F', // Underlined "A"
+                                style: TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'ilter', // Normal "dd"
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Obx(() => OutlinedButton(
+                            onPressed:
+                                _isFiltered.value ? _removeDateFilter : null,
+                            // Method to filter data based on date
+                            child: const Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'R', // Underlined "A"
+                                    style: TextStyle(
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'eset', // Normal "dd"
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _isSearch = false;
+                          });
+                        },
+                        child: const Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'E', // Underlined "A"
+                                style: TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'xit', // Normal "dd"
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Obx(
+                      () => SfDataGrid(
+                        controller: _dataGridController,
+                        source: SaleDataGridSource(saleDataGridSource),
+                        columns: <GridColumn>[
+                          GridColumn(
+                            columnName: 'ID',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'ID',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Invoice No',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Invoice No',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Invoice Date',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Invoice Date',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          // GridColumn(
+                          //   columnName: 'Rec Date',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Rec Date',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          GridColumn(
+                            columnName: 'Party',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Party',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Broker',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Broker',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          // GridColumn(
+                          //   columnName: 'Rs /\$',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Rs /\$',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Exchange',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Exchange',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          GridColumn(
+                            columnName: 'Tot Wt',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Tot Wt',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Tot Amt Rs',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Tot Amt Rs',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          // GridColumn(
+                          //   columnName: 'Tot Amt (\$)',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Tot Amt (\$)',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Bill Type',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Bill Type',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Lin Fix Rs',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Lin Fix Rs',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Tot Exp Fix Rs',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Tot Exp Fix Rs',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Add Fix Rs',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Add Fix Rs',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Less Fix Rs',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Less Fix Rs',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Final Net Amt Dollar',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Final Net Amt Dollar',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                          // GridColumn(
+                          //   columnName: 'Final Net Amt Rs',
+                          //   label: Container(
+                          //     padding: const EdgeInsets.all(8.0),
+                          //     alignment: Alignment.center,
+                          //     child: const Text(
+                          //       'Final Net Amt Rs',
+                          //       style: TextStyle(fontWeight: FontWeight.bold),
+                          //     ),
+                          //   ),
+                          // ),
+                        ],
+                        rowHeight: 25,
+                        headerRowHeight: 35,
+                        gridLinesVisibility: GridLinesVisibility.both,
+                        headerGridLinesVisibility: GridLinesVisibility.both,
+                        showSortNumbers: true,
+                        // allowSorting: true,
+                        // allowMultiColumnSorting: true,
+                        allowFiltering: true,
+                        selectionMode: SelectionMode.singleDeselect,
+                        onSelectionChanged: (List<DataGridRow> addedRows,
+                            List<DataGridRow> removedRows) {
                           setState(() {
                             entries.length = 0;
                             _isFromEdit = true;
                           });
-                          List<SaleDetailsModel> roughData =
-                              defaultController.saleDetailsList;
-                          List<PolishSaleModel> partyData =
-                              defaultController.polishSaleList;
+                          if (addedRows.isNotEmpty) {
+                            final DataGridRow selectedRow = addedRows.first;
+                            List<SaleDetailsModel> roughData =
+                                defaultController.saleDetailsList;
+                            List<PolishSaleModel> partyData =
+                                defaultController.polishSaleList;
 
-                          // Extract the selected polishSaleMstID from the selectedRow
-                          selectedPolishSaleMstID.value = selectedRow!
-                              .getCells()[0]
-                              .value; // Assuming the ID is in the first cell
+                            // Extract the selected polishSaleMstID from the selectedRow
+                            selectedPolishSaleMstID.value = selectedRow
+                                .getCells()[0]
+                                .value; // Assuming the ID is in the first cell
 
-                          // Find the corresponding party data entry with the matching polishSaleMstID
-                          PolishSaleModel partyEntry = partyData.firstWhere(
-                                (entry) =>
-                            entry.polishSaleMstID ==
-                                selectedPolishSaleMstID.value,
-                            // orElse: () => null,
-                          );
-
-                          // Collect rough data entries with the matching polishSaleMstID
-                          List<SaleDetailsModel> roughEntries = roughData
-                              .where((entry) =>
-                          entry.polishSaleMstID ==
-                              selectedPolishSaleMstID.value)
-                              .toList();
-                          invNoController.text = partyEntry.invoiceNo!;
-                          selectedDate = dateFormat(partyEntry.invoiceDate!);
-                          dueDate = formatDateWithTime(partyEntry.dueDate!);
-                          dateController.text =
-                              formatDate(partyEntry.invoiceDate!);
-                          dueDateController.text =
-                              formatDate(partyEntry.dueDate!);
-                          dueDaysController.text = partyEntry.dueDay.toString();
-                          _selectedTypeParty.value =
-                              partyEntry.partyCode.toString();
-                          _selectedTypeBroker.value =
-                              partyEntry.brokerCode.toString();
-                          // _selectedTypeParty.value = partyEntry.partyCode;
-                          setState(() {
-                            for (var roughEntry in roughEntries) {
-                              entries.add({
-                                'id': roughEntry.polishSaleDetID.toString(),
-                                'rough': roughEntry.roughTypeCode.toString(),
-                                'description':
-                                roughEntry.description.toString(),
-                                'wt': roughEntry.carats.toString(),
-                                'rate': roughEntry.rateRs.toString(),
-                                'amount': (double.parse(
-                                    roughEntry.carats.toString()) *
-                                    double.parse(
-                                        roughEntry.rateRs.toString()))
-                                    .toStringAsFixed(2),
-                              });
-                            }
-                          });
-
-                          _enableFields();
-                          setState(() {
-                            _isSearch = false;
-                          });
-                        }
-
-                        // Handle the down arrow key to go to the next row
-                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                          if (currentIndex < totalRows - 1) {
-                            _dataGridController.selectedIndex =
-                                currentIndex + 1; // Select the next row
-                            _scrollToSelectedRow(double.parse(
-                                _dataGridController.selectedIndex
-                                    .toString())); // Scroll to the selected row
-                          }
-                        }
-
-                        // Handle the up arrow key to go to the previous row
-                        if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                          if (currentIndex > 0) {
-                            _dataGridController.selectedIndex =
-                                currentIndex - 1; // Select the previous row
-                            _scrollToSelectedRow(double.parse(
-                                _dataGridController.selectedIndex
-                                    .toString())); // Scroll to the selected row
-                          }
-                        }
-
-                        if (event.logicalKey == LogicalKeyboardKey.keyE) {
-                          setState(() {
-                            _isSearch = false;
-                          });
-                        }
-                      }
-                    },
-                    child: SfDataGrid(
-                      controller: _dataGridController,
-                      source:
-                          SaleDataGridSource(defaultController.polishSaleList),
-                      columns: <GridColumn>[
-                        GridColumn(
-                          columnName: 'ID',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'ID',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Invoice No',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Invoice No',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Invoice Date',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Invoice Date',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        // GridColumn(
-                        //   columnName: 'Rec Date',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Rec Date',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        GridColumn(
-                          columnName: 'Party',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Party',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Broker',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Broker',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        // GridColumn(
-                        //   columnName: 'Rs /\$',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Rs /\$',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Exchange',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Exchange',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        GridColumn(
-                          columnName: 'Tot Wt',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Tot Wt',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Tot Amt Rs',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Tot Amt Rs',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        // GridColumn(
-                        //   columnName: 'Tot Amt (\$)',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Tot Amt (\$)',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Bill Type',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Bill Type',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Lin Fix Rs',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Lin Fix Rs',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Tot Exp Fix Rs',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Tot Exp Fix Rs',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Add Fix Rs',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Add Fix Rs',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Less Fix Rs',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Less Fix Rs',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Final Net Amt Dollar',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Final Net Amt Dollar',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                        // GridColumn(
-                        //   columnName: 'Final Net Amt Rs',
-                        //   label: Container(
-                        //     padding: const EdgeInsets.all(8.0),
-                        //     alignment: Alignment.center,
-                        //     child: const Text(
-                        //       'Final Net Amt Rs',
-                        //       style: TextStyle(fontWeight: FontWeight.bold),
-                        //     ),
-                        //   ),
-                        // ),
-                      ],
-                      rowHeight: 30,
-                      headerRowHeight: 40,
-                      gridLinesVisibility: GridLinesVisibility.both,
-                      headerGridLinesVisibility: GridLinesVisibility.both,
-                      showSortNumbers: true,
-                      // allowSorting: true,
-                      // allowMultiColumnSorting: true,
-                      allowFiltering: true,
-                      selectionMode: SelectionMode.singleDeselect,
-                      onSelectionChanged: (List<DataGridRow> addedRows,
-                          List<DataGridRow> removedRows) {
-                        setState(() {
-                          entries.length = 0;
-                          _isFromEdit = true;
-                        });
-                        if (addedRows.isNotEmpty) {
-                          final DataGridRow selectedRow = addedRows.first;
-                          List<SaleDetailsModel> roughData =
-                              defaultController.saleDetailsList;
-                          List<PolishSaleModel> partyData =
-                              defaultController.polishSaleList;
-
-                          // Extract the selected polishSaleMstID from the selectedRow
-                          selectedPolishSaleMstID.value = selectedRow
-                              .getCells()[0]
-                              .value; // Assuming the ID is in the first cell
-
-                          // Find the corresponding party data entry with the matching polishSaleMstID
-                          PolishSaleModel partyEntry = partyData.firstWhere(
-                            (entry) =>
-                                entry.polishSaleMstID ==
-                                selectedPolishSaleMstID.value,
-                            // orElse: () => null,
-                          );
-
-                          // Collect rough data entries with the matching polishSaleMstID
-                          List<SaleDetailsModel> roughEntries = roughData
-                              .where((entry) =>
+                            // Find the corresponding party data entry with the matching polishSaleMstID
+                            PolishSaleModel partyEntry = partyData.firstWhere(
+                              (entry) =>
                                   entry.polishSaleMstID ==
-                                  selectedPolishSaleMstID.value)
-                              .toList();
-                          invNoController.text = partyEntry.invoiceNo!;
-                          selectedDate = dateFormat(partyEntry.invoiceDate!);
-                          dueDate = formatDateWithTime(partyEntry.dueDate!);
-                          dateController.text =
-                              formatDate(partyEntry.invoiceDate!);
-                          dueDateController.text =
-                              formatDate(partyEntry.dueDate!);
-                          dueDaysController.text = partyEntry.dueDay.toString();
-                          _selectedTypeParty.value =
-                              partyEntry.partyCode.toString();
-                          _selectedTypeBroker.value =
-                              partyEntry.brokerCode.toString();
-                          // _selectedTypeParty.value = partyEntry.partyCode;
-                          setState(() {
-                            for (var roughEntry in roughEntries) {
-                              entries.add({
-                                'id': roughEntry.polishSaleDetID.toString(),
-                                'rough': roughEntry.roughTypeCode.toString(),
-                                'description':
-                                    roughEntry.description.toString(),
-                                'wt': roughEntry.carats.toString(),
-                                'rate': roughEntry.rateRs.toString(),
-                                'amount': (double.parse(
-                                            roughEntry.carats.toString()) *
-                                        double.parse(
-                                            roughEntry.rateRs.toString()))
-                                    .toStringAsFixed(2),
-                              });
-                            }
-                          });
+                                  selectedPolishSaleMstID.value,
+                              // orElse: () => null,
+                            );
 
-                          _enableFields();
-                          setState(() {
-                            _isSearch = false;
-                          });
-                        }
-                      },
+                            // Collect rough data entries with the matching polishSaleMstID
+                            List<SaleDetailsModel> roughEntries = roughData
+                                .where((entry) =>
+                                    entry.polishSaleMstID ==
+                                    selectedPolishSaleMstID.value)
+                                .toList();
+                            invNoController.text = partyEntry.invoiceNo!;
+                            selectedDate = dateFormat(partyEntry.invoiceDate!);
+                            dueDate = formatDateWithTime(partyEntry.dueDate!);
+                            dateController.text =
+                                formatDate(partyEntry.invoiceDate!);
+                            dueDateController.text =
+                                formatDate(partyEntry.dueDate!);
+                            dueDaysController.text =
+                                partyEntry.dueDay.toString();
+                            _selectedTypeParty.value =
+                                partyEntry.partyCode.toString();
+                            _selectedTypeBroker.value =
+                                partyEntry.brokerCode.toString();
+                            // _selectedTypeParty.value = partyEntry.partyCode;
+                            setState(() {
+                              for (var roughEntry in roughEntries) {
+                                entries.add({
+                                  'id': roughEntry.polishSaleDetID.toString(),
+                                  'rough': roughEntry.roughTypeCode.toString(),
+                                  'description':
+                                      roughEntry.description.toString(),
+                                  'wt': roughEntry.carats.toString(),
+                                  'rate': roughEntry.rateRs.toString(),
+                                  'amount': (double.parse(
+                                              roughEntry.carats.toString()) *
+                                          double.parse(
+                                              roughEntry.rateRs.toString()))
+                                      .toStringAsFixed(2),
+                                });
+                              }
+                            });
 
-                      columnWidthMode: ColumnWidthMode.auto,
-                      frozenColumnsCount: 1,
-                      // gridLineStrokeWidth: 1.5,
-                      // gridLineColor: Colors.grey.shade400,
-                      // backgroundColor: Colors.white,
+                            _enableFields();
+                            setState(() {
+                              _isSearch = false;
+                            });
+                          }
+                        },
+
+                        columnWidthMode: ColumnWidthMode.auto,
+                        frozenColumnsCount: 1,
+                        // gridLineStrokeWidth: 1.5,
+                        // gridLineColor: Colors.grey.shade400,
+                        // backgroundColor: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           )
         : SingleChildScrollView(
             child: Column(
@@ -631,7 +792,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                     if (!HardwareKeyboard
                                             .instance.isShiftPressed &&
                                         event.logicalKey ==
-                                            LogicalKeyboardKey.keyS) {
+                                            LogicalKeyboardKey.keyS &&
+                                        _isEnabled) {
                                       if (_isFromEdit) {
                                         if (entries.isNotEmpty) {
                                           defaultController
@@ -718,7 +880,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_dueDaysFocus.hasFocus &&
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
-                                        LogicalKeyboardKey.keyA) {
+                                        LogicalKeyboardKey.keyA &&
+                                        !_isEnabled) {
                                       _enableFields();
                                     }
                                   }
@@ -726,7 +889,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_dueDaysFocus.hasFocus &&
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
-                                        LogicalKeyboardKey.keyD) {
+                                        LogicalKeyboardKey.keyD &&
+                                        _isEnabled &&
+                                        _isFromEdit) {
                                       if (_isFromEdit) {
                                         defaultController
                                             .deleteSaleData(
@@ -758,7 +923,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_dueDaysFocus.hasFocus &&
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
-                                        LogicalKeyboardKey.keyC) {
+                                        LogicalKeyboardKey.keyC &&
+                                        _isEnabled) {
                                       dateController.clear();
                                       dueDateController.clear();
                                       invNoController.clear();
@@ -1347,7 +1513,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                             children: [
                               OutlinedButton(
                                 // onPressed: _enableFields,
-                                onPressed: _enableFields,
+                                onPressed: !_isEnabled ? _enableFields : null,
                                 child: const Text.rich(
                                   TextSpan(
                                     children: [
@@ -1409,7 +1575,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                   'Please Add Rough Data');
                                         }
                                       }
-                                    : () async {
+                                    : _isEnabled ?  () async {
                                         if (entries.isNotEmpty) {
                                           defaultController
                                               .addSaleData(
@@ -1447,7 +1613,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                               messageText:
                                                   'Please Add Rough Data');
                                         }
-                                      },
+                                      } : null,
                                 child: Obx(
                                   () => defaultController.isLoading.value
                                       ? const CupertinoActivityIndicator()
@@ -1471,9 +1637,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
-                                onPressed: () {
-                                  _isFromEdit
-                                      ? defaultController
+                                onPressed: _isFromEdit ?  () {
+                                   defaultController
                                           .deleteSaleData(
                                               id: selectedPolishSaleMstID.value,
                                               entries: entries)
@@ -1490,11 +1655,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                             _isFromEdit = false;
                                             entries.length = 0;
                                           });
-                                        })
-                                      : infoDialog(
-                                          messageText:
-                                              'Please Select Sale Entry to Delete.');
-                                },
+                                        });
+                                } : null,
                                 child: Obx(
                                   () => defaultController.isDeleteLoading.value
                                       ? const CupertinoActivityIndicator()
@@ -1518,7 +1680,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
-                                onPressed: () {
+                                onPressed: _isEnabled ?  () {
                                   dateController.clear();
                                   dueDateController.clear();
                                   invNoController.clear();
@@ -1532,7 +1694,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                     _isFromEdit = false;
                                     _isEnabled = false;
                                   });
-                                },
+                                } : null,
                                 child: const Text.rich(
                                   TextSpan(
                                     children: [
@@ -1788,14 +1950,18 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                           ),
                           onTap: () {
                             if (_isFromEdit) {
-                              defaultController
-                                  .deleteSaleRoughData(
-                                      id: int.parse(entries[index]['id']!))
-                                  .then((onValue) {
-                                setState(() {
-                                  entries.removeAt(index);
-                                });
-                              });
+                              entries.length == 1
+                                  ? infoDialog(
+                                      messageText:
+                                          'Can not delete Single Rough Entry')
+                                  : defaultController
+                                      .deleteSaleRoughData(
+                                          id: int.parse(entries[index]['id']!))
+                                      .then((onValue) {
+                                      setState(() {
+                                        entries.removeAt(index);
+                                      });
+                                    });
                             } else {
                               setState(() {
                                 entries.removeAt(index);
@@ -1874,151 +2040,6 @@ class SaleFormScreenState extends State<SaleFormScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildDataTable() {
-    return DataTable(
-      columnSpacing: 10,
-      headingRowHeight: 25,
-      horizontalMargin: 20,
-      dataRowHeight: 30.0,
-      columns: const [
-        DataColumn(
-            label: Text(
-          'SR.NO',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'ROUGH',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'DESCRIPTION',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'WT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'RATE',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'AMOUNT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-      ],
-      rows: List<DataRow>.generate(
-        entries.length,
-        (index) => DataRow(
-          cells: [
-            DataCell(Text((index + 1).toString(),
-                style: const TextStyle(fontSize: 12))),
-            DataCell(Text(getRoughName(entries[index]['rough']!),
-                style: const TextStyle(fontSize: 12))),
-            DataCell(Text(entries[index]['description']!,
-                style: const TextStyle(fontSize: 12))),
-            DataCell(Text(entries[index]['wt']!,
-                style: const TextStyle(fontSize: 12))),
-            DataCell(Text(entries[index]['rate']!,
-                style: const TextStyle(fontSize: 12))),
-            DataCell(Text(entries[index]['amount']!,
-                style: const TextStyle(fontSize: 12))),
-            DataCell(
-              Obx(
-                () => defaultController.isDeleteLoading.value
-                    ? const CupertinoActivityIndicator()
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          size: 15,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            defaultController
-                                .deleteSaleRoughData(
-                                    id: int.parse(entries[index]['id']!))
-                                .then((onValue) {
-                              setState(() {
-                                entries.removeAt(index);
-                              });
-                            });
-
-                            // _updateTotals(); // Recalculate totals after deletion
-                          });
-                        },
-                      ),
-              ),
-            ),
-            DataCell(
-              IconButton(
-                icon: const Icon(
-                  Icons.edit,
-                  size: 15,
-                ),
-                onPressed: () {
-                  selectedRoughId.value = entries[index]['id']!;
-                  _selectedType.value = entries[index]['rough']!;
-                  wtController.text = entries[index]['wt']!;
-                  rateController.text = entries[index]['rate']!;
-                  descripController.text = entries[index]['description']!;
-                  updateStockControllerBasedOnType(entries[index]['rough']!);
-                  setState(() {
-                    entries.removeAt(index);
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      )..add(
-          DataRow(
-            cells: [
-              const DataCell(Text('')),
-              const DataCell(Text('')),
-              const DataCell(Text('TOTAL',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-              DataCell(
-                Text(
-                  totalWt.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
-              DataCell(Text(
-                totalRate.toStringAsFixed(2),
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              )),
-              DataCell(
-                Text(
-                  totalAmount.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
-              const DataCell(Text('')),
-              const DataCell(Text('')),
-            ],
-          ),
-        ),
     );
   }
 

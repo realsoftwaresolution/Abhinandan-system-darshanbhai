@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/party/party_datagrid.dart';
@@ -392,11 +391,12 @@ class PartyFormState extends State<PartyForm> {
                             items: dropdownItems,
                             onChanged: _isEnabled
                                 ? (value) {
-                                    _selectedType.value =
-                                        value ?? '';
-                                    Future.delayed(const Duration(milliseconds: 100), () {
-                                      _nameFocusNode.requestFocus(); // Move focus to the first input field
-                                    });// Handle null case
+                                    _selectedType.value = value ?? '';
+                                    Future.delayed(
+                                        const Duration(milliseconds: 100), () {
+                                      _nameFocusNode
+                                          .requestFocus(); // Move focus to the first input field
+                                    }); // Handle null case
                                   }
                                 : null,
                           );
@@ -2729,19 +2729,22 @@ class PartyFormState extends State<PartyForm> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton(
-                        onPressed: _enableFields,
+                        onPressed:
+                            !_isEnabled && !_isFromEdit ? _enableFields : null,
                         child: const Text("Add"),
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton(
-                        onPressed: () {
-                          if (_isFromEdit) {
-                            _enableEditFields();
-                          } else {
-                            infoDialog(
-                                messageText: 'Please Select Party to Edit.');
-                          }
-                        },
+                        onPressed: _isFromEdit
+                            ? () {
+                                // if (_isFromEdit) {
+                                _enableEditFields();
+                                // } else {
+                                //   infoDialog(
+                                //       messageText: 'Please Select Party to Edit.');
+                                // }
+                              }
+                            : null,
                         child: const Text("Edit"),
                       ),
                       const SizedBox(width: 8),
@@ -2859,114 +2862,127 @@ class PartyFormState extends State<PartyForm> {
                                   });
                                 }
                               }
-                            : () async {
-                                if (_formKey.currentState!.validate()) {
-                                  await defaultController
-                                      .addPartyData(
-                                    partyName: _nameController.text.isEmpty
-                                        ? null
-                                        : _nameController.text,
-                                    partyType: _selectedType.value.isEmpty
-                                        ? null
-                                        : _selectedType.value,
-                                    contactPerson:
-                                        _contactPersonController.text.isEmpty
+                            : _isEnabled
+                                ? () async {
+                                    if (_formKey.currentState!.validate()) {
+                                      await defaultController
+                                          .addPartyData(
+                                        partyName: _nameController.text.isEmpty
+                                            ? null
+                                            : _nameController.text,
+                                        partyType: _selectedType.value.isEmpty
+                                            ? null
+                                            : _selectedType.value,
+                                        contactPerson: _contactPersonController
+                                                .text.isEmpty
                                             ? null
                                             : _contactPersonController.text,
-                                    address: _addressController.text.isEmpty
-                                        ? null
-                                        : _addressController.text,
-                                    mobileNo: _mobileNoController.text.isEmpty
-                                        ? null
-                                        : _mobileNoController.text,
-                                    phNo: _phoneController.text.isEmpty
-                                        ? null
-                                        : _phoneController.text,
-                                    fax: _faxController.text.isEmpty
-                                        ? null
-                                        : _faxController.text,
-                                    email: _emailController.text.isEmpty
-                                        ? null
-                                        : _emailController.text,
-                                    website: _websiteController.text.isEmpty
-                                        ? null
-                                        : _websiteController.text,
-                                    pan: _panController.text.isEmpty
-                                        ? null
-                                        : _panController.text,
-                                    adhar: _aadharController.text.isEmpty
-                                        ? null
-                                        : _aadharController.text,
-                                    bankName: _bankController.text.isEmpty
-                                        ? null
-                                        : _bankController.text,
-                                    branchName: _branchController.text.isEmpty
-                                        ? null
-                                        : _branchController.text,
-                                    bankAdd: _bankAddressController.text.isEmpty
-                                        ? null
-                                        : _bankAddressController.text,
-                                    ifscCode: _ifscController.text.isEmpty
-                                        ? null
-                                        : _ifscController.text,
-                                    bankAcNo: _accountNoController.text.isEmpty
-                                        ? null
-                                        : _accountNoController.text,
-                                    location: _locationController.text.isEmpty
-                                        ? null
-                                        : _locationController.text,
-                                    city: _locationController.text.isEmpty
-                                        ? null
-                                        : _locationController.text,
-                                    state: _locationController.text.isEmpty
-                                        ? null
-                                        : _locationController.text,
-                                    // gstNo: '',
-                                    // If you want to keep this field as an empty string
-                                    // remarks: '',
-                                    // If you want to keep this field as an empty string
-                                    sortId: _sortIdController.text.isEmpty
-                                        ? null
-                                        : int.tryParse(_sortIdController.text),
-                                    typeCode: _selectedType.value.isEmpty
-                                        ? null
-                                        : _selectedType.value,
-                                    active: _isActive,
-                                    cGst: _cgstController.text.isEmpty
-                                        ? null
-                                        : double.tryParse(_cgstController.text),
-                                    sGst: _sgstController.text.isEmpty
-                                        ? null
-                                        : double.tryParse(_sgstController.text),
-                                    iGst: _igstController.text.isEmpty
-                                        ? null
-                                        : double.tryParse(_igstController.text),
-                                    creditOpBalRs:
-                                        _creditController.text.isEmpty
+                                        address: _addressController.text.isEmpty
+                                            ? null
+                                            : _addressController.text,
+                                        mobileNo:
+                                            _mobileNoController.text.isEmpty
+                                                ? null
+                                                : _mobileNoController.text,
+                                        phNo: _phoneController.text.isEmpty
+                                            ? null
+                                            : _phoneController.text,
+                                        fax: _faxController.text.isEmpty
+                                            ? null
+                                            : _faxController.text,
+                                        email: _emailController.text.isEmpty
+                                            ? null
+                                            : _emailController.text,
+                                        website: _websiteController.text.isEmpty
+                                            ? null
+                                            : _websiteController.text,
+                                        pan: _panController.text.isEmpty
+                                            ? null
+                                            : _panController.text,
+                                        adhar: _aadharController.text.isEmpty
+                                            ? null
+                                            : _aadharController.text,
+                                        bankName: _bankController.text.isEmpty
+                                            ? null
+                                            : _bankController.text,
+                                        branchName:
+                                            _branchController.text.isEmpty
+                                                ? null
+                                                : _branchController.text,
+                                        bankAdd:
+                                            _bankAddressController.text.isEmpty
+                                                ? null
+                                                : _bankAddressController.text,
+                                        ifscCode: _ifscController.text.isEmpty
+                                            ? null
+                                            : _ifscController.text,
+                                        bankAcNo:
+                                            _accountNoController.text.isEmpty
+                                                ? null
+                                                : _accountNoController.text,
+                                        location:
+                                            _locationController.text.isEmpty
+                                                ? null
+                                                : _locationController.text,
+                                        city: _locationController.text.isEmpty
+                                            ? null
+                                            : _locationController.text,
+                                        state: _locationController.text.isEmpty
+                                            ? null
+                                            : _locationController.text,
+                                        // gstNo: '',
+                                        // If you want to keep this field as an empty string
+                                        // remarks: '',
+                                        // If you want to keep this field as an empty string
+                                        sortId: _sortIdController.text.isEmpty
+                                            ? null
+                                            : int.tryParse(
+                                                _sortIdController.text),
+                                        typeCode: _selectedType.value.isEmpty
+                                            ? null
+                                            : _selectedType.value,
+                                        active: _isActive,
+                                        cGst: _cgstController.text.isEmpty
                                             ? null
                                             : double.tryParse(
-                                                _creditController.text),
-                                    creditOpBalDollor:
-                                        _creditControllerDollor.text.isEmpty
+                                                _cgstController.text),
+                                        sGst: _sgstController.text.isEmpty
                                             ? null
                                             : double.tryParse(
-                                                _creditControllerDollor.text),
-                                    debitOpBalRs: _debitController.text.isEmpty
-                                        ? null
-                                        : double.tryParse(
-                                            _debitController.text),
-                                    debitOpBalDollor:
-                                        _debitControllerDollor.text.isEmpty
+                                                _sgstController.text),
+                                        iGst: _igstController.text.isEmpty
+                                            ? null
+                                            : double.tryParse(
+                                                _igstController.text),
+                                        creditOpBalRs:
+                                            _creditController.text.isEmpty
+                                                ? null
+                                                : double.tryParse(
+                                                    _creditController.text),
+                                        creditOpBalDollor:
+                                            _creditControllerDollor.text.isEmpty
+                                                ? null
+                                                : double.tryParse(
+                                                    _creditControllerDollor
+                                                        .text),
+                                        debitOpBalRs:
+                                            _debitController.text.isEmpty
+                                                ? null
+                                                : double.tryParse(
+                                                    _debitController.text),
+                                        debitOpBalDollor: _debitControllerDollor
+                                                .text.isEmpty
                                             ? null
                                             : double.tryParse(
                                                 _debitControllerDollor.text),
-                                  )
-                                      .then((onValue) {
-                                    _codeController.clear();
-                                    _clearFormFields();
-                                  });
-                                }
-                              },
+                                      )
+                                          .then((onValue) {
+                                        _codeController.clear();
+                                        _clearFormFields();
+                                      });
+                                    }
+                                  }
+                                : null,
                         child: Obx(
                           () => defaultController.isLoading.value
                               ? const CupertinoActivityIndicator()
@@ -2975,21 +2991,19 @@ class PartyFormState extends State<PartyForm> {
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton(
-                        onPressed: () {
-                          _isFromEdit
-                              ? defaultController
-                                  .deletePartyData(id: selectedPartyMstID)
-                                  .then((onValue) {
+                        onPressed: _isFromEdit
+                            ? () {
+                                defaultController
+                                    .deletePartyData(id: selectedPartyMstID)
+                                    .then((onValue) {
                                   _clearFormFields();
                                   _codeController.clear();
                                   setState(() {
                                     _isFromEdit = false;
                                   });
-                                })
-                              : infoDialog(
-                                  messageText:
-                                      'Please Select Party to Delete.');
-                        },
+                                });
+                              }
+                            : null,
                         child: Obx(
                           () => defaultController.isDeleteLoading.value
                               ? const CupertinoActivityIndicator()
@@ -2998,14 +3012,16 @@ class PartyFormState extends State<PartyForm> {
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton(
-                        onPressed: () {
-                          _clearFormFields();
-                          _codeController.clear();
-                          setState(() {
-                            _isEnabled = false;
-                            _isFromEdit = false;
-                          });
-                        },
+                        onPressed: _isEnabled || _isFromEdit
+                            ? () {
+                                _clearFormFields();
+                                _codeController.clear();
+                                setState(() {
+                                  _isEnabled = false;
+                                  _isFromEdit = false;
+                                });
+                              }
+                            : null,
                         child: const Text("Cancel"),
                       ),
                       const SizedBox(width: 8),
@@ -3045,20 +3061,24 @@ class PartyFormState extends State<PartyForm> {
                           //   },
                           // ),
                           OutlinedButton(
-                            onPressed: _enableFields,
+                            onPressed: !_isEnabled && !_isFromEdit
+                                ? _enableFields
+                                : null,
                             child: const Text("Add"),
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton(
-                            onPressed: () {
-                              if (_isFromEdit) {
-                                _enableEditFields();
-                              } else {
-                                infoDialog(
-                                    messageText:
-                                        'Please Select Party to Edit.');
-                              }
-                            },
+                            onPressed: _isFromEdit
+                                ? () {
+                                    // if (_isFromEdit) {
+                                    _enableEditFields();
+                                    // } else {
+                                    //   infoDialog(
+                                    //       messageText:
+                                    //           'Please Select Party to Edit.');
+                                    // }
+                                  }
+                                : null,
                             child: const Text("Edit"),
                           ),
                           const SizedBox(width: 8),
@@ -3187,125 +3207,143 @@ class PartyFormState extends State<PartyForm> {
                                       });
                                     }
                                   }
-                                : () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      await defaultController
-                                          .addPartyData(
-                                        partyName: _nameController.text.isEmpty
-                                            ? null
-                                            : _nameController.text,
-                                        partyType: _selectedType.value.isEmpty
-                                            ? null
-                                            : _selectedType.value,
-                                        contactPerson: _contactPersonController
-                                                .text.isEmpty
-                                            ? null
-                                            : _contactPersonController.text,
-                                        address: _addressController.text.isEmpty
-                                            ? null
-                                            : _addressController.text,
-                                        mobileNo:
-                                            _mobileNoController.text.isEmpty
+                                : _isEnabled
+                                    ? () async {
+                                        if (_formKey.currentState!.validate()) {
+                                          await defaultController
+                                              .addPartyData(
+                                            partyName:
+                                                _nameController.text.isEmpty
+                                                    ? null
+                                                    : _nameController.text,
+                                            partyType:
+                                                _selectedType.value.isEmpty
+                                                    ? null
+                                                    : _selectedType.value,
+                                            contactPerson:
+                                                _contactPersonController
+                                                        .text.isEmpty
+                                                    ? null
+                                                    : _contactPersonController
+                                                        .text,
+                                            address:
+                                                _addressController.text.isEmpty
+                                                    ? null
+                                                    : _addressController.text,
+                                            mobileNo:
+                                                _mobileNoController.text.isEmpty
+                                                    ? null
+                                                    : _mobileNoController.text,
+                                            phNo: _phoneController.text.isEmpty
                                                 ? null
-                                                : _mobileNoController.text,
-                                        phNo: _phoneController.text.isEmpty
-                                            ? null
-                                            : _phoneController.text,
-                                        fax: _faxController.text.isEmpty
-                                            ? null
-                                            : _faxController.text,
-                                        email: _emailController.text.isEmpty
-                                            ? null
-                                            : _emailController.text,
-                                        website: _websiteController.text.isEmpty
-                                            ? null
-                                            : _websiteController.text,
-                                        pan: _panController.text.isEmpty
-                                            ? null
-                                            : _panController.text,
-                                        adhar: _aadharController.text.isEmpty
-                                            ? null
-                                            : _aadharController.text,
-                                        bankName: _bankController.text.isEmpty
-                                            ? null
-                                            : _bankController.text,
-                                        branchName:
-                                            _branchController.text.isEmpty
+                                                : _phoneController.text,
+                                            fax: _faxController.text.isEmpty
                                                 ? null
-                                                : _branchController.text,
-                                        bankAdd:
-                                            _bankAddressController.text.isEmpty
+                                                : _faxController.text,
+                                            email: _emailController.text.isEmpty
+                                                ? null
+                                                : _emailController.text,
+                                            website:
+                                                _websiteController.text.isEmpty
+                                                    ? null
+                                                    : _websiteController.text,
+                                            pan: _panController.text.isEmpty
+                                                ? null
+                                                : _panController.text,
+                                            adhar:
+                                                _aadharController.text.isEmpty
+                                                    ? null
+                                                    : _aadharController.text,
+                                            bankName:
+                                                _bankController.text.isEmpty
+                                                    ? null
+                                                    : _bankController.text,
+                                            branchName:
+                                                _branchController.text.isEmpty
+                                                    ? null
+                                                    : _branchController.text,
+                                            bankAdd: _bankAddressController
+                                                    .text.isEmpty
                                                 ? null
                                                 : _bankAddressController.text,
-                                        ifscCode: _ifscController.text.isEmpty
-                                            ? null
-                                            : _ifscController.text,
-                                        bankAcNo:
-                                            _accountNoController.text.isEmpty
+                                            ifscCode:
+                                                _ifscController.text.isEmpty
+                                                    ? null
+                                                    : _ifscController.text,
+                                            bankAcNo: _accountNoController
+                                                    .text.isEmpty
                                                 ? null
                                                 : _accountNoController.text,
-                                        location:
-                                            _locationController.text.isEmpty
-                                                ? null
-                                                : _locationController.text,
-                                        city: _locationController.text.isEmpty
-                                            ? null
-                                            : _locationController.text,
-                                        state: _locationController.text.isEmpty
-                                            ? null
-                                            : _locationController.text,
-                                        // gstNo: '',
-                                        // If you want to keep this field as an empty string
-                                        // remarks: '',
-                                        // If you want to keep this field as an empty string
-                                        sortId: _sortIdController.text.isEmpty
-                                            ? null
-                                            : int.tryParse(
-                                                _sortIdController.text),
-                                        typeCode: _selectedType.value.isEmpty
-                                            ? null
-                                            : _selectedType.value,
-                                        active: _isActive,
-                                        cGst: _cgstController.text.isEmpty
-                                            ? null
-                                            : double.tryParse(
-                                                _cgstController.text),
-                                        sGst: _sgstController.text.isEmpty
-                                            ? null
-                                            : double.tryParse(
-                                                _sgstController.text),
-                                        iGst: _igstController.text.isEmpty
-                                            ? null
-                                            : double.tryParse(
-                                                _igstController.text),
-                                        creditOpBalRs:
-                                            _creditController.text.isEmpty
+                                            location:
+                                                _locationController.text.isEmpty
+                                                    ? null
+                                                    : _locationController.text,
+                                            city:
+                                                _locationController.text.isEmpty
+                                                    ? null
+                                                    : _locationController.text,
+                                            state:
+                                                _locationController.text.isEmpty
+                                                    ? null
+                                                    : _locationController.text,
+                                            // gstNo: '',
+                                            // If you want to keep this field as an empty string
+                                            // remarks: '',
+                                            // If you want to keep this field as an empty string
+                                            sortId:
+                                                _sortIdController.text.isEmpty
+                                                    ? null
+                                                    : int.tryParse(
+                                                        _sortIdController.text),
+                                            typeCode:
+                                                _selectedType.value.isEmpty
+                                                    ? null
+                                                    : _selectedType.value,
+                                            active: _isActive,
+                                            cGst: _cgstController.text.isEmpty
                                                 ? null
                                                 : double.tryParse(
-                                                    _creditController.text),
-                                        creditOpBalDollor:
-                                            _creditControllerDollor.text.isEmpty
+                                                    _cgstController.text),
+                                            sGst: _sgstController.text.isEmpty
                                                 ? null
                                                 : double.tryParse(
-                                                    _creditControllerDollor
-                                                        .text),
-                                        debitOpBalRs:
-                                            _debitController.text.isEmpty
+                                                    _sgstController.text),
+                                            iGst: _igstController.text.isEmpty
                                                 ? null
                                                 : double.tryParse(
-                                                    _debitController.text),
-                                        debitOpBalDollor: _debitControllerDollor
-                                                .text.isEmpty
-                                            ? null
-                                            : double.tryParse(
-                                                _debitControllerDollor.text),
-                                      )
-                                          .then((onValue) {
-                                        _codeController.clear();
-                                        _clearFormFields();
-                                      });
-                                    }
-                                  },
+                                                    _igstController.text),
+                                            creditOpBalRs:
+                                                _creditController.text.isEmpty
+                                                    ? null
+                                                    : double.tryParse(
+                                                        _creditController.text),
+                                            creditOpBalDollor:
+                                                _creditControllerDollor
+                                                        .text.isEmpty
+                                                    ? null
+                                                    : double.tryParse(
+                                                        _creditControllerDollor
+                                                            .text),
+                                            debitOpBalRs:
+                                                _debitController.text.isEmpty
+                                                    ? null
+                                                    : double.tryParse(
+                                                        _debitController.text),
+                                            debitOpBalDollor:
+                                                _debitControllerDollor
+                                                        .text.isEmpty
+                                                    ? null
+                                                    : double.tryParse(
+                                                        _debitControllerDollor
+                                                            .text),
+                                          )
+                                              .then((onValue) {
+                                            _codeController.clear();
+                                            _clearFormFields();
+                                          });
+                                        }
+                                      }
+                                    : null,
                             child: const Text("Save"),
                           ),
                         ],
@@ -3317,21 +3355,19 @@ class PartyFormState extends State<PartyForm> {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           OutlinedButton(
-                            onPressed: () {
-                              _isFromEdit
-                                  ? defaultController
-                                      .deletePartyData(id: selectedPartyMstID)
-                                      .then((onValue) {
+                            onPressed: _isFromEdit
+                                ? () {
+                                    defaultController
+                                        .deletePartyData(id: selectedPartyMstID)
+                                        .then((onValue) {
                                       _clearFormFields();
                                       _codeController.clear();
                                       setState(() {
                                         _isFromEdit = false;
                                       });
-                                    })
-                                  : infoDialog(
-                                      messageText:
-                                          'Please Select Party to Delete.');
-                            },
+                                    });
+                                  }
+                                : null,
                             child: Obx(
                               () => defaultController.isDeleteLoading.value
                                   ? const CupertinoActivityIndicator()
@@ -3340,14 +3376,16 @@ class PartyFormState extends State<PartyForm> {
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton(
-                            onPressed: () {
-                              _clearFormFields();
-                              _codeController.clear();
-                              setState(() {
-                                _isEnabled = false;
-                                _isFromEdit = false;
-                              });
-                            },
+                            onPressed: _isEnabled || _isFromEdit
+                                ? () {
+                                    _clearFormFields();
+                                    _codeController.clear();
+                                    setState(() {
+                                      _isEnabled = false;
+                                      _isFromEdit = false;
+                                    });
+                                  }
+                                : null,
                             child: const Text("Cancel"),
                           ),
                           const SizedBox(width: 8),
@@ -3422,12 +3460,12 @@ class PartyFormState extends State<PartyForm> {
                       ),
                     ),
                     GridColumn(
-                      columnName: 'Location',
+                      columnName: 'Mobile No',
                       label: Container(
                         padding: const EdgeInsets.all(8.0),
                         alignment: Alignment.center,
                         child: const Text(
-                          'Location',
+                          'Mobile No',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 12),
                         ),
@@ -3446,12 +3484,12 @@ class PartyFormState extends State<PartyForm> {
                       ),
                     ),
                     GridColumn(
-                      columnName: 'Mobile No',
+                      columnName: 'Location',
                       label: Container(
                         padding: const EdgeInsets.all(8.0),
                         alignment: Alignment.center,
                         child: const Text(
-                          'Mobile No',
+                          'Location',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 12),
                         ),
@@ -3542,8 +3580,8 @@ class PartyFormState extends State<PartyForm> {
                       ),
                     ),
                   ],
-                  rowHeight: 30,
-                  headerRowHeight: 40,
+                  rowHeight: 25,
+                  headerRowHeight: 35,
                   gridLinesVisibility: GridLinesVisibility.both,
                   headerGridLinesVisibility: GridLinesVisibility.both,
                   // allowSorting: true,
@@ -3558,6 +3596,7 @@ class PartyFormState extends State<PartyForm> {
                     setState(() {
                       // entries.length = 0;
                       _isFromEdit = true;
+                      _isEnabled = false;
                     });
                     if (addedRows.isNotEmpty) {
                       final DataGridRow selectedRow = addedRows.first;
@@ -3612,7 +3651,7 @@ class PartyFormState extends State<PartyForm> {
                       });
 
                       _selectedType.value = partyEntry.typeCode.toString();
-                      _enableEditFields();
+                      // _enableEditFields();
                     }
                   },
                   columnWidthMode: ColumnWidthMode.auto,
