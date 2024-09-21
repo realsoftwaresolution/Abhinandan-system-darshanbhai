@@ -9,36 +9,22 @@ import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 class MemoIssueDetailsDataGridSource extends DataGridSource {
   List<DataGridRow> _dataGridRows = [];
   final DefaultController defaultController = Get.find<DefaultController>();
+  double totalWt = 0;
 
-  MemoIssueDetailsDataGridSource(RxList<MemoIssueDetailsModel> memoIssueDetailsList) {
+  MemoIssueDetailsDataGridSource(
+      RxList<MemoIssueDetailsModel> memoIssueDetailsList) {
+    totalWt =
+        memoIssueDetailsList.fold(0, (sum, item) => sum + (item.carats ?? 0));
     _dataGridRows = memoIssueDetailsList.map<DataGridRow>((purchase) {
       return DataGridRow(cells: [
-        DataGridCell<double>(columnName: 'Wt', value: purchase.carats),
-        // DataGridCell<String>(
-        //     columnName: 'Invoice No', value: purchase.invoiceNo),
         DataGridCell<String>(
-            columnName: 'Rough Type', value: getRoughName(purchase.roughTypeCode)),
-        // DataGridCell<String>(
-        //     columnName: 'Rec Date', value: purchase.recdate),
+            columnName: 'Rough Type',
+            value: getRoughName(purchase.roughTypeCode)),
+        DataGridCell<double>(columnName: 'Wt', value: purchase.carats),
         DataGridCell<int>(
-            columnName: 'Memo Issue ID', value: purchase.memoIssueMstID),
+            columnName: 'Issue ID', value: purchase.memoIssueMstID),
         DataGridCell<int>(
-            columnName: 'Memo Issue Detail ID', value: purchase.memoIssueDetID),
-        // DataGridCell<String>(
-        //     columnName: 'Broker', value: getPartyName(purchase.brokerCode)),
-        // DataGridCell<double>(columnName: 'Rs /\$', value: purchase.addFixRs),
-        // DataGridCell<double>(columnName: 'Exchange', value: purchase.exchange),
-        // DataGridCell<double>(columnName: 'Tot Wt', value: purchase.tWeight),
-        // DataGridCell<double>(
-        //     columnName: 'Tot Amt Rs', value: purchase.totRsAmt),
-        // DataGridCell<double>(columnName: 'Tot Amt (\$)', value: purchase.totAmtDollar),
-        // DataGridCell<String>(columnName: 'Bill Type', value: purchase.bIllType),
-        // DataGridCell<double>(columnName: 'Lin Fix Rs', value: purchase.linFixRs),
-        // DataGridCell<double>(columnName: 'Tot Exp Fix Rs', value: purchase.totExpFixRs),
-        // DataGridCell<double>(columnName: 'Add Fix Rs', value: purchase.addFixRs),
-        // DataGridCell<double>(columnName: 'Less Fix Rs', value: purchase.lessFixRs),
-        // DataGridCell<double>(columnName: 'Final Net Amt Dollar', value: purchase.finalNetAmtDollar),
-        // DataGridCell<double>(columnName: 'Final Net Amt Rs', value: purchase.finalNetAmtRs),
+            columnName: 'Detail ID', value: purchase.memoIssueDetID),
       ]);
     }).toList();
   }
@@ -52,7 +38,7 @@ class MemoIssueDetailsDataGridSource extends DataGridSource {
 
   String getRoughName(int? typeCode) {
     final party = defaultController.roughModel.firstWhere(
-            (p) => p.roughTypeCode == typeCode!,
+        (p) => p.roughTypeCode == typeCode!,
         orElse: () => RoughModel(roughTypeName: 'Unknown'));
     return party.roughTypeName ?? 'Unknown';
   }
@@ -62,25 +48,19 @@ class MemoIssueDetailsDataGridSource extends DataGridSource {
 
   @override
   DataGridRowAdapter? buildRow(DataGridRow row) {
-    return DataGridRowAdapter(cells: [
-      for (var cell in row.getCells())
-        cell.columnName == 'Active'
-            ? Container(
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(8.0),
-                child: Checkbox(
-                  value: cell.value as bool,
-                  onChanged: (value) {}, // Disable interaction
-                ),
-              )
-            : Container(
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  cell.value.toString(),
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-    ]);
+    int rowIndex = rows.indexOf(row);
+    return DataGridRowAdapter(
+      color: rowIndex % 2 == 0
+          ? Colors.grey[200] // Light color for even rows
+          : null,
+      cells: row.getCells().map<Widget>((dataGridCell) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 5.0),
+          child: Text(dataGridCell.value.toString(),
+            style: const TextStyle(fontSize: 12),),
+        );
+      }).toList(),
+    );
   }
 }

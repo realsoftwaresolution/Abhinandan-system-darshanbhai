@@ -68,10 +68,19 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
   bool _isEnabled = false;
   bool _isSearch = false;
   bool _isFromEdit = false;
+  final RxBool _isFiltered = false.obs;
   final _formKey = GlobalKey<FormState>();
+
+  DateTime? fromDate;
+  DateTime? toDate;
+  final fromDateController = TextEditingController();
+  final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
   final MenuAppController menuController = Get.find<MenuAppController>();
+
+  RxList<MemoIssueModel> memoIssueDataGridSource = <MemoIssueModel>[].obs;
+  RxList<MemoIssueModel> filteredDataGridSource = <MemoIssueModel>[].obs;
 
   void _enableFields({bool? needFocus}) {
     setState(() {
@@ -90,6 +99,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
   void initState() {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
+    memoIssueDataGridSource.value = defaultController.memoIssueList;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _formKeyBoardFocus.requestFocus();
       if (_isSearch) {
@@ -115,6 +125,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     _brokerFocus.dispose();
     _formKeyBoardFocus.dispose();
     _searchKeyBoardFocus.dispose();
+    fromDateController.dispose();
+    toDateController.dispose();
     super.dispose();
   }
 
@@ -128,6 +140,41 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
   void _scrollToSelectedRow(double index) {
     // Scroll to the currently selected row
     _dataGridController.scrollToRow(index);
+  }
+
+  void _applyDateFilter() {
+    if (fromDate != null && toDate != null) {
+      _isFiltered.value = true;
+      // setState(() {
+      filteredDataGridSource.value =
+          defaultController.memoIssueList.where((purchase) {
+        // Assuming invoiceDate is in 'yyyy-MM-dd' format; adjust as needed
+        final invoiceDate = DateTime.parse(purchase.invoiceDate!);
+
+        // Include the boundaries
+        return invoiceDate.isAfter(fromDate!) &&
+            invoiceDate.isBefore(toDate!.add(const Duration(days: 1)));
+      }).toList();
+      // Update the data grid source with the filtered data
+      memoIssueDataGridSource.value = filteredDataGridSource;
+      _searchKeyBoardFocus.requestFocus();
+      // });
+    } else {
+      infoDialog(messageText: 'Please select both From Date and To Date');
+    }
+  }
+
+  void _removeDateFilter() {
+    // Reset the data grid source to the full list
+    memoIssueDataGridSource.value = defaultController.memoIssueList;
+
+    // Clear filter values
+    toDateController.clear();
+    fromDateController.clear();
+    fromDate = null;
+    toDate = null;
+
+    _isFiltered.value = false;
   }
 
   void _openDatePicker() async {
@@ -179,294 +226,409 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
   @override
   Widget build(BuildContext context) {
     return _isSearch == true
-        ? Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Header(title: 'Memo Issue Search'),
-              OutlinedButton(
-                onPressed: () {
+        ? KeyboardListener(
+            focusNode: _searchKeyBoardFocus,
+            autofocus: true,
+            onKeyEvent: (KeyEvent event) {
+              if (event is KeyDownEvent) {
+                final int currentIndex = _dataGridController.selectedIndex;
+                final int totalRows = defaultController.memoIssueList
+                    .length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
+
+                // Handle the Enter key
+                if (event.logicalKey == LogicalKeyboardKey.enter) {
+                  final DataGridRow? selectedRow =
+                      _dataGridController.selectedRow;
+                  setState(() {
+                    entries.length = 0;
+                    _isFromEdit = true;
+                  });
+                  List<MemoIssueDetailsModel> roughData =
+                      defaultController.memoIssueDetailsList;
+                  List<MemoIssueModel> partyData =
+                      defaultController.memoIssueList;
+
+                  // Extract the selected polishSaleMstID from the selectedRow
+                  selectedMemoIssueMstID.value = selectedRow!
+                      .getCells()[0]
+                      .value; // Assuming the ID is in the first cell
+
+                  // Find the corresponding party data entry with the matching polishSaleMstID
+                  MemoIssueModel partyEntry = partyData.firstWhere(
+                    (entry) =>
+                        entry.memoIssueMstID == selectedMemoIssueMstID.value,
+                    // orElse: () => null,
+                  );
+
+                  // Collect rough data entries with the matching polishSaleMstID
+                  List<MemoIssueDetailsModel> roughEntries = roughData
+                      .where((entry) =>
+                          entry.memoIssueMstID == selectedMemoIssueMstID.value)
+                      .toList();
+                  // invNoController.text = partyEntry.invoiceNo!;
+                  selectedDate = dateFormat(partyEntry.invoiceDate!);
+                  // dueDate = formatDateWithTime(partyEntry.dueDate!);
+                  dateController.text = formatDate(partyEntry.invoiceDate!);
+                  // dueDateController.text =
+                  //     formatDate(partyEntry.dueDate!);
+                  // dueDaysController.text = partyEntry.dueDay.toString();
+                  _selectedTypeParty.value = partyEntry.partyCode.toString();
+                  _selectedTypeBroker.value = partyEntry.brokerCode.toString();
+                  // _selectedTypeParty.value = partyEntry.partyCode;
+                  setState(() {
+                    for (var roughEntry in roughEntries) {
+                      entries.add({
+                        'id': roughEntry.memoIssueDetID.toString(),
+                        'rough': roughEntry.roughTypeCode.toString(),
+                        'description': roughEntry.description.toString(),
+                        'wt': roughEntry.carats.toString(),
+                        'rate': roughEntry.rateRs.toString(),
+                        'amount': (double.parse(roughEntry.carats.toString()) *
+                                double.parse(roughEntry.rateRs.toString()))
+                            .toStringAsFixed(2),
+                      });
+                    }
+                  });
+
+                  _enableFields();
                   setState(() {
                     _isSearch = false;
                   });
-                },
-                child: const Text("Exit"),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Obx(
-                () => Expanded(
-                  child: KeyboardListener(
-                    focusNode: _searchKeyBoardFocus,
-                    autofocus: true,
-                    onKeyEvent: (KeyEvent event) {
-                      if (event is KeyDownEvent) {
-                        final int currentIndex =
-                            _dataGridController.selectedIndex;
-                        final int totalRows = defaultController
-                            .memoIssueList
-                            .length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
+                }
 
-                        // Handle the Enter key
-                        if (event.logicalKey == LogicalKeyboardKey.enter) {
-                          final DataGridRow? selectedRow =
-                              _dataGridController.selectedRow;
+                // Handle the down arrow key to go to the next row
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  if (currentIndex < totalRows - 1) {
+                    _dataGridController.selectedIndex =
+                        currentIndex + 1; // Select the next row
+                    _scrollToSelectedRow(double.parse(_dataGridController
+                        .selectedIndex
+                        .toString())); // Scroll to the selected row
+                  }
+                }
+
+                // Handle the up arrow key to go to the previous row
+                if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  if (currentIndex > 0) {
+                    _dataGridController.selectedIndex =
+                        currentIndex - 1; // Select the previous row
+                    _scrollToSelectedRow(double.parse(_dataGridController
+                        .selectedIndex
+                        .toString())); // Scroll to the selected row
+                  }
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.keyE) {
+                  setState(() {
+                    _isSearch = false;
+                  });
+                }
+
+                if (event.logicalKey == LogicalKeyboardKey.keyR &&
+                    _isFiltered.value) {
+                  _removeDateFilter();
+                }
+                if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                  _applyDateFilter();
+                }
+              }
+            },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Header(title: 'Memo Issue Search'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: buildTextField(
+                          'From Date',
+                          fromDateController,
+                          readOnly: true,
+                          onTap: () async {
+                            DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (pickedDate != null) {
+                              setState(() {
+                                fromDate = pickedDate;
+                                fromDateController.text =
+                                    DateFormat('dd-MM-yyyy').format(fromDate!);
+                                if (toDateController.text.isNotEmpty) {
+                                  _applyDateFilter();
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: buildTextField(
+                          'To Date',
+                          toDateController,
+                          readOnly: true,
+                          onTap: () async {
+                            DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (pickedDate != null) {
+                              setState(() {
+                                toDate = pickedDate;
+                                toDateController.text =
+                                    DateFormat('dd-MM-yyyy').format(toDate!);
+                                if (fromDateController.text.isNotEmpty) {
+                                  _applyDateFilter();
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: _applyDateFilter,
+                        // Method to filter data based on date
+                        child: const Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'F', // Underlined "A"
+                                style: TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'ilter', // Normal "dd"
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Obx(() => OutlinedButton(
+                            onPressed:
+                                _isFiltered.value ? _removeDateFilter : null,
+                            // Method to filter data based on date
+                            child: const Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'R', // Underlined "A"
+                                    style: TextStyle(
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'eset', // Normal "dd"
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _isSearch = false;
+                          });
+                        },
+                        child: const Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'E', // Underlined "A"
+                                style: TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'xit', // Normal "dd"
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Obx(
+                      () => SfDataGrid(
+                        controller: _dataGridController,
+                        source:
+                            MemoIssueDataGridSource(memoIssueDataGridSource),
+                        columns: <GridColumn>[
+                          GridColumn(
+                            columnName: 'ID',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'ID',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Invoice Date',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Invoice Date',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Party',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Party',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Broker',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Broker',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Tot Wt',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Tot Wt',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GridColumn(
+                            columnName: 'Tot Amt Rs',
+                            label: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Tot Amt Rs',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                        rowHeight: 25,
+                        headerRowHeight: 35,
+                        gridLinesVisibility: GridLinesVisibility.both,
+                        headerGridLinesVisibility: GridLinesVisibility.both,
+                        showSortNumbers: true,
+                        // allowSorting: true,
+                        // allowMultiColumnSorting: true,
+                        allowFiltering: true,
+                        selectionMode: SelectionMode.singleDeselect,
+                        onSelectionChanged: (List<DataGridRow> addedRows,
+                            List<DataGridRow> removedRows) {
                           setState(() {
                             entries.length = 0;
                             _isFromEdit = true;
                           });
-                          List<MemoIssueDetailsModel> roughData =
-                              defaultController.memoIssueDetailsList;
-                          List<MemoIssueModel> partyData =
-                              defaultController.memoIssueList;
+                          if (addedRows.isNotEmpty) {
+                            final DataGridRow selectedRow = addedRows.first;
+                            List<MemoIssueDetailsModel> roughData =
+                                defaultController.memoIssueDetailsList;
+                            List<MemoIssueModel> partyData =
+                                defaultController.memoIssueList;
 
-                          // Extract the selected polishSaleMstID from the selectedRow
-                          selectedMemoIssueMstID.value = selectedRow!
-                              .getCells()[0]
-                              .value; // Assuming the ID is in the first cell
+                            // Extract the selected polishSaleMstID from the selectedRow
+                            selectedMemoIssueMstID.value = selectedRow
+                                .getCells()[0]
+                                .value; // Assuming the ID is in the first cell
 
-                          // Find the corresponding party data entry with the matching polishSaleMstID
-                          MemoIssueModel partyEntry = partyData.firstWhere(
-                            (entry) =>
-                                entry.memoIssueMstID ==
-                                selectedMemoIssueMstID.value,
-                            // orElse: () => null,
-                          );
-
-                          // Collect rough data entries with the matching polishSaleMstID
-                          List<MemoIssueDetailsModel> roughEntries = roughData
-                              .where((entry) =>
+                            // Find the corresponding party data entry with the matching polishSaleMstID
+                            MemoIssueModel partyEntry = partyData.firstWhere(
+                              (entry) =>
                                   entry.memoIssueMstID ==
-                                  selectedMemoIssueMstID.value)
-                              .toList();
-                          // invNoController.text = partyEntry.invoiceNo!;
-                          selectedDate = dateFormat(partyEntry.invoiceDate!);
-                          // dueDate = formatDateWithTime(partyEntry.dueDate!);
-                          dateController.text =
-                              formatDate(partyEntry.invoiceDate!);
-                          // dueDateController.text =
-                          //     formatDate(partyEntry.dueDate!);
-                          // dueDaysController.text = partyEntry.dueDay.toString();
-                          _selectedTypeParty.value =
-                              partyEntry.partyCode.toString();
-                          _selectedTypeBroker.value =
-                              partyEntry.brokerCode.toString();
-                          // _selectedTypeParty.value = partyEntry.partyCode;
-                          setState(() {
-                            for (var roughEntry in roughEntries) {
-                              entries.add({
-                                'id': roughEntry.memoIssueDetID.toString(),
-                                'rough': roughEntry.roughTypeCode.toString(),
-                                'description':
-                                    roughEntry.description.toString(),
-                                'wt': roughEntry.carats.toString(),
-                                'rate': roughEntry.rateRs.toString(),
-                                'amount': (double.parse(
-                                            roughEntry.carats.toString()) *
-                                        double.parse(
-                                            roughEntry.rateRs.toString()))
-                                    .toStringAsFixed(2),
-                              });
-                            }
-                          });
+                                  selectedMemoIssueMstID.value,
+                              // orElse: () => null,
+                            );
 
-                          _enableFields();
-                          setState(() {
-                            _isSearch = false;
-                          });
-                        }
+                            // Collect rough data entries with the matching polishSaleMstID
+                            List<MemoIssueDetailsModel> roughEntries = roughData
+                                .where((entry) =>
+                                    entry.memoIssueMstID ==
+                                    selectedMemoIssueMstID.value)
+                                .toList();
+                            // invNoController.text = partyEntry.invoiceNo!;
+                            selectedDate = dateFormat(partyEntry.invoiceDate!);
+                            // dueDate = formatDateWithTime(partyEntry.dueDate!);
+                            dateController.text =
+                                formatDate(partyEntry.invoiceDate!);
+                            // dueDateController.text =
+                            //     formatDate(partyEntry.dueDate!);
+                            // dueDaysController.text = partyEntry.dueDay.toString();
+                            _selectedTypeParty.value =
+                                partyEntry.partyCode.toString();
+                            _selectedTypeBroker.value =
+                                partyEntry.brokerCode.toString();
+                            // _selectedTypeParty.value = partyEntry.partyCode;
+                            setState(() {
+                              for (var roughEntry in roughEntries) {
+                                entries.add({
+                                  'id': roughEntry.memoIssueDetID.toString(),
+                                  'rough': roughEntry.roughTypeCode.toString(),
+                                  'description':
+                                      roughEntry.description.toString(),
+                                  'wt': roughEntry.carats.toString(),
+                                  'rate': roughEntry.rateRs.toString(),
+                                  'amount': (double.parse(
+                                              roughEntry.carats.toString()) *
+                                          double.parse(
+                                              roughEntry.rateRs.toString()))
+                                      .toStringAsFixed(2),
+                                });
+                              }
+                            });
 
-                        // Handle the down arrow key to go to the next row
-                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                          if (currentIndex < totalRows - 1) {
-                            _dataGridController.selectedIndex =
-                                currentIndex + 1; // Select the next row
-                            _scrollToSelectedRow(double.parse(
-                                _dataGridController.selectedIndex
-                                    .toString())); // Scroll to the selected row
+                            _enableFields();
+                            setState(() {
+                              _isSearch = false;
+                            });
                           }
-                        }
+                        },
 
-                        // Handle the up arrow key to go to the previous row
-                        if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                          if (currentIndex > 0) {
-                            _dataGridController.selectedIndex =
-                                currentIndex - 1; // Select the previous row
-                            _scrollToSelectedRow(double.parse(
-                                _dataGridController.selectedIndex
-                                    .toString())); // Scroll to the selected row
-                          }
-                        }
-
-                        if (event.logicalKey == LogicalKeyboardKey.keyE) {
-                          setState(() {
-                            _isSearch = false;
-                          });
-                        }
-                      }
-                    },
-                    child: SfDataGrid(
-                      controller: _dataGridController,
-                      source: MemoIssueDataGridSource(
-                          defaultController.memoIssueList),
-                      columns: <GridColumn>[
-                        GridColumn(
-                          columnName: 'ID',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'ID',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Invoice Date',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Invoice Date',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Party',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Party',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Broker',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Broker',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Tot Wt',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Tot Wt',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        GridColumn(
-                          columnName: 'Tot Amt Rs',
-                          label: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Tot Amt Rs',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ],
-                      rowHeight: 30,
-                      headerRowHeight: 40,
-                      gridLinesVisibility: GridLinesVisibility.both,
-                      headerGridLinesVisibility: GridLinesVisibility.both,
-                      showSortNumbers: true,
-                      // allowSorting: true,
-                      // allowMultiColumnSorting: true,
-                      allowFiltering: true,
-                      selectionMode: SelectionMode.singleDeselect,
-                      onSelectionChanged: (List<DataGridRow> addedRows,
-                          List<DataGridRow> removedRows) {
-                        setState(() {
-                          entries.length = 0;
-                          _isFromEdit = true;
-                        });
-                        if (addedRows.isNotEmpty) {
-                          final DataGridRow selectedRow = addedRows.first;
-                          List<MemoIssueDetailsModel> roughData =
-                              defaultController.memoIssueDetailsList;
-                          List<MemoIssueModel> partyData =
-                              defaultController.memoIssueList;
-
-                          // Extract the selected polishSaleMstID from the selectedRow
-                          selectedMemoIssueMstID.value = selectedRow
-                              .getCells()[0]
-                              .value; // Assuming the ID is in the first cell
-
-                          // Find the corresponding party data entry with the matching polishSaleMstID
-                          MemoIssueModel partyEntry = partyData.firstWhere(
-                            (entry) =>
-                                entry.memoIssueMstID ==
-                                selectedMemoIssueMstID.value,
-                            // orElse: () => null,
-                          );
-
-                          // Collect rough data entries with the matching polishSaleMstID
-                          List<MemoIssueDetailsModel> roughEntries = roughData
-                              .where((entry) =>
-                                  entry.memoIssueMstID ==
-                                  selectedMemoIssueMstID.value)
-                              .toList();
-                          // invNoController.text = partyEntry.invoiceNo!;
-                          selectedDate = dateFormat(partyEntry.invoiceDate!);
-                          // dueDate = formatDateWithTime(partyEntry.dueDate!);
-                          dateController.text =
-                              formatDate(partyEntry.invoiceDate!);
-                          // dueDateController.text =
-                          //     formatDate(partyEntry.dueDate!);
-                          // dueDaysController.text = partyEntry.dueDay.toString();
-                          _selectedTypeParty.value =
-                              partyEntry.partyCode.toString();
-                          _selectedTypeBroker.value =
-                              partyEntry.brokerCode.toString();
-                          // _selectedTypeParty.value = partyEntry.partyCode;
-                          setState(() {
-                            for (var roughEntry in roughEntries) {
-                              entries.add({
-                                'id': roughEntry.memoIssueDetID.toString(),
-                                'rough': roughEntry.roughTypeCode.toString(),
-                                'description':
-                                    roughEntry.description.toString(),
-                                'wt': roughEntry.carats.toString(),
-                                'rate': roughEntry.rateRs.toString(),
-                                'amount': (double.parse(
-                                            roughEntry.carats.toString()) *
-                                        double.parse(
-                                            roughEntry.rateRs.toString()))
-                                    .toStringAsFixed(2),
-                              });
-                            }
-                          });
-
-                          _enableFields();
-                          setState(() {
-                            _isSearch = false;
-                          });
-                        }
-                      },
-
-                      columnWidthMode: ColumnWidthMode.auto,
-                      frozenColumnsCount: 1,
-                      // gridLineStrokeWidth: 1.5,
-                      // gridLineColor: Colors.grey.shade400,
-                      // backgroundColor: Colors.white,
+                        columnWidthMode: ColumnWidthMode.auto,
+                        frozenColumnsCount: 1,
+                        // gridLineStrokeWidth: 1.5,
+                        // gridLineColor: Colors.grey.shade400,
+                        // backgroundColor: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           )
         : SingleChildScrollView(
             child: Column(
@@ -487,152 +649,164 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                               autofocus: true,
                               onKeyEvent: (KeyEvent event) {
                                 if (event is KeyDownEvent) {
-                                  if(!_descFocus.hasFocus){
-                                  if (!HardwareKeyboard
-                                          .instance.isShiftPressed &&
-                                      event.logicalKey ==
-                                          LogicalKeyboardKey.keyS) {
-                                    if (_isFromEdit) {
-                                      if (entries.isNotEmpty) {
+                                  if (!_descFocus.hasFocus) {
+                                    if (!HardwareKeyboard
+                                            .instance.isShiftPressed &&
+                                        event.logicalKey ==
+                                            LogicalKeyboardKey.keyS &&
+                                        _isEnabled) {
+                                      if (_isFromEdit) {
+                                        if (entries.isNotEmpty) {
+                                          defaultController
+                                              .updateMemoIssueData(
+                                                  id: selectedMemoIssueMstID
+                                                      .value,
+                                                  partyCode:
+                                                      _selectedTypeParty.value,
+                                                  // invoiceNo:
+                                                  //     invNoController.text,
+                                                  invoiceDate: selectedDate,
+                                                  brokerCode:
+                                                      _selectedTypeBroker.value,
+                                                  // dueDays:
+                                                  //     dueDaysController.text,
+                                                  // dueDate: dueDate,
+                                                  entries: entries,
+                                                  totalAmt: totalAmount,
+                                                  totalWt: totalWt,
+                                                  totalRate: totalRate)
+                                              .then((onValue) {
+                                            setState(() {
+                                              entries.clear();
+                                              _isEnabled = false;
+                                              _isFromEdit = false;
+                                            });
+                                          });
+
+                                          dateController.clear();
+                                          // dueDateController.clear();
+                                          // dueDaysController.clear();
+                                          dateController.clear();
+                                          // invNoController.clear();
+                                          _selectedTypeParty.value = '';
+                                          _selectedType.value = '';
+                                          _selectedTypeBroker.value = '';
+                                        } else {
+                                          infoDialog(
+                                              messageText:
+                                                  'Please Add Rough Data');
+                                        }
+                                      } else {
+                                        if (entries.isNotEmpty) {
+                                          defaultController
+                                              .addMemoIssueData(
+                                                  partyCode:
+                                                      _selectedTypeParty.value,
+                                                  invoiceDate: selectedDate,
+                                                  brokerCode:
+                                                      _selectedTypeBroker.value,
+                                                  dueDate: dueDate,
+                                                  entries: entries,
+                                                  totalAmt: totalAmount,
+                                                  totalWt: totalWt,
+                                                  totalRate: totalRate)
+                                              .then((onValue) {
+                                            setState(() {
+                                              entries.clear();
+                                              _isEnabled =
+                                                  false; // Clear the entries only after user clicks OK
+                                            });
+                                          });
+
+                                          dateController.clear();
+                                          // dueDateController.clear();
+                                          // dueDaysController.clear();
+                                          dateController.clear();
+                                          // invNoController.clear();
+                                          _selectedTypeParty.value = '';
+                                          _selectedType.value = '';
+                                          _selectedTypeBroker.value = '';
+                                        } else {
+                                          infoDialog(
+                                              messageText:
+                                                  'Please Add Rough Data');
+                                        }
+                                      }
+                                    }
+                                  }
+                                  if (!_descFocus.hasFocus) {
+                                    if (event.logicalKey ==
+                                            LogicalKeyboardKey.keyA &&
+                                        !_isEnabled) {
+                                      _enableFields();
+                                    }
+                                  }
+                                  if (!_descFocus.hasFocus) {
+                                    if (event.logicalKey ==
+                                            LogicalKeyboardKey.keyD &&
+                                        _isEnabled &&
+                                        _isFromEdit) {
+                                      if (_isFromEdit) {
                                         defaultController
-                                            .updateMemoIssueData(
+                                            .deleteMemoIssueData(
                                                 id: selectedMemoIssueMstID
                                                     .value,
-                                                partyCode:
-                                                    _selectedTypeParty.value,
-                                                // invoiceNo:
-                                                //     invNoController.text,
-                                                invoiceDate: selectedDate,
-                                                brokerCode:
-                                                    _selectedTypeBroker.value,
-                                                // dueDays:
-                                                //     dueDaysController.text,
-                                                // dueDate: dueDate,
-                                                entries: entries,
-                                                totalAmt: totalAmount,
-                                                totalWt: totalWt,
-                                                totalRate: totalRate)
+                                                entries: entries)
                                             .then((onValue) {
+                                          dateController.clear();
+                                          // dueDateController.clear();
+                                          // dueDaysController.clear();
+                                          // invNoController.clear();
+                                          _selectedTypeParty.value = '';
+                                          _selectedType.value = '';
+                                          _selectedTypeBroker.value = '';
                                           setState(() {
-                                            entries.clear();
-                                            _isEnabled = false;
                                             _isFromEdit = false;
+                                            entries.length = 0;
                                           });
                                         });
-
-                                        dateController.clear();
-                                        // dueDateController.clear();
-                                        // dueDaysController.clear();
-                                        dateController.clear();
-                                        // invNoController.clear();
-                                        _selectedTypeParty.value = '';
-                                        _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
                                       } else {
                                         infoDialog(
                                             messageText:
-                                                'Please Add Rough Data');
-                                      }
-                                    } else {
-                                      if (entries.isNotEmpty) {
-                                        defaultController
-                                            .addMemoIssueData(
-                                                partyCode:
-                                                    _selectedTypeParty.value,
-                                                invoiceDate: selectedDate,
-                                                brokerCode:
-                                                    _selectedTypeBroker.value,
-                                                dueDate: dueDate,
-                                                entries: entries,
-                                                totalAmt: totalAmount,
-                                                totalWt: totalWt,
-                                                totalRate: totalRate)
-                                            .then((onValue) {
-                                          setState(() {
-                                            entries.clear();
-                                            _isEnabled =
-                                                false; // Clear the entries only after user clicks OK
-                                          });
-                                        });
-
-                                        dateController.clear();
-                                        // dueDateController.clear();
-                                        // dueDaysController.clear();
-                                        dateController.clear();
-                                        // invNoController.clear();
-                                        _selectedTypeParty.value = '';
-                                        _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
-                                      } else {
-                                        infoDialog(
-                                            messageText:
-                                                'Please Add Rough Data');
+                                                'Please Select Memo Issue Entry to Delete.');
                                       }
                                     }
-                                  }}
-                                  if(!_descFocus.hasFocus){
-                                  if (event.logicalKey ==
-                                      LogicalKeyboardKey.keyA) {
-                                    _enableFields();
-                                  }}
-                                  if(!_descFocus.hasFocus){
-                                  if (event.logicalKey ==
-                                      LogicalKeyboardKey.keyD) {
-                                    if (_isFromEdit) {
-                                      defaultController
-                                          .deleteMemoIssueData(
-                                              id: selectedMemoIssueMstID.value,
-                                              entries: entries)
-                                          .then((onValue) {
-                                        dateController.clear();
-                                        // dueDateController.clear();
-                                        // dueDaysController.clear();
-                                        // invNoController.clear();
-                                        _selectedTypeParty.value = '';
-                                        _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
-                                        setState(() {
-                                          _isFromEdit = false;
-                                          entries.length = 0;
-                                        });
+                                  }
+                                  if (!_descFocus.hasFocus) {
+                                    if (event.logicalKey ==
+                                            LogicalKeyboardKey.keyC &&
+                                        _isEnabled) {
+                                      dateController.clear();
+                                      // dueDateController.clear();
+                                      // invNoController.clear();
+                                      // dueDaysController.clear();
+                                      dateController.clear();
+                                      _selectedTypeParty.value = '';
+                                      _selectedType.value = '';
+                                      _selectedTypeBroker.value = '';
+                                      setState(() {
+                                        entries.length = 0;
+                                        _isFromEdit = false;
+                                        _isEnabled = false;
                                       });
-                                    } else {
-                                      infoDialog(
-                                          messageText:
-                                              'Please Select Memo Issue Entry to Delete.');
                                     }
-                                  }}
-                                  if(!_descFocus.hasFocus){
-                                  if (event.logicalKey ==
-                                      LogicalKeyboardKey.keyC) {
-                                    dateController.clear();
-                                    // dueDateController.clear();
-                                    // invNoController.clear();
-                                    // dueDaysController.clear();
-                                    dateController.clear();
-                                    _selectedTypeParty.value = '';
-                                    _selectedType.value = '';
-                                    _selectedTypeBroker.value = '';
-                                    setState(() {
-                                      entries.length = 0;
-                                      _isFromEdit = false;
-                                      _isEnabled = false;
-                                    });
-                                  }}
-                                  if(!_descFocus.hasFocus){
-                                  if (event.logicalKey ==
-                                      LogicalKeyboardKey.keyE) {
-                                    menuController.selectedIndex.value = 0;
-                                  }}
-                                  if(!_descFocus.hasFocus){
-                                  if (HardwareKeyboard
-                                          .instance.isShiftPressed &&
-                                      event.logicalKey ==
-                                          LogicalKeyboardKey.keyS) {
-                                    setState(() {
-                                      _isSearch = true;
-                                    });
-                                  }}
+                                  }
+                                  if (!_descFocus.hasFocus) {
+                                    if (event.logicalKey ==
+                                        LogicalKeyboardKey.keyE) {
+                                      menuController.selectedIndex.value = 0;
+                                    }
+                                  }
+                                  if (!_descFocus.hasFocus) {
+                                    if (HardwareKeyboard
+                                            .instance.isShiftPressed &&
+                                        event.logicalKey ==
+                                            LogicalKeyboardKey.keyS) {
+                                      setState(() {
+                                        _isSearch = true;
+                                      });
+                                    }
+                                  }
                                 }
                               },
                               child: Form(
@@ -1142,7 +1316,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                             children: [
                               OutlinedButton(
                                 // onPressed: _enableFields,
-                                onPressed: _enableFields,
+                                onPressed: !_isEnabled ? _enableFields : null,
                                 child: const Text.rich(
                                   TextSpan(
                                     children: [
@@ -1204,7 +1378,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                                   'Please Add Rough Data');
                                         }
                                       }
-                                    : () async {
+                                    : _isEnabled ?  () async {
                                         if (entries.isNotEmpty) {
                                           defaultController
                                               .addMemoIssueData(
@@ -1239,7 +1413,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                               messageText:
                                                   'Please Add Rough Data');
                                         }
-                                      },
+                                      } : null,
                                 child: Obx(
                                   () => defaultController.isLoading.value
                                       ? const CupertinoActivityIndicator()
@@ -1263,9 +1437,9 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
-                                onPressed: () {
-                                  _isFromEdit
-                                      ? defaultController
+                                onPressed: _isFromEdit
+                                    ? () {
+                                   defaultController
                                           .deleteMemoIssueData(
                                               id: selectedMemoIssueMstID.value,
                                               entries: entries)
@@ -1281,11 +1455,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                             _isFromEdit = false;
                                             entries.length = 0;
                                           });
-                                        })
-                                      : infoDialog(
-                                          messageText:
-                                              'Please Select Memo Issue Entry to Delete.');
-                                },
+                                        });
+                                } : null,
                                 child: Obx(
                                   () => defaultController.isDeleteLoading.value
                                       ? const CupertinoActivityIndicator()
@@ -1309,7 +1480,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
-                                onPressed: () {
+                                onPressed: _isEnabled
+                                    ? () {
                                   dateController.clear();
                                   // dueDateController.clear();
                                   // invNoController.clear();
@@ -1323,7 +1495,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                     _isFromEdit = false;
                                     _isEnabled = false;
                                   });
-                                },
+                                } : null,
                                 child: const Text.rich(
                                   TextSpan(
                                     children: [
@@ -1420,118 +1592,6 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
           )
           .toList(),
     );
-  }
-
-  // void _updateDueDate() {
-  //   if (selectedDate != null) {
-  //     int dueDays = int.tryParse(dueDaysController.text) ?? 0;
-  //     DateTime temp = selectedDate!.add(Duration(days: dueDays));
-  //     dueDateController.text = DateFormat('dd-MM-yyyy').format(temp);
-  //     dueDate = DateFormat('yyyy-MM-dd HH:MM:SS').format(temp);
-  //   }
-  // }
-
-  Widget _buildTextField(String label, TextEditingController? controller,
-      {List<TextInputFormatter>? inputFormatterList,
-      VoidCallback? onTap,
-      bool? isEnabled,
-      ValueChanged<String>? onChanged,
-      FocusNode? focusNode}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w900,
-            fontSize: 12, // Font size for the label
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: SizedBox(
-            width: 50,
-            child: TextFormField(
-              onTap: onTap,
-              controller: controller,
-              keyboardType: TextInputType.number,
-              enabled: isEnabled,
-              focusNode: focusNode,
-              textInputAction: TextInputAction.next,
-              inputFormatters: inputFormatterList,
-              decoration: const InputDecoration(
-                errorStyle: TextStyle(
-                  height: 0, // Hides the error message
-                  fontSize: 0, // Ensures no space is taken by the error message
-                ),
-                focusedErrorBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    // Red border when focused with an error
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                errorBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    // Red border for errors
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.blue,
-                    // Black border when focused without error
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.grey,
-                    // Light grey border when enabled
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                // filled: true,
-                // Fill the background
-                // fillColor: Colors.white,
-                // White background
-                isDense: true,
-                // Reduces the overall height of the TextField
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 8,
-                ), // Remove top padding, minimal horizontal padding
-              ),
-              cursorColor: Colors.black,
-              // Black cursor color
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 12, // Consistent font size with label
-              ),
-              onChanged: onChanged,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return ''; // Validation still occurs, but no message is shown
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-      ],
-    ); /*TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: label,
-        border: const UnderlineInputBorder(),
-      ),
-    );*/
   }
 
   Widget _buildRoughTable() {
@@ -1682,14 +1742,18 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                           ),
                           onTap: () {
                             if (_isFromEdit) {
-                              defaultController
-                                  .deleteMemoIssueRoughData(
-                                      id: int.parse(entries[index]['id']!))
-                                  .then((onValue) {
-                                setState(() {
-                                  entries.removeAt(index);
-                                });
-                              });
+                              entries.length == 1
+                                  ? infoDialog(
+                                      messageText:
+                                          'Can not delete Single Rough Entry')
+                                  : defaultController
+                                      .deleteMemoIssueRoughData(
+                                          id: int.parse(entries[index]['id']!))
+                                      .then((onValue) {
+                                      setState(() {
+                                        entries.removeAt(index);
+                                      });
+                                    });
                             } else {
                               setState(() {
                                 entries.removeAt(index);
@@ -1768,162 +1832,6 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildDataTable() {
-    return DataTable(
-      columnSpacing: 10,
-      headingRowHeight: 25,
-      horizontalMargin: 20,
-      dataRowHeight: 30.0,
-      columns: const [
-        DataColumn(
-            label: Text(
-          'SR.NO',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'ROUGH',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'DESCRIPTION',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'WT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'RATE',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          'AMOUNT',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-        DataColumn(
-            label: Text(
-          '',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        )),
-      ],
-      rows: List<DataRow>.generate(
-        entries.length,
-        (index) => DataRow(
-          cells: [
-            DataCell(Text(
-              (index + 1).toString(),
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              getRoughName(entries[index]['rough']!),
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['description']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['wt']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['rate']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(Text(
-              entries[index]['amount']!,
-              style: const TextStyle(fontSize: 12),
-            )),
-            DataCell(
-              Obx(
-                () => defaultController.isDeleteLoading.value
-                    ? const CupertinoActivityIndicator()
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          size: 15,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            defaultController
-                                .deleteMemoIssueRoughData(
-                                    id: int.parse(entries[index]['id']!))
-                                .then((onValue) {
-                              setState(() {
-                                entries.removeAt(index);
-                              });
-                            });
-
-                            // _updateTotals(); // Recalculate totals after deletion
-                          });
-                        },
-                      ),
-              ),
-            ),
-            DataCell(
-              IconButton(
-                icon: const Icon(
-                  Icons.edit,
-                  size: 15,
-                ),
-                onPressed: () {
-                  selectedRoughId.value = entries[index]['id']!;
-                  _selectedType.value = entries[index]['rough']!;
-                  wtController.text = entries[index]['wt']!;
-                  rateController.text = entries[index]['rate']!;
-                  descripController.text = entries[index]['description']!;
-                  setState(() {
-                    entries.removeAt(index);
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      )..add(
-          DataRow(
-            cells: [
-              const DataCell(Text('')),
-              const DataCell(Text('')),
-              const DataCell(Text('TOTAL',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-              DataCell(
-                Text(
-                  totalWt.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
-              DataCell(Text(
-                totalRate.toStringAsFixed(2),
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              )),
-              DataCell(
-                Text(
-                  totalAmount.toStringAsFixed(2),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
-              const DataCell(Text('')),
-              const DataCell(Text('')),
-            ],
-          ),
-        ),
     );
   }
 
