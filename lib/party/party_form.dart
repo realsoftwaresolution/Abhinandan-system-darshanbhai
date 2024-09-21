@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/party/party_datagrid.dart';
@@ -33,6 +34,10 @@ class PartyFormState extends State<PartyForm> {
       Future.delayed(const Duration(milliseconds: 100), () {
         _partyFocusNode.requestFocus(); // Move focus to the first input field
       });
+
+      if (_formKey.currentState != null) {
+        _formKey.currentState!.validate();
+      }
     });
   }
 
@@ -2980,6 +2985,10 @@ class PartyFormState extends State<PartyForm> {
                                         _codeController.clear();
                                         _clearFormFields();
                                       });
+                                    } else {
+                                      infoDialog(
+                                          messageText:
+                                              'Please Fill Required Field');
                                     }
                                   }
                                 : null,
@@ -3341,6 +3350,10 @@ class PartyFormState extends State<PartyForm> {
                                             _codeController.clear();
                                             _clearFormFields();
                                           });
+                                        } else {
+                                          infoDialog(
+                                              messageText:
+                                                  'Please Fill Required Field');
                                         }
                                       }
                                     : null,
