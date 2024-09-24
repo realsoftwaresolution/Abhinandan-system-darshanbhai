@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
@@ -41,12 +41,7 @@ class SaleDataGridSource extends DataGridSource {
     }).toList();
   }
 
-  String getPartyName(int? partyCode) {
-    final party = defaultController.partyMstList.firstWhere(
-        (p) => p.partyCode == partyCode,
-        orElse: () => PartyMstModel(partyName: 'Unknown'));
-    return party.partyName ?? 'Unknown';
-  }
+
 
   String formatDateWithTime(String date) {
     // Parse the date string into a DateTime object

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
-import 'package:real_web_rough_entry_system/party/party_model.dart';
-import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoIssueDetailsDataGridSource extends DataGridSource {
@@ -19,7 +18,7 @@ class MemoIssueDetailsDataGridSource extends DataGridSource {
       return DataGridRow(cells: [
         DataGridCell<String>(
             columnName: 'Rough Type',
-            value: getRoughName(purchase.roughTypeCode)),
+            value: getRoughName(purchase.roughTypeCode.toString())),
         DataGridCell<double>(columnName: 'Wt', value: purchase.carats),
         DataGridCell<int>(
             columnName: 'Issue ID', value: purchase.memoIssueMstID),
@@ -27,20 +26,6 @@ class MemoIssueDetailsDataGridSource extends DataGridSource {
             columnName: 'Detail ID', value: purchase.memoIssueDetID),
       ]);
     }).toList();
-  }
-
-  String getPartyName(int? partyCode) {
-    final party = defaultController.partyMstList.firstWhere(
-        (p) => p.partyCode == partyCode,
-        orElse: () => PartyMstModel(partyName: 'Unknown'));
-    return party.partyName ?? 'Unknown';
-  }
-
-  String getRoughName(int? typeCode) {
-    final party = defaultController.roughModel.firstWhere(
-        (p) => p.roughTypeCode == typeCode!,
-        orElse: () => RoughModel(roughTypeName: 'Unknown'));
-    return party.roughTypeName ?? 'Unknown';
   }
 
   @override

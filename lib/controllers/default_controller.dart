@@ -125,7 +125,9 @@ class DefaultController extends GetxController {
 
         // Printing the grouped data for debugging
         // groupedData.forEach((key, value) {
-        //   print('RoughTypeCode: $key, Total Weight: $value');
+        //   if (kDebugMode) {
+        //     print('RoughTypeCode: $key, Total Weight: $value');
+        //   }
         // });
 
         // You can now use the groupedData map for further processing
@@ -224,6 +226,34 @@ class DefaultController extends GetxController {
     }
   }
 
+  // Future<void> getSaleDetailsData() async {
+  //   try {
+  //     final dio = Dio(BaseOptions(headers: {
+  //       'content-type': 'application/json',
+  //     }));
+  //
+  //     final response = await dio.get(
+  //       'http://50.62.183.116:301/rough-entry/sale-details',
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       // Assuming the response.data is a List of JSON objects
+  //       final List<dynamic> data = response.data;
+  //
+  //       // Mapping each JSON object to a PartyMstModel
+  //       saleDetailsList.value =
+  //           data.map((json) => SaleDetailsModel.fromJson(json)).toList();
+  //     } else {
+  //       errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+  //     }
+  //   } catch (error) {
+  //     errorDialog(messageText: 'An unexpected error occurred.');
+  //     if (kDebugMode) {
+  //       log('$error');
+  //     }
+  //   }
+  // }
+
   Future<void> getSaleDetailsData() async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -235,14 +265,32 @@ class DefaultController extends GetxController {
       );
 
       if (response.statusCode == 200) {
-        // Assuming the response.data is a List of JSON objects
         final List<dynamic> data = response.data;
 
-        // Mapping each JSON object to a PartyMstModel
+        // Mapping each JSON object to a SaleDetailsModel
         saleDetailsList.value =
             data.map((json) => SaleDetailsModel.fromJson(json)).toList();
+
+        // Subtracting the wt from groupedData for each roughTypeCode
+        for (var saleDetail in saleDetailsList) {
+          final roughTypeCode = saleDetail.roughTypeCode;
+          final saleWt = saleDetail.carats ?? 0;
+
+          if (groupedData.containsKey(roughTypeCode)) {
+            // Subtract the sale wt from the groupedData wt
+            groupedData[roughTypeCode] = groupedData[roughTypeCode]! - saleWt;
+          }
+        }
+
+        // Printing the updated groupedData for debugging
+        groupedData.forEach((key, value) {
+          if (kDebugMode) {
+            print('RoughTypeCode: $key, Total Weight after Sale: $value');
+          }
+        });
       } else {
-        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to load sale data: ${response.statusCode}');
       }
     } catch (error) {
       errorDialog(messageText: 'An unexpected error occurred.');
@@ -1021,8 +1069,10 @@ class DefaultController extends GetxController {
           var value = entry.value;
           // current entry data
           return _addMemoRecRoughData(
+            memoIssueDetId: value['detId'],
               wt: value['wt'],
               recWt: value['recWt'],
+              lossWt: value['lossWt'],
               rate: value['rate'],
               amount: value['amount'],
               roughName: value['rough'],
@@ -1034,8 +1084,8 @@ class DefaultController extends GetxController {
         await Future.wait(entries.asMap().entries.map((entry) {
           var value = entry.value;
           return _updateMemoIssueRoughData(
-              id: value['detId'],
-              rec: 'Y',
+            id: value['detId'],
+            rec: 'Y',
           );
         }));
         await getMemoRecData();
@@ -1747,9 +1797,11 @@ class DefaultController extends GetxController {
   }
 
   Future<void> _addMemoRecRoughData(
-      {roughName,
+      {memoIssueDetId,
+      roughName,
       wt,
       recWt,
+      lossWt,
       rate,
       amount,
       description,
@@ -1762,11 +1814,13 @@ class DefaultController extends GetxController {
 
       var params = {
         "MemoRecMstID": memoRecMstID,
+        "MemoIssueDetID": memoIssueDetId,
         "SrNo": srNo,
         // "ClarityCode": 1,
         // "CharniCode": 1,
         // "Pcs": 1,
         "RecCarats": recWt,
+        "LossCarats": lossWt,
         "Carats": wt,
         "RateRs": rate,
         "AmountRs": amount,
@@ -1894,7 +1948,7 @@ class DefaultController extends GetxController {
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
-          print('Updated! $id');
+          print('Updated! $id $rec');
         }
       } else {
         errorDialog(
@@ -2113,7 +2167,7 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> deleteMemoRecRoughData({required id}) async {
+  Future<void> deleteMemoRecRoughData({required id, detId}) async {
     try {
       isDeleteLoading.value = true;
 
@@ -2125,10 +2179,12 @@ class DefaultController extends GetxController {
           .delete('http://50.62.183.116:301/rough-entry/memo-rec-details/$id');
 
       if (response.statusCode == 200) {
+        _updateMemoIssueRoughData(id: detId , rec: 'N');
         if (kDebugMode) {
           print('Deleted!');
         }
         await getMemoRecDetailsData();
+        await getMemoIssueDetailsData();
         isDeleteLoading.value = false;
       } else {
         isDeleteLoading.value = false;
@@ -2341,13 +2397,14 @@ class DefaultController extends GetxController {
           // Ensure we create a list of Future<void> for Future.wait to process
           await Future.wait(
             entries.map((value) {
-              return deleteMemoRecRoughData(id: value['id']);
+              return deleteMemoRecRoughData(id: value['id'], detId: value['detId']);
             }).toList(),
           );
         }
 
         // After processing deletion, refresh data and stop loading
         await getMemoRecDetailsData();
+        await getMemoIssueDetailsData();
         await getMemoRecData();
         isDeleteLoading.value = false;
 
@@ -2371,6 +2428,7 @@ class DefaultController extends GetxController {
     await getPartyData();
     await getPurchaseData();
     await getPartyTypeData();
+    await getPurchaseDetailsData();
     await getSaleDetailsData();
     await getMemoIssueData();
     await getMemoIssueDetailsData();
@@ -2378,7 +2436,6 @@ class DefaultController extends GetxController {
     await getMemoRecDetailsData();
     await getSaleData();
     await getRoughData();
-    await getPurchaseDetailsData();
     super.onInit();
   }
 }

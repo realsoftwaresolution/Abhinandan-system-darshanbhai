@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
+import 'package:real_web_rough_entry_system/party/party_model.dart';
+import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 
-Future infoDialog ({required String messageText}){
+final DefaultController defaultController = Get.find<DefaultController>();
+
+Future infoDialog({required String messageText}) {
   return Get.defaultDialog(
     title: 'Alert',
     content: KeyboardListener(
       focusNode: FocusNode(),
       autofocus: true, // Automatically listens for keyboard events
       onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.enter) {
           Get.back(); // Close dialog on Enter key press
         }
       },
       child: Text(messageText),
     ),
-    barrierDismissible: false, // Prevent closing by tapping outside
+    barrierDismissible: false,
+    // Prevent closing by tapping outside
     onConfirm: () {
       Get.back(); // Close the dialog on button press
     },
@@ -30,13 +38,15 @@ Future successDialog({required String messageText}) {
       focusNode: FocusNode(),
       autofocus: true, // Automatically listens for keyboard events
       onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.enter) {
           Get.back(); // Close dialog on Enter key press
         }
       },
       child: Text(messageText),
     ),
-    barrierDismissible: false, // Prevent closing by tapping outside
+    barrierDismissible: false,
+    // Prevent closing by tapping outside
     onConfirm: () {
       Get.back(); // Close the dialog on button press
     },
@@ -44,21 +54,22 @@ Future successDialog({required String messageText}) {
   );
 }
 
-
-Future errorDialog ({required String messageText}){
+Future errorDialog({required String messageText}) {
   return Get.defaultDialog(
     title: 'Error',
     content: KeyboardListener(
       focusNode: FocusNode(),
       autofocus: true, // Automatically listens for keyboard events
       onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.enter) {
           Get.back(); // Close dialog on Enter key press
         }
       },
       child: Text(messageText),
     ),
-    barrierDismissible: false, // Prevent closing by tapping outside
+    barrierDismissible: false,
+    // Prevent closing by tapping outside
     onConfirm: () {
       Get.back(); // Close the dialog on button press
     },
@@ -68,12 +79,12 @@ Future errorDialog ({required String messageText}){
 
 Widget buildTextField(String label, TextEditingController? controller,
     {List<TextInputFormatter>? inputFormatterList,
-      VoidCallback? onTap,
-      bool? readOnly,
-      bool? isEnabled,
-      ValueChanged<String>? onChanged,
-      VoidCallback? onEditingComplete,
-      FocusNode? focusNode}) {
+    VoidCallback? onTap,
+    bool? readOnly,
+    bool? isEnabled,
+    ValueChanged<String>? onChanged,
+    VoidCallback? onEditingComplete,
+    FocusNode? focusNode}) {
   return Row(
     crossAxisAlignment: CrossAxisAlignment.center,
     children: [
@@ -169,10 +180,10 @@ Widget buildTextField(String label, TextEditingController? controller,
 
 Widget buildTextField2(String label, TextEditingController? controller,
     {List<TextInputFormatter>? inputFormatterList,
-      VoidCallback? onTap,
-      bool? isEnabled,
-      ValueChanged<String>? onChanged,
-      FocusNode? focusNode}) {
+    VoidCallback? onTap,
+    bool? isEnabled,
+    ValueChanged<String>? onChanged,
+    FocusNode? focusNode}) {
   return TextFormField(
     onTap: onTap,
     controller: controller,
@@ -244,4 +255,43 @@ Widget buildTextField2(String label, TextEditingController? controller,
       return null;
     },
   );
+}
+
+String getRoughName(String? typeCode) {
+  final party = defaultController.roughModel.firstWhere(
+      (p) => p.roughTypeCode == int.parse(typeCode!),
+      orElse: () => RoughModel(roughTypeName: 'Unknown'));
+  return party.roughTypeName ?? 'Unknown';
+}
+
+String getPartyName(int? partyCode) {
+  final party = defaultController.partyMstList.firstWhere(
+          (p) => p.partyCode == partyCode,
+      orElse: () => PartyMstModel(partyName: 'Unknown'));
+  return party.partyName ?? 'Unknown';
+}
+
+String formatDate(String date) {
+  // Parse the date string into a DateTime object
+  DateTime parsedDate = DateTime.parse(date);
+
+  // Format the DateTime object into the desired format
+  String formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
+
+  return formattedDate;
+}
+
+String formatDateWithTime(String date) {
+  // Parse the date string into a DateTime object
+  DateTime parsedDate = DateTime.parse(date);
+
+  // Format the DateTime object into the desired format
+  String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
+
+  return formattedDate;
+}
+
+DateTime dateFormat(String date) {
+  DateTime parsedDate = DateTime.parse(date);
+  return parsedDate;
 }

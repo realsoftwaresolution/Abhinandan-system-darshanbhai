@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
-import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoReceiveDataGridSource extends DataGridSource {
@@ -39,13 +39,6 @@ class MemoReceiveDataGridSource extends DataGridSource {
         // DataGridCell<double>(columnName: 'Final Net Amt Rs', value: purchase.finalNetAmtRs),
       ]);
     }).toList();
-  }
-
-  String getPartyName(int? partyCode) {
-    final party = defaultController.partyMstList.firstWhere(
-        (p) => p.partyCode == partyCode,
-        orElse: () => PartyMstModel(partyName: 'Unknown'));
-    return party.partyName ?? 'Unknown';
   }
 
   String formatDateWithTime(String date) {

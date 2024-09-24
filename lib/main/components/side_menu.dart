@@ -3,89 +3,70 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 
+// Model for Drawer Items
+class DrawerItem {
+  final String title;
+  final String svgSrc;
+  final int index;
+
+  DrawerItem({
+    required this.title,
+    required this.svgSrc,
+    required this.index,
+  });
+}
+
 class SideMenu extends StatelessWidget {
   final MenuAppController menuController = Get.find<MenuAppController>();
 
   SideMenu({super.key});
 
+  // List of Menu Items
+  final List<DrawerItem> drawerItems = [
+    DrawerItem(title: "Dashboard", svgSrc: "assets/icons/menu_dashboard.svg", index: 0),
+    DrawerItem(title: "Purchase", svgSrc: "assets/icons/menu_tran.svg", index: 1),
+    DrawerItem(title: "Party", svgSrc: "assets/icons/menu_task.svg", index: 2),
+    DrawerItem(title: "Sale", svgSrc: "assets/icons/menu_doc.svg", index: 3),
+    DrawerItem(title: "Memo Iss", svgSrc: "assets/icons/menu_store.svg", index: 4),
+    DrawerItem(title: "Memo Rec", svgSrc: "assets/icons/menu_notification.svg", index: 5),
+    DrawerItem(title: "Expense", svgSrc: "assets/icons/menu_profile.svg", index: 6),
+    DrawerItem(title: "Settings", svgSrc: "assets/icons/menu_setting.svg", index: 7),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
       elevation: 0,
-      child: ListView(
+      child: Column(
         children: [
-          DrawerHeader(
-            padding: const EdgeInsets.all(30),
-            margin: const EdgeInsets.all(30),
-            child: SvgPicture.asset(
+          // Small Drawer Header
+          SizedBox(
+            height: 100, // Adjusted height for a smaller header
+            child: DrawerHeader(
+              padding: const EdgeInsets.symmetric(horizontal: 10), // Reduced padding
+              margin: EdgeInsets.zero, // No margin to save space
+              child: SvgPicture.asset(
                 "assets/images/logo.svg",
-                height: 20,
-                // color: Colors.black54,
+                height: 50, // Reduced logo size to fit smaller header
               ),
+            ),
           ),
-          DrawerListTile(
-            title: "Dashboard",
-            svgSrc: "assets/icons/menu_dashboard.svg",
-            press: () {
-              menuController.setSelectedIndex(0);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Purchase",
-            svgSrc: "assets/icons/menu_tran.svg",
-            press: () {
-              menuController.setSelectedIndex(1);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Party",
-            svgSrc: "assets/icons/menu_task.svg",
-            press: () {
-              menuController.setSelectedIndex(2);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Sale",
-            svgSrc: "assets/icons/menu_doc.svg",
-            press: () {
-              menuController.setSelectedIndex(3);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Memo Iss",
-            svgSrc: "assets/icons/menu_store.svg",
-            press: () {
-              menuController.setSelectedIndex(4);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Memo Rec",
-            svgSrc: "assets/icons/menu_notification.svg",
-            press: () {
-              menuController.setSelectedIndex(5);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Expense",
-            svgSrc: "assets/icons/menu_profile.svg",
-            press: () {
-              menuController.setSelectedIndex(6);
-              Get.back();
-            },
-          ),
-          DrawerListTile(
-            title: "Settings",
-            svgSrc: "assets/icons/menu_setting.svg",
-            press: () {
-              menuController.setSelectedIndex(7);
-              Get.back();
-            },
+          // Dynamic List of Menu Items
+          Expanded(
+            child: ListView.builder(
+              itemCount: drawerItems.length,
+              itemBuilder: (context, index) {
+                final item = drawerItems[index];
+                return DrawerListTile(
+                  title: item.title,
+                  svgSrc: item.svgSrc,
+                  press: () {
+                    menuController.setSelectedIndex(item.index);
+                    Get.back();
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -93,10 +74,10 @@ class SideMenu extends StatelessWidget {
   }
 }
 
+// Reusable DrawerListTile Widget
 class DrawerListTile extends StatelessWidget {
   const DrawerListTile({
     super.key,
-    // For selecting those three line once press "Command+D"
     required this.title,
     required this.svgSrc,
     required this.press,

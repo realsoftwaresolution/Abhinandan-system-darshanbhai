@@ -11,7 +11,6 @@ import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_datagrid.dar
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
 import 'package:real_web_rough_entry_system/responsive.dart';
-import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoIssFormScreen extends StatefulWidget {
@@ -1835,37 +1834,6 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     );
   }
 
-  String formatDate(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  String formatDateWithTime(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  DateTime dateFormat(String date) {
-    DateTime parsedDate = DateTime.parse(date);
-    return parsedDate;
-  }
-
-  String getRoughName(String? typeCode) {
-    final party = defaultController.roughModel.firstWhere(
-        (p) => p.roughTypeCode == int.parse(typeCode!),
-        orElse: () => RoughModel(roughTypeName: 'Unknown'));
-    return party.roughTypeName ?? 'Unknown';
-  }
 
   List<DropdownMenuItem<String>> get dropdownItems {
     return defaultController.roughModel.map((partyType) {

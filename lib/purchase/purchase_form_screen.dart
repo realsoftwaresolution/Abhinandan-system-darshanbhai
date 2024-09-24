@@ -11,7 +11,6 @@ import 'package:real_web_rough_entry_system/purchase/purchase_datagrid.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
 import 'package:real_web_rough_entry_system/responsive.dart';
 import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
-import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class PurchaseFormScreen extends StatefulWidget {
@@ -1919,38 +1918,6 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         ),
       ],
     );
-  }
-
-  String formatDate(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  String formatDateWithTime(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  DateTime dateFormat(String date) {
-    DateTime parsedDate = DateTime.parse(date);
-    return parsedDate;
-  }
-
-  String getRoughName(String? partyCode) {
-    final party = defaultController.roughModel.firstWhere(
-        (p) => p.roughTypeCode == int.parse(partyCode!),
-        orElse: () => RoughModel(roughTypeName: 'Unknown'));
-    return party.roughTypeName ?? 'Unknown';
   }
 
   List<DropdownMenuItem<String>> get dropdownItems {
