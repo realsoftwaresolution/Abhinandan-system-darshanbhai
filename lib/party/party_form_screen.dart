@@ -13,14 +13,15 @@ import 'package:real_web_rough_entry_system/responsive.dart';
 // import 'components/storage_details.dart';
 
 class PartyFormScreen extends StatelessWidget {
-  const PartyFormScreen({super.key});
+  final bool showHeader;
+  const PartyFormScreen({super.key, required this.showHeader});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
-          const Header(title: 'Party'),
+          showHeader ? const Header(title: 'Party') : const SizedBox.shrink(),
           // const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

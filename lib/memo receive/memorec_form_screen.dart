@@ -1,13 +1,16 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_datagrid.dart';
+import 'package:real_web_rough_entry_system/memo%20receive/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_receive_datagrid.dart';
@@ -16,7 +19,9 @@ import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoRecFormScreen extends StatefulWidget {
-  const MemoRecFormScreen({super.key});
+  final bool showHeader;
+
+  const MemoRecFormScreen({super.key, required this.showHeader});
 
   @override
   MemoRecFormScreenState createState() => MemoRecFormScreenState();
@@ -59,7 +64,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   Map<int, List<MemoIssueDetailsModel>> groupedRoughDetails = {};
   RxList selectedBroker = <int>[].obs;
   final RxString _selectedType = ''.obs;
-  final RxString _selectedTypeBroker = ''.obs;
+  final RxString _selectedTypeBroker = '22'.obs;
   final RxString _selectedTypeParty = ''.obs;
   final RxInt selectedMemoRecMstID = 0.obs;
   final RxString selectedMemoIssueDetID = ''.obs;
@@ -99,7 +104,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-  final MenuAppController menuController = Get.find<MenuAppController>();
 
   RxList<MemoRecModel> memoRecDataGridSource = <MemoRecModel>[].obs;
   RxList<MemoRecModel> filteredDataGridSource = <MemoRecModel>[].obs;
@@ -415,13 +419,17 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Header(title: 'Memo Receive Search'),
+                widget.showHeader
+                    ? const Header(title: 'Memo Receive Search')
+                    : const SizedBox.shrink(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 16.0),
                   child: Row(
                     children: [
                       Expanded(
                         child: buildTextField(
+                          excludeFieldValidation: false,
                           'From Date',
                           fromDateController,
                           readOnly: true,
@@ -448,6 +456,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: buildTextField(
+                          excludeFieldValidation: false,
                           'To Date',
                           toDateController,
                           readOnly: true,
@@ -749,6 +758,35 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                           //   ),
                           // ),
                         ],
+                        tableSummaryRows: [
+                          GridTableSummaryRow(
+                              title:
+                              'Total ${memoRecDataGridSource.length}',
+                              showSummaryInRow:
+                              false,
+                              titleColumnSpan: 1,
+                              columns: <GridSummaryColumn>[
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Wt',
+                                    columnName:
+                                    'Tot Wt',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Amt Rs',
+                                    columnName:
+                                    'Tot Amt Rs',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                              ],
+                              position:
+                              GridTableSummaryRowPosition
+                                  .bottom)
+                        ],
                         rowHeight: 25,
                         headerRowHeight: 35,
                         gridLinesVisibility: GridLinesVisibility.both,
@@ -803,8 +841,12 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                             _selectedTypeBroker.value =
                                 partyEntry.brokerCode.toString();
                             // _selectedTypeParty.value = partyEntry.partyCode;
+
                             setState(() {
                               for (var roughEntry in roughEntries) {
+                                if (kDebugMode) {
+                                  print(roughEntry.lossCarats);
+                                }
                                 recEntries.add({
                                   'id': roughEntry.memoRecDetID.toString(),
                                   'detId': roughEntry.memoIssueDetID.toString(),
@@ -847,7 +889,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Header(title: 'Memo Receive'),
+                widget.showHeader
+                    ? const Header(title: 'Memo Receive')
+                    : const SizedBox.shrink(),
                 Row(
                   children: [
                     Expanded(
@@ -901,7 +945,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         // invNoController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                       } else {
                                         infoDialog(
                                             messageText:
@@ -923,7 +967,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                 dueDate: dueDate,
                                                 entries: recEntries,
                                                 totalAmt: totalRecAmount,
-                                                totalWt: totalRecWt,
+                                                totalWt: totalWt,
+                                                totalRecWt: totalRecWt,
+                                                totalRecAmount: totalRecAmount,
+                                                totalLossWt: totalLossWt,
                                                 totalRate: totalRecRate)
                                             .then((onValue) {
                                           setState(() {
@@ -940,7 +987,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         // invNoController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                       } else {
                                         infoDialog(
                                             messageText:
@@ -969,9 +1016,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         // invNoController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                         setState(() {
                                           _isFromEdit = false;
+                                          _isEnabled = false;
                                           recEntries.clear();
                                         });
                                       });
@@ -995,7 +1043,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                     rateController.clear();
                                     _selectedTypeParty.value = '';
                                     _selectedType.value = '';
-                                    _selectedTypeBroker.value = '';
+                                    _selectedTypeBroker.value = '22';
                                     recWtController.clear();
                                     setState(() {
                                       entries.clear();
@@ -1006,7 +1054,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                   }
                                   if (event.logicalKey ==
                                       LogicalKeyboardKey.keyE) {
-                                    menuController.selectedIndex.value = 0;
+                                    // menuController.selectedIndex.value = 0;
+                                    tabController.removeTab(
+                                        tabController.currentIndex.value);
                                   }
                                   if (HardwareKeyboard
                                           .instance.isShiftPressed &&
@@ -1123,7 +1173,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                         ),
                                                         items:
                                                             dropdownItemsParty,
-                                                        onChanged: _isFromEdit
+                                                        onChanged: _isFromEdit || recEntries.isNotEmpty
                                                             ? null
                                                             : _isEnabled
                                                                 ? (value) {
@@ -1510,6 +1560,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                             .ignored;
                                                       },
                                                 child: buildTextField(
+                                                  excludeFieldValidation: false,
                                                   'DATE',
                                                   dateController,
                                                   isEnabled: _isFromEdit
@@ -1881,7 +1932,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -1907,7 +1958,11 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                       dueDate: dueDate,
                                                       entries: recEntries,
                                                       totalAmt: totalRecAmount,
-                                                      totalWt: totalRecWt,
+                                                      totalWt: totalWt,
+                                                      totalRecWt: totalRecWt,
+                                                      totalRecAmount:
+                                                          totalRecAmount,
+                                                      totalLossWt: totalLossWt,
                                                       totalRate: totalRecRate)
                                                   .then((onValue) {
                                                 setState(() {
@@ -1924,7 +1979,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                               // invNoController.clear();
                                               _selectedTypeParty.value = '';
                                               _selectedType.value = '';
-                                              _selectedTypeBroker.value = '';
+                                              _selectedTypeBroker.value = '22';
                                             } else {
                                               infoDialog(
                                                   messageText:
@@ -1968,9 +2023,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
+                                            _isEnabled = false;
                                             recEntries.clear();
                                           });
                                         });
@@ -2012,7 +2068,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         rateController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                         recWtController.clear();
                                         setState(() {
                                           entries.clear();
@@ -2041,7 +2097,8 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  menuController.selectedIndex.value = 0;
+                                  tabController.removeTab(
+                                      tabController.currentIndex.value);
                                 },
                                 child: const Text.rich(
                                   TextSpan(
@@ -2077,6 +2134,60 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                       ),
                                       TextSpan(
                                         text: 'earch', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: _isFromEdit
+                                    ? () async {
+                                        final invoiceGenerator =
+                                            MemoRecInvoiceGenerator();
+                                        final pdfData = await invoiceGenerator
+                                            .generateInvoice(
+                                                id: selectedMemoRecMstID.value,
+                                                invoiceDate: selectedDate!,
+                                                // invoiceNo: invNoController.text,
+                                                partyCode:
+                                                    _selectedTypeParty.value,
+                                                // brokerCode:
+                                                // _selectedTypeBroker.value,
+                                                // dueDate: dueDateController.text,
+                                                // dueDays: dueDaysController.text,
+                                                entries: recEntries,
+                                                totalWt: totalWt,
+                                                totalLossWt: totalLossWt,
+                                                totalRecWt: totalRecWt,
+                                                totalAmt: totalAmount,
+                                                totalRecAmt: totalRecAmount,
+                                                totalRate: totalRate);
+                                        await Printing.layoutPdf(
+                                          onLayout:
+                                              (PdfPageFormat format) async =>
+                                                  pdfData,
+                                        );
+                                        if (!kDebugMode) {
+                                          await Printing.sharePdf(
+                                            bytes: pdfData,
+                                            filename:
+                                                'Memo-Receive/${getPartyName(int.parse(_selectedTypeParty.value))}/${DateTime.now()}.pdf', // Set the custom name here
+                                          );
+                                        }
+                                      }
+                                    : null,
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'P', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'rint', // Normal "dd"
                                       ),
                                     ],
                                   ),
@@ -2330,9 +2441,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                     });
                             } else {
                               MemoIssueDetailsModel removedEntry =
-                              selectedRoughDetails.firstWhere((w) =>
-                              w.memoIssueDetID.toString() ==
-                                  recEntries[index]['detId']);
+                                  selectedRoughDetails.firstWhere((w) =>
+                                      w.memoIssueDetID.toString() ==
+                                      recEntries[index]['detId']);
                               defaultController.memoIssueDetailsList
                                   .add(removedEntry);
                               setState(() {
@@ -2445,7 +2556,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsParty {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 1)
+        .where((partyType) =>
+            partyType.typeCode == 2 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),
@@ -2457,7 +2570,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   List<DropdownMenuItem<String>> get dropdownItemsBroker {
     if (groupedRoughDetails.isNotEmpty) {}
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 5)
+        .where((partyType) =>
+            partyType.typeCode == 5 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),

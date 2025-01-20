@@ -1,20 +1,25 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
 import 'package:real_web_rough_entry_system/responsive.dart';
+import 'package:real_web_rough_entry_system/sale/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/sale/sale_datagrid.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class SaleFormScreen extends StatefulWidget {
-  const SaleFormScreen({super.key});
+  final bool showHeader;
+
+  const SaleFormScreen({super.key, required this.showHeader});
 
   @override
   SaleFormScreenState createState() => SaleFormScreenState();
@@ -51,7 +56,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
   List<Map<String, String>> entries = [];
   final RxString _selectedType = ''.obs;
-  final RxString _selectedTypeBroker = ''.obs;
+  final RxString _selectedTypeBroker = '22'.obs;
   final RxString _selectedTypeParty = ''.obs;
   final RxInt selectedPolishSaleMstID = 0.obs;
   final RxString selectedRoughId = ''.obs;
@@ -79,7 +84,6 @@ class SaleFormScreenState extends State<SaleFormScreen> {
   final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-  final MenuAppController menuController = Get.find<MenuAppController>();
 
   RxList<PolishSaleModel> saleDataGridSource = <PolishSaleModel>[].obs;
   RxList<PolishSaleModel> filteredDataGridSource = <PolishSaleModel>[].obs;
@@ -193,7 +197,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
         selectedDate = pickedDate;
         dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
         Future.delayed(const Duration(milliseconds: 100), () {
-          _brokerFocus.requestFocus(); // Move focus to the first input field
+          _dueDaysFocus.requestFocus(); // Move focus to the first input field
         });
       });
       // _updateDueDate();
@@ -341,13 +345,17 @@ class SaleFormScreenState extends State<SaleFormScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Header(title: 'Sale Search'),
+                widget.showHeader
+                    ? const Header(title: 'Sale Search')
+                    : const SizedBox.shrink(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 16.0),
                   child: Row(
                     children: [
                       Expanded(
                         child: buildTextField(
+                          excludeFieldValidation: false,
                           'From Date',
                           fromDateController,
                           readOnly: true,
@@ -374,6 +382,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: buildTextField(
+                          excludeFieldValidation: false,
                           'To Date',
                           toDateController,
                           readOnly: true,
@@ -674,6 +683,35 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                           //   ),
                           // ),
                         ],
+                        tableSummaryRows: [
+                          GridTableSummaryRow(
+                              title:
+                              'Total ${saleDataGridSource.length}',
+                              showSummaryInRow:
+                              false,
+                              titleColumnSpan: 1,
+                              columns: <GridSummaryColumn>[
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Wt',
+                                    columnName:
+                                    'Tot Wt',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Amt Rs',
+                                    columnName:
+                                    'Tot Amt Rs',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                              ],
+                              position:
+                              GridTableSummaryRowPosition
+                                  .bottom)
+                        ],
                         rowHeight: 25,
                         headerRowHeight: 35,
                         gridLinesVisibility: GridLinesVisibility.both,
@@ -770,7 +808,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Header(title: 'Sale'),
+                widget.showHeader
+                    ? const Header(title: 'Sale')
+                    : const SizedBox.shrink(),
                 Row(
                   children: [
                     Expanded(
@@ -808,6 +848,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                       _selectedTypeBroker.value,
                                                   dueDays:
                                                       dueDaysController.text,
+                                                  onlyDueDate: dueDateController.text,
                                                   dueDate: dueDate,
                                                   entries: entries,
                                                   totalAmt: totalAmount,
@@ -828,7 +869,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -848,6 +889,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                   dueDays:
                                                       dueDaysController.text,
                                                   dueDate: dueDate,
+                                                  onlyDueDate:
+                                                      dueDateController.text,
                                                   entries: entries,
                                                   totalAmt: totalAmount,
                                                   totalWt: totalWt,
@@ -866,7 +909,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -879,7 +922,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_dueDaysFocus.hasFocus &&
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
-                                        LogicalKeyboardKey.keyA &&
+                                            LogicalKeyboardKey.keyA &&
                                         !_isEnabled) {
                                       _enableFields();
                                     }
@@ -888,7 +931,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_dueDaysFocus.hasFocus &&
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
-                                        LogicalKeyboardKey.keyD &&
+                                            LogicalKeyboardKey.keyD &&
                                         _isEnabled &&
                                         _isFromEdit) {
                                       if (_isFromEdit) {
@@ -905,7 +948,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
                                             entries.length = 0;
@@ -922,7 +965,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_dueDaysFocus.hasFocus &&
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
-                                        LogicalKeyboardKey.keyC &&
+                                            LogicalKeyboardKey.keyC &&
                                         _isEnabled) {
                                       dateController.clear();
                                       dueDateController.clear();
@@ -931,7 +974,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       dateController.clear();
                                       _selectedTypeParty.value = '';
                                       _selectedType.value = '';
-                                      _selectedTypeBroker.value = '';
+                                      _selectedTypeBroker.value = '22';
                                       setState(() {
                                         entries.length = 0;
                                         _isFromEdit = false;
@@ -944,7 +987,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
                                         LogicalKeyboardKey.keyE) {
-                                      menuController.selectedIndex.value = 0;
+                                      tabController.removeTab(
+                                          tabController.currentIndex.value);
                                     }
                                   }
                                   if (!_descFocus.hasFocus &&
@@ -1084,7 +1128,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                                         milliseconds:
                                                                             100),
                                                                     () {
-                                                                  _invoiceFocus
+                                                                  _dateFocus
                                                                       .requestFocus(); // Move focus to the first input field
                                                                 }); // Handle null case
                                                               }
@@ -1094,7 +1138,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                   ),
                                                 ],
                                               ),
-                                              buildTextField('INVOICE NO.',
+                                              buildTextField(
+                                                  'INVOICE NO.',
+                                                  excludeFieldValidation: true,
                                                   invNoController,
                                                   focusNode: _invoiceFocus,
                                                   onEditingComplete: () {
@@ -1104,7 +1150,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                   _dateFocus
                                                       .requestFocus(); // Move focus to the first input field
                                                 });
-                                              }, isEnabled: _isEnabled),
+                                              }, isEnabled: false),
                                               Focus(
                                                 onKeyEvent: (node, event) {
                                                   if (HardwareKeyboard.instance
@@ -1118,6 +1164,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                   return KeyEventResult.ignored;
                                                 },
                                                 child: buildTextField(
+                                                  excludeFieldValidation: false,
                                                   'DATE',
                                                   dateController,
                                                   focusNode: _dateFocus,
@@ -1225,7 +1272,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                         ),
                                                         items:
                                                             dropdownItemsBroker,
-                                                        onChanged: _isEnabled
+                                                        onChanged: /*_isEnabled
                                                             ? (value) {
                                                                 _selectedTypeBroker
                                                                         .value =
@@ -1239,14 +1286,17 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                                       .requestFocus(); // Move focus to the first input field
                                                                 }); // Handle null case
                                                               }
-                                                            : null,
+                                                            :*/
+                                                            null,
                                                       );
                                                     }),
                                                   ),
                                                 ],
                                               ),
                                               buildTextField(
-                                                  'DUE DAYS', dueDaysController,
+                                                  excludeFieldValidation: false,
+                                                  'DUE DAYS',
+                                                  dueDaysController,
                                                   focusNode: _dueDaysFocus,
                                                   inputFormatterList: [
                                                     FilteringTextInputFormatter
@@ -1266,6 +1316,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                     });
                                                   }),
                                               buildTextField(
+                                                excludeFieldValidation: false,
                                                 'DUE DATE',
                                                 dueDateController,
                                                 isEnabled:
@@ -1548,6 +1599,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                                   dueDays:
                                                       dueDaysController.text,
                                                   dueDate: dueDate,
+                                              onlyDueDate: dueDateController.text,
+
                                                   entries: entries,
                                                   totalAmt: totalAmount,
                                                   totalWt: totalWt,
@@ -1567,52 +1620,59 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
                                                   'Please Add Rough Data');
                                         }
                                       }
-                                    : _isEnabled ?  () async {
-                                        if (entries.isNotEmpty) {
-                                          defaultController
-                                              .addSaleData(
-                                                  partyCode:
-                                                      _selectedTypeParty.value,
-                                                  invoiceNo:
-                                                      invNoController.text,
-                                                  invoiceDate: selectedDate,
-                                                  brokerCode:
-                                                      _selectedTypeBroker.value,
-                                                  dueDays:
-                                                      dueDaysController.text,
-                                                  dueDate: dueDate,
-                                                  entries: entries,
-                                                  totalAmt: totalAmount,
-                                                  totalWt: totalWt,
-                                                  totalRate: totalRate)
-                                              .then((onValue) {
-                                            setState(() {
-                                              entries.clear();
-                                              _isEnabled = false;
-                                            });
-                                          });
+                                    : _isEnabled
+                                        ? () async {
+                                            if (entries.isNotEmpty) {
+                                              defaultController
+                                                  .addSaleData(
+                                                      partyCode:
+                                                          _selectedTypeParty
+                                                              .value,
+                                                      invoiceNo:
+                                                          invNoController.text,
+                                                      invoiceDate: selectedDate,
+                                                      brokerCode:
+                                                          _selectedTypeBroker
+                                                              .value,
+                                                      dueDays: dueDaysController
+                                                          .text,
+                                                      dueDate: dueDate,
+                                                      onlyDueDate:
+                                                          dueDateController
+                                                              .text,
+                                                      entries: entries,
+                                                      totalAmt: totalAmount,
+                                                      totalWt: totalWt,
+                                                      totalRate: totalRate)
+                                                  .then((onValue) {
+                                                setState(() {
+                                                  entries.clear();
+                                                  _isEnabled = false;
+                                                });
+                                              });
 
-                                          dateController.clear();
-                                          dueDateController.clear();
-                                          dueDaysController.clear();
-                                          dateController.clear();
-                                          invNoController.clear();
-                                          _selectedTypeParty.value = '';
-                                          _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
-                                        } else {
-                                          infoDialog(
-                                              messageText:
-                                                  'Please Add Rough Data');
-                                        }
-                                      } : null,
+                                              dateController.clear();
+                                              dueDateController.clear();
+                                              dueDaysController.clear();
+                                              dateController.clear();
+                                              invNoController.clear();
+                                              _selectedTypeParty.value = '';
+                                              _selectedType.value = '';
+                                              _selectedTypeBroker.value = '22';
+                                            } else {
+                                              infoDialog(
+                                                  messageText:
+                                                      'Please Add Rough Data');
+                                            }
+                                          }
+                                        : null,
                                 child: Obx(
                                   () => defaultController.isLoading.value
                                       ? const CupertinoActivityIndicator()
@@ -1636,12 +1696,14 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
-                                onPressed: _isFromEdit ?  () {
-                                   defaultController
-                                          .deleteSaleData(
-                                              id: selectedPolishSaleMstID.value,
-                                              entries: entries)
-                                          .then((onValue) {
+                                onPressed: _isFromEdit
+                                    ? () {
+                                        defaultController
+                                            .deleteSaleData(
+                                                id: selectedPolishSaleMstID
+                                                    .value,
+                                                entries: entries)
+                                            .then((onValue) {
                                           dateController.clear();
                                           dueDateController.clear();
                                           dueDaysController.clear();
@@ -1649,13 +1711,14 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
                                             entries.length = 0;
                                           });
                                         });
-                                } : null,
+                                      }
+                                    : null,
                                 child: Obx(
                                   () => defaultController.isDeleteLoading.value
                                       ? const CupertinoActivityIndicator()
@@ -1679,21 +1742,23 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
-                                onPressed: _isEnabled ?  () {
-                                  dateController.clear();
-                                  dueDateController.clear();
-                                  invNoController.clear();
-                                  dueDaysController.clear();
-                                  dateController.clear();
-                                  _selectedTypeParty.value = '';
-                                  _selectedType.value = '';
-                                  _selectedTypeBroker.value = '';
-                                  setState(() {
-                                    entries.length = 0;
-                                    _isFromEdit = false;
-                                    _isEnabled = false;
-                                  });
-                                } : null,
+                                onPressed: _isEnabled
+                                    ? () {
+                                        dateController.clear();
+                                        dueDateController.clear();
+                                        invNoController.clear();
+                                        dueDaysController.clear();
+                                        dateController.clear();
+                                        _selectedTypeParty.value = '';
+                                        _selectedType.value = '';
+                                        _selectedTypeBroker.value = '22';
+                                        setState(() {
+                                          entries.length = 0;
+                                          _isFromEdit = false;
+                                          _isEnabled = false;
+                                        });
+                                      }
+                                    : null,
                                 child: const Text.rich(
                                   TextSpan(
                                     children: [
@@ -1713,7 +1778,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  menuController.selectedIndex.value = 0;
+                                  // menuController.selectedIndex.value = 0;
+                                  tabController.removeTab(
+                                      tabController.currentIndex.value);
                                 },
                                 child: const Text.rich(
                                   TextSpan(
@@ -1749,6 +1816,60 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                                       ),
                                       TextSpan(
                                         text: 'earch', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: _isFromEdit
+                                    ? () async {
+                                  final invoiceGenerator =
+                                  SaleInvoiceGenerator();
+                                  final pdfData = await invoiceGenerator
+                                      .generateInvoice(
+                                      id: defaultController
+                                          .polishSaleList
+                                          .length +
+                                          1,
+                                      invoiceDate: selectedDate!,
+                                      invoiceNo: invNoController.text,
+                                      partyCode:
+                                      _selectedTypeParty.value,
+                                      brokerCode:
+                                      _selectedTypeBroker.value,
+                                      dueDate: dueDateController.text,
+                                      dueDays: dueDaysController.text,
+                                      entries: entries,
+                                      totalWt: totalWt,
+                                      totalAmt: totalAmount,
+                                      totalRate: totalRate);
+                                  await Printing.layoutPdf(
+                                    onLayout:
+                                        (PdfPageFormat format) async =>
+                                    pdfData,
+                                  );
+                                  if (!kDebugMode) {
+                                    await Printing.sharePdf(
+                                      bytes: pdfData,
+                                      filename:
+                                      '${invNoController.text}.pdf', // Set the custom name here
+                                    );
+                                  }
+                                }
+                                    : null,
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'P', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'rint', // Normal "dd"
                                       ),
                                     ],
                                   ),
@@ -2053,7 +2174,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsParty {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 1)
+        .where((partyType) =>
+            partyType.typeCode == 2 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),
@@ -2064,7 +2187,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsBroker {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 5)
+        .where((partyType) =>
+            partyType.typeCode == 5 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),

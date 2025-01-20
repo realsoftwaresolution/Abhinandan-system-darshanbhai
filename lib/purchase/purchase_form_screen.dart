@@ -1,20 +1,23 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
+import 'package:real_web_rough_entry_system/purchase/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_datagrid.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
-import 'package:real_web_rough_entry_system/responsive.dart';
 import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class PurchaseFormScreen extends StatefulWidget {
-  const PurchaseFormScreen({super.key});
+  final bool showHeader;
+  const PurchaseFormScreen({super.key, required this.showHeader});
 
   @override
   PurchaseFormScreenState createState() => PurchaseFormScreenState();
@@ -22,7 +25,8 @@ class PurchaseFormScreen extends StatefulWidget {
 
 class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   final TextEditingController partyController = TextEditingController();
-  final TextEditingController invNoController = TextEditingController();
+  final TextEditingController invNoController =
+      TextEditingController(text: ' ');
   final TextEditingController dateController = TextEditingController();
   final TextEditingController purIdController = TextEditingController();
   final TextEditingController dueDaysController = TextEditingController();
@@ -47,7 +51,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   final DataGridController _dataGridController = DataGridController();
   List<Map<String, String>> entries = [];
   final RxString _selectedType = ''.obs;
-  final RxString _selectedTypeBroker = ''.obs;
+  final RxString _selectedTypeBroker = '22'.obs;
   final RxString _selectedTypeParty = ''.obs;
   final RxInt selectedRoughPurMstID = 0.obs;
   final RxString selectedRoughId = ''.obs;
@@ -68,6 +72,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   bool _isFromEdit = false;
   final RxBool _isFiltered = false.obs;
   final _formKey = GlobalKey<FormState>();
+  final RxString selectedTypeAccountParty = ''.obs;
+  final RxString selectedTypeBookParty = ''.obs;
 
   DateTime? fromDate;
   DateTime? toDate;
@@ -75,7 +81,6 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-  final MenuAppController menuController = Get.find<MenuAppController>();
 
   RxList<PurchaseDetailsModel> purchaseDataGridSource =
       <PurchaseDetailsModel>[].obs;
@@ -99,6 +104,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   void initState() {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
+    // invNoController.text = defaultController.purchaseDataList.last.invoiceNo ?? '0';
     purchaseDataGridSource.value = defaultController.purchaseDataList;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _formKeyBoardFocus.requestFocus();
@@ -143,6 +149,26 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     _dataGridController.scrollToRow(index);
   }
 
+  // void onSelectBookParty() {
+  //   if (selectedTypeBookParty.isNotEmpty) {
+  //     defaultController.bookPartyCreditDebitDataGridSource.value = defaultController
+  //         .creditDebitDataList
+  //         .where((e) => e.partyCode == int.parse(selectedTypeBookParty.value))
+  //         .toList();
+  //     print('BOOK PARTY${defaultController.bookPartyCreditDebitDataGridSource.length}');
+  //   }
+  // }
+  //
+  // void onSelectAccountParty() {
+  //   if (selectedTypeAccountParty.isNotEmpty) {
+  //     defaultController.accountPartyCreditDebitDataGridSource.value = defaultController
+  //         .creditDebitDataList
+  //         .where(
+  //             (e) => e.partyCode == int.parse(selectedTypeAccountParty.value))
+  //         .toList();
+  //     print('ACCOUNT PARTY${defaultController.accountPartyCreditDebitDataGridSource.length}');
+  //   }
+  // }
   void _applyDateFilter() {
     if (fromDate != null && toDate != null) {
       _isFiltered.value = true;
@@ -191,7 +217,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         selectedDate = pickedDate;
         dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
         Future.delayed(const Duration(milliseconds: 100), () {
-          _brokerFocus.requestFocus(); // Move focus to the first input field
+          _dueDaysFocus.requestFocus(); // Move focus to the first input field
         });
       });
       // _updateDueDate();
@@ -204,8 +230,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         if (selectedRoughId.value.isNotEmpty) 'id': selectedRoughId.value,
         'rough': _selectedType.value,
         'description': descripController.text,
-        'wt': wtController.text,
-        'rate': rateController.text,
+        'wt': double.parse(wtController.text).toStringAsFixed(2),
+        'rate': double.parse(rateController.text).toStringAsFixed(2),
         'amount': (double.parse(wtController.text) *
                 double.parse(rateController.text))
             .toStringAsFixed(2),
@@ -342,14 +368,15 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Header(title: 'Purchase Search'),
+                widget.showHeader ? const Header(title: 'Purchase Search') : const SizedBox.shrink(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                   child: Row(
                     children: [
                       Expanded(
                         child: buildTextField(
                           'From Date',
+                          excludeFieldValidation: false,
                           fromDateController,
                           readOnly: true,
                           onTap: () async {
@@ -376,6 +403,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                       Expanded(
                         child: buildTextField(
                           'To Date',
+                          excludeFieldValidation: false,
                           toDateController,
                           readOnly: true,
                           onTap: () async {
@@ -561,6 +589,35 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                             ),
                           ),
                         ],
+                        tableSummaryRows: [
+                          GridTableSummaryRow(
+                              title:
+                              'Total ${purchaseDataGridSource.length}',
+                              showSummaryInRow:
+                              false,
+                              titleColumnSpan: 1,
+                              columns: <GridSummaryColumn>[
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Wt',
+                                    columnName:
+                                    'Tot Wt',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Amt Rs',
+                                    columnName:
+                                    'Tot Amt Rs',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                              ],
+                              position:
+                              GridTableSummaryRowPosition
+                                  .bottom)
+                        ],
                         rowHeight: 25,
                         headerRowHeight: 35,
                         gridLinesVisibility: GridLinesVisibility.both,
@@ -624,8 +681,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                 partyEntry.dueDay.toString();
                             _selectedTypeParty.value =
                                 partyEntry.partyCode.toString();
-                            _selectedTypeBroker.value =
-                                partyEntry.brokerCode.toString();
+                            _selectedTypeBroker.value = _selectedTypeBroker
+                                .value = partyEntry.brokerCode.toString();
                             // _selectedTypeParty.value = partyEntry.partyCode;
                             setState(() {
                               for (var roughEntry in roughEntries) {
@@ -634,8 +691,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                   'rough': roughEntry.roughTypeCode.toString(),
                                   'description':
                                       roughEntry.description.toString(),
-                                  'wt': roughEntry.wt.toString(),
-                                  'rate': roughEntry.rateRs.toString(),
+                                  'wt': roughEntry.wt!.toStringAsFixed(2),
+                                  'rate': roughEntry.rateRs!.toStringAsFixed(2),
                                   'amount':
                                       (double.parse(roughEntry.wt.toString()) *
                                               double.parse(
@@ -667,7 +724,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Header(title: 'Purchase'),
+                widget.showHeader ? const Header(title: 'Purchase') : const SizedBox.shrink(),
                 Row(
                   children: [
                     Expanded(
@@ -706,6 +763,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                   dueDays:
                                                       dueDaysController.text,
                                                   dueDate: dueDate,
+                                                  onlyDueDate:
+                                                      dueDateController.text,
                                                   entries: entries,
                                                   totalAmt: totalAmount,
                                                   totalWt: totalWt,
@@ -725,7 +784,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -745,6 +804,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                   dueDays:
                                                       dueDaysController.text,
                                                   dueDate: dueDate,
+                                                  onlyDueDate:
+                                                      dueDateController.text,
                                                   entries: entries,
                                                   totalRate: totalRate,
                                                   totalAmt: totalAmount,
@@ -760,9 +821,10 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                           dueDateController.clear();
                                           dueDaysController.clear();
                                           dateController.clear();
+                                          invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -800,7 +862,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
                                             entries.length = 0;
@@ -826,7 +888,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                       dateController.clear();
                                       _selectedTypeParty.value = '';
                                       _selectedType.value = '';
-                                      _selectedTypeBroker.value = '';
+                                      _selectedTypeBroker.value = '22';
                                       setState(() {
                                         entries.length = 0;
                                         _isFromEdit = false;
@@ -839,7 +901,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                       !_invoiceFocus.hasFocus) {
                                     if (event.logicalKey ==
                                         LogicalKeyboardKey.keyE) {
-                                      menuController.selectedIndex.value = 0;
+                                      // menuController.selectedIndex.value = 0;
+                                      tabController.removeTab(tabController.currentIndex.value);
                                     }
                                   }
                                   if (!_descFocus.hasFocus &&
@@ -979,7 +1042,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                                         milliseconds:
                                                                             100),
                                                                     () {
-                                                                  _invoiceFocus
+                                                                  _dateFocus
                                                                       .requestFocus(); // Move focus to the first input field
                                                                 }); // Handle null case
                                                               }
@@ -989,9 +1052,11 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                   ),
                                                 ],
                                               ),
-                                              buildTextField('INVOICE NO.',
+                                              buildTextField(
+                                                  'INVOICE NO.',
+                                                  excludeFieldValidation: true,
                                                   invNoController,
-                                                  isEnabled: _isEnabled,
+                                                  isEnabled: false,
                                                   focusNode: _invoiceFocus,
                                                   onEditingComplete: () {
                                                 Future.delayed(
@@ -1014,6 +1079,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                   return KeyEventResult.ignored;
                                                 },
                                                 child: buildTextField(
+                                                  excludeFieldValidation: false,
                                                   'DATE',
                                                   dateController,
                                                   isEnabled: _isEnabled,
@@ -1049,10 +1115,13 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                         style: const TextStyle(
                                                             fontSize: 12),
                                                         value: _selectedTypeBroker
-                                                                .value.isEmpty
+                                                                .value
+                                                                .toString()
+                                                                .isEmpty
                                                             ? null
                                                             : _selectedTypeBroker
-                                                                .value,
+                                                                .value
+                                                                .toString(),
                                                         decoration:
                                                             const InputDecoration(
                                                           errorStyle: TextStyle(
@@ -1121,7 +1190,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                         ),
                                                         items:
                                                             dropdownItemsBroker,
-                                                        onChanged: _isEnabled
+                                                        onChanged: /*_isEnabled
                                                             ? (value) {
                                                                 _selectedTypeBroker
                                                                         .value =
@@ -1135,14 +1204,17 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                                       .requestFocus(); // Move focus to the first input field
                                                                 }); // Handle null case
                                                               }
-                                                            : null,
+                                                            :*/
+                                                            null,
                                                       );
                                                     }),
                                                   ),
                                                 ],
                                               ),
                                               buildTextField(
-                                                  'DUE DAYS', dueDaysController,
+                                                  excludeFieldValidation: false,
+                                                  'DUE DAYS',
+                                                  dueDaysController,
                                                   focusNode: _dueDaysFocus,
                                                   inputFormatterList: [
                                                     FilteringTextInputFormatter
@@ -1158,6 +1230,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                 _updateDueDate();
                                               }, isEnabled: _isEnabled),
                                               buildTextField(
+                                                excludeFieldValidation: false,
+
                                                 'DUE DATE',
                                                 dueDateController,
                                                 isEnabled:
@@ -1419,6 +1493,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                   dueDays:
                                                       dueDaysController.text,
                                                   dueDate: dueDate,
+                                                  onlyDueDate:
+                                                      dueDateController.text,
                                                   entries: entries,
                                                   totalAmt: totalAmount,
                                                   totalWt: totalWt,
@@ -1429,16 +1505,15 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                               _isEnabled = false;
                                               _isFromEdit = false;
                                             });
+                                            dateController.clear();
+                                            dueDateController.clear();
+                                            dueDaysController.clear();
+                                            dateController.clear();
+                                            invNoController.clear();
+                                            _selectedTypeParty.value = '';
+                                            _selectedType.value = '';
+                                            _selectedTypeBroker.value = '22';
                                           });
-
-                                          dateController.clear();
-                                          dueDateController.clear();
-                                          dueDaysController.clear();
-                                          dateController.clear();
-                                          invNoController.clear();
-                                          _selectedTypeParty.value = '';
-                                          _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -1447,7 +1522,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                       }
                                     : _isEnabled
                                         ? () async {
-                                            if (entries.isNotEmpty) {
+                                            if (entries.isNotEmpty &&
+                                                _selectedTypeParty.isNotEmpty) {
                                               defaultController
                                                   .addPurchaseData(
                                                       partyCode:
@@ -1462,6 +1538,9 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                                       dueDays: dueDaysController
                                                           .text,
                                                       dueDate: dueDate,
+                                                      onlyDueDate:
+                                                          dueDateController
+                                                              .text,
                                                       entries: entries,
                                                       totalRate: totalRate,
                                                       totalAmt: totalAmount,
@@ -1477,13 +1556,21 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                               dueDateController.clear();
                                               dueDaysController.clear();
                                               dateController.clear();
+                                              invNoController.clear();
                                               _selectedTypeParty.value = '';
                                               _selectedType.value = '';
-                                              _selectedTypeBroker.value = '';
+                                              _selectedTypeBroker.value = '22';
                                             } else {
-                                              infoDialog(
-                                                  messageText:
-                                                      'Please Add Rough Data');
+                                              if (_selectedTypeParty
+                                                  .isNotEmpty) {
+                                                infoDialog(
+                                                    messageText:
+                                                        'Please Add Rough Data');
+                                              } else {
+                                                infoDialog(
+                                                    messageText:
+                                                        'Please Select Party');
+                                              }
                                             }
                                           }
                                         : null,
@@ -1524,7 +1611,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                           invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
                                             entries.length = 0;
@@ -1564,7 +1651,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                         dateController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                         setState(() {
                                           entries.length = 0;
                                           _isFromEdit = false;
@@ -1591,7 +1678,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  menuController.selectedIndex.value = 0;
+                                  // menuController.selectedIndex.value = 0;
+                                  tabController.removeTab(tabController.currentIndex.value);
                                 },
                                 child: const Text.rich(
                                   TextSpan(
@@ -1632,21 +1720,65 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: _isFromEdit
+                                    ? () async {
+                                        final invoiceGenerator =
+                                            PurchaseInvoiceGenerator();
+                                        final pdfData = await invoiceGenerator
+                                            .generateInvoice(
+                                                id: defaultController
+                                                        .purchaseDataList
+                                                        .length +
+                                                    1,
+                                                invoiceDate: selectedDate!,
+                                                invoiceNo: invNoController.text,
+                                                partyCode:
+                                                    _selectedTypeParty.value,
+                                                brokerCode:
+                                                    _selectedTypeBroker.value,
+                                                dueDate: dueDateController.text,
+                                                dueDays: dueDaysController.text,
+                                                entries: entries,
+                                                totalWt: totalWt,
+                                                totalAmt: totalAmount,
+                                                totalRate: totalRate);
+                                        await Printing.layoutPdf(
+                                          onLayout:
+                                              (PdfPageFormat format) async =>
+                                                  pdfData,
+                                        );
+                                        if (!kDebugMode) {
+                                          await Printing.sharePdf(
+                                            bytes: pdfData,
+                                            filename:
+                                                '${invNoController.text}.pdf', // Set the custom name here
+                                          );
+                                        }
+                                      }
+                                    : null,
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'P', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'rint', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           )
                         ],
                       ),
                     ),
-                    if (!Responsive.isMobile(context))
-                      const SizedBox(width: 16),
-                    // On Mobile means if the screen is less than 850 we don't want to show it
-                    // if (!Responsive.isMobile(context))
-                    //   const Expanded(
-                    //       flex: 2,
-                    //       // child: StorageDetails(),
-                    //       child: Column(
-                    //         children: [],
-                    //       )),
                   ],
                 ),
               ],
@@ -1931,18 +2063,22 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsParty {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 1)
+        .where((partyType) =>
+            partyType.typeCode == 1 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),
         child: Text(partyType.partyName!),
       );
-    }).toList();
+    }).toList().toSet().toList();
   }
 
   List<DropdownMenuItem<String>> get dropdownItemsBroker {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 5)
+        .where((partyType) =>
+            partyType.typeCode == 5 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),
