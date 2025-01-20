@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
-import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoReceiveDataGridSource extends DataGridSource {
@@ -11,13 +11,17 @@ class MemoReceiveDataGridSource extends DataGridSource {
   final DefaultController defaultController = Get.find<DefaultController>();
 
   MemoReceiveDataGridSource(RxList<MemoRecModel> memoRecList) {
-    _dataGridRows = memoRecList.map<DataGridRow>((purchase) {
+    _dataGridRows = memoRecList
+        .where((e) => e.companyCode == defaultController.companyCode.value)
+        .toList()
+        .map<DataGridRow>((purchase) {
       return DataGridRow(cells: [
         DataGridCell<int>(columnName: 'ID', value: purchase.memoRecMstID),
         // DataGridCell<String>(
         //     columnName: 'Invoice No', value: purchase.invoiceNo),
         DataGridCell<String>(
-            columnName: 'Date', value: formatDateWithTime(purchase.invoiceDate!) ),
+            columnName: 'Date',
+            value: formatDateWithTime(purchase.invoiceDate!)),
         // DataGridCell<String>(
         //     columnName: 'Rec Date', value: purchase.recdate),
         DataGridCell<String>(
@@ -41,21 +45,40 @@ class MemoReceiveDataGridSource extends DataGridSource {
     }).toList();
   }
 
-  String getPartyName(int? partyCode) {
-    final party = defaultController.partyMstList.firstWhere(
-        (p) => p.partyCode == partyCode,
-        orElse: () => PartyMstModel(partyName: 'Unknown'));
-    return party.partyName ?? 'Unknown';
-  }
-
   String formatDateWithTime(String date) {
     // Parse the date string into a DateTime object
     DateTime parsedDate = DateTime.parse(date);
 
     // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('dd-MM-yyyy hh:mm:ss a').format(parsedDate);
+    String formattedDate =
+        DateFormat('dd-MM-yyyy hh:mm:ss a').format(parsedDate);
 
     return formattedDate;
+  }
+  @override
+  Widget? buildTableSummaryCellWidget(
+      GridTableSummaryRow summaryRow,
+      GridSummaryColumn? summaryColumn,
+      RowColumnIndex rowColumnIndex,
+      String summaryValue) {
+    // Check if it's the first column to show "Total" label
+    bool isFirstColumn = rowColumnIndex.columnIndex == 0;
+
+    return Container(
+      alignment: /*isFirstColumn ? Alignment.centerLeft : */
+      Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 5.0),
+      child: Text(
+        /*isFirstColumn ? 'Total' :*/
+        summaryValue,
+        // isFirstColumn ? summaryValue : double.parse(summaryValue).toStringAsFixed(2), // 'Total' in the first column
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   @override
@@ -74,8 +97,10 @@ class MemoReceiveDataGridSource extends DataGridSource {
         return Container(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 5.0),
-          child: Text(dataGridCell.value.toString(),
-            style: const TextStyle(fontSize: 12),),
+          child: Text(
+            dataGridCell.value.toString(),
+            style: const TextStyle(fontSize: 12),
+          ),
         );
       }).toList(),
     );

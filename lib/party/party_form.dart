@@ -2,8 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/party/party_datagrid.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/responsive.dart';
@@ -26,13 +26,21 @@ class PartyFormState extends State<PartyForm> {
   void _enableFields() {
     setState(() {
       _isEnabled = true;
-
-      _codeController.text =
-          (defaultController.partyMstList.last.partyCode! + 1).toString();
+      if (defaultController.partyMstList.isEmpty) {
+        _codeController.text = '1';
+      } else {
+        _codeController.text =
+            (defaultController.partyMstList.reversed.last.partyCode! + 1)
+                .toString();
+      }
 
       Future.delayed(const Duration(milliseconds: 100), () {
         _partyFocusNode.requestFocus(); // Move focus to the first input field
       });
+
+      if (_formKey.currentState != null) {
+        _formKey.currentState!.validate();
+      }
     });
   }
 
@@ -133,7 +141,6 @@ class PartyFormState extends State<PartyForm> {
   final TextEditingController _debitControllerDollor = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-  final MenuAppController menuController = Get.find<MenuAppController>();
 
   RxString _selectedType = ''.obs;
   final RxInt selectedPartyMstID = 0.obs;
@@ -218,6 +225,7 @@ class PartyFormState extends State<PartyForm> {
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
           children: [
             Row(
               children: [
@@ -801,308 +809,308 @@ class PartyFormState extends State<PartyForm> {
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    // Align vertically centered
-                    children: [
-                      const Text(
-                        'Mobile No.',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12, // Font size for the label
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Space between the label and TextFormField
-                      Expanded(
-                        child: TextFormField(
-                          controller: _mobileNoController,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          enabled: _isEnabled,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(10),
-                          ],
-                          decoration: const InputDecoration(
-                            errorStyle: TextStyle(
-                              height: 0, // Hides the error message
-                              fontSize:
-                                  0, // Ensures no space is taken by the error message
-                            ),
-                            focusedErrorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border when focused with an error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            errorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border for errors
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.blue,
-                                // Black border when focused without error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.grey,
-                                // Light grey border when enabled
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            // filled: true,
-                            // Fill the background
-                            // fillColor: Colors.white,
-                            // White background
-                            isDense: true,
-                            // Reduces the overall height of the TextField
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal:
-                                    8), // Remove top padding, minimal horizontal padding
-                          ),
-                          cursorColor: Colors.black,
-                          // Black cursor color
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12, // Consistent font size with label
-                          ),
-                          onChanged: (value) {
-                            // Triggers validation on every input change
-                            if (_formKey.currentState != null) {
-                              _formKey.currentState!.validate();
-                            }
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return ''; // Validation still occurs, but no message is shown
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    // Align vertically centered
-                    children: [
-                      const Text(
-                        'Email',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12, // Font size for the label
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Space between the label and TextFormField
-                      Expanded(
-                        child: TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          enabled: _isEnabled,
-                          decoration: const InputDecoration(
-                            errorStyle: TextStyle(
-                              height: 0, // Hides the error message
-                              fontSize:
-                                  0, // Ensures no space is taken by the error message
-                            ),
-                            focusedErrorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border when focused with an error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            errorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border for errors
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.blue,
-                                // Black border when focused without error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.grey,
-                                // Light grey border when enabled
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            // filled: true,
-                            // Fill the background
-                            // fillColor: Colors.white,
-                            // White background
-                            isDense: true,
-                            // Reduces the overall height of the TextField
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal:
-                                    8), // Remove top padding, minimal horizontal padding
-                          ),
-                          cursorColor: Colors.black,
-                          // Black cursor color
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12, // Consistent font size with label
-                          ),
-                          onChanged: (value) {
-                            // Triggers validation on every input change
-                            if (_formKey.currentState != null) {
-                              _formKey.currentState!.validate();
-                            }
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return '';
-                              // return 'Please enter an email';
-                            }
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
-                                .hasMatch(value)) {
-                              return '';
-                              // return 'Please enter a valid email';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    // Align vertically centered
-                    children: [
-                      const Text(
-                        'Website',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12, // Font size for the label
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Space between the label and TextFormField
-                      Expanded(
-                        child: TextFormField(
-                          controller: _websiteController,
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          enabled: _isEnabled,
-                          decoration: const InputDecoration(
-                            errorStyle: TextStyle(
-                              height: 0, // Hides the error message
-                              fontSize:
-                                  0, // Ensures no space is taken by the error message
-                            ),
-                            focusedErrorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border when focused with an error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            errorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border for errors
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.blue,
-                                // Black border when focused without error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.grey,
-                                // Light grey border when enabled
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            // filled: true,
-                            // Fill the background
-                            // fillColor: Colors.white,
-                            // White background
-                            isDense: true,
-                            // Reduces the overall height of the TextField
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal:
-                                    8), // Remove top padding, minimal horizontal padding
-                          ),
-                          cursorColor: Colors.black,
-                          // Black cursor color
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12, // Consistent font size with label
-                          ),
-                          // validator: (value) {
-                          //   if (value == null || value.isEmpty) {
-                          //     return ''; // Validation still occurs, but no message is shown
-                          //   }
-                          //   return null;
-                          // },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       child: Row(
+            //         crossAxisAlignment: CrossAxisAlignment.center,
+            //         // Align vertically centered
+            //         children: [
+            //           const Text(
+            //             'Mobile No.',
+            //             style: TextStyle(
+            //               color: Colors.black,
+            //               fontWeight: FontWeight.w900,
+            //               fontSize: 12, // Font size for the label
+            //             ),
+            //           ),
+            //           const SizedBox(width: 8),
+            //           // Space between the label and TextFormField
+            //           Expanded(
+            //             child: TextFormField(
+            //               controller: _mobileNoController,
+            //               keyboardType: TextInputType.phone,
+            //               textInputAction: TextInputAction.next,
+            //               enabled: _isEnabled,
+            //               inputFormatters: [
+            //                 FilteringTextInputFormatter.digitsOnly,
+            //                 LengthLimitingTextInputFormatter(10),
+            //               ],
+            //               decoration: const InputDecoration(
+            //                 errorStyle: TextStyle(
+            //                   height: 0, // Hides the error message
+            //                   fontSize:
+            //                       0, // Ensures no space is taken by the error message
+            //                 ),
+            //                 focusedErrorBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.red,
+            //                     // Red border when focused with an error
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 errorBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.red,
+            //                     // Red border for errors
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 focusedBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.blue,
+            //                     // Black border when focused without error
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 enabledBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.grey,
+            //                     // Light grey border when enabled
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 // filled: true,
+            //                 // Fill the background
+            //                 // fillColor: Colors.white,
+            //                 // White background
+            //                 isDense: true,
+            //                 // Reduces the overall height of the TextField
+            //                 contentPadding: EdgeInsets.symmetric(
+            //                     vertical: 8,
+            //                     horizontal:
+            //                         8), // Remove top padding, minimal horizontal padding
+            //               ),
+            //               cursorColor: Colors.black,
+            //               // Black cursor color
+            //               style: const TextStyle(
+            //                 color: Colors.black,
+            //                 fontSize: 12, // Consistent font size with label
+            //               ),
+            //               onChanged: (value) {
+            //                 // Triggers validation on every input change
+            //                 if (_formKey.currentState != null) {
+            //                   _formKey.currentState!.validate();
+            //                 }
+            //               },
+            //               validator: (value) {
+            //                 if (value == null || value.isEmpty) {
+            //                   return ''; // Validation still occurs, but no message is shown
+            //                 }
+            //                 return null;
+            //               },
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //     const SizedBox(width: 8),
+            //     Expanded(
+            //       child: Row(
+            //         crossAxisAlignment: CrossAxisAlignment.center,
+            //         // Align vertically centered
+            //         children: [
+            //           const Text(
+            //             'Email',
+            //             style: TextStyle(
+            //               color: Colors.black,
+            //               fontWeight: FontWeight.w900,
+            //               fontSize: 12, // Font size for the label
+            //             ),
+            //           ),
+            //           const SizedBox(width: 8),
+            //           // Space between the label and TextFormField
+            //           Expanded(
+            //             child: TextFormField(
+            //               controller: _emailController,
+            //               keyboardType: TextInputType.text,
+            //               textInputAction: TextInputAction.next,
+            //               enabled: _isEnabled,
+            //               decoration: const InputDecoration(
+            //                 errorStyle: TextStyle(
+            //                   height: 0, // Hides the error message
+            //                   fontSize:
+            //                       0, // Ensures no space is taken by the error message
+            //                 ),
+            //                 focusedErrorBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.red,
+            //                     // Red border when focused with an error
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 errorBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.red,
+            //                     // Red border for errors
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 focusedBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.blue,
+            //                     // Black border when focused without error
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 enabledBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.grey,
+            //                     // Light grey border when enabled
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 // filled: true,
+            //                 // Fill the background
+            //                 // fillColor: Colors.white,
+            //                 // White background
+            //                 isDense: true,
+            //                 // Reduces the overall height of the TextField
+            //                 contentPadding: EdgeInsets.symmetric(
+            //                     vertical: 8,
+            //                     horizontal:
+            //                         8), // Remove top padding, minimal horizontal padding
+            //               ),
+            //               cursorColor: Colors.black,
+            //               // Black cursor color
+            //               style: const TextStyle(
+            //                 color: Colors.black,
+            //                 fontSize: 12, // Consistent font size with label
+            //               ),
+            //               onChanged: (value) {
+            //                 // Triggers validation on every input change
+            //                 if (_formKey.currentState != null) {
+            //                   _formKey.currentState!.validate();
+            //                 }
+            //               },
+            //               validator: (value) {
+            //                 if (value == null || value.isEmpty) {
+            //                   return '';
+            //                   // return 'Please enter an email';
+            //                 }
+            //                 if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
+            //                     .hasMatch(value)) {
+            //                   return '';
+            //                   // return 'Please enter a valid email';
+            //                 }
+            //                 return null;
+            //               },
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //     const SizedBox(width: 8),
+            //     Expanded(
+            //       child: Row(
+            //         crossAxisAlignment: CrossAxisAlignment.center,
+            //         // Align vertically centered
+            //         children: [
+            //           const Text(
+            //             'Website',
+            //             style: TextStyle(
+            //               color: Colors.black,
+            //               fontWeight: FontWeight.w900,
+            //               fontSize: 12, // Font size for the label
+            //             ),
+            //           ),
+            //           const SizedBox(width: 8),
+            //           // Space between the label and TextFormField
+            //           Expanded(
+            //             child: TextFormField(
+            //               controller: _websiteController,
+            //               keyboardType: TextInputType.text,
+            //               textInputAction: TextInputAction.next,
+            //               enabled: _isEnabled,
+            //               decoration: const InputDecoration(
+            //                 errorStyle: TextStyle(
+            //                   height: 0, // Hides the error message
+            //                   fontSize:
+            //                       0, // Ensures no space is taken by the error message
+            //                 ),
+            //                 focusedErrorBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.red,
+            //                     // Red border when focused with an error
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 errorBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.red,
+            //                     // Red border for errors
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 focusedBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.blue,
+            //                     // Black border when focused without error
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 enabledBorder: UnderlineInputBorder(
+            //                   borderSide: BorderSide(
+            //                     color: Colors.grey,
+            //                     // Light grey border when enabled
+            //                     width: 1.0, // Thin border width
+            //                   ),
+            //                   borderRadius:
+            //                       BorderRadius.zero, // Squared corners
+            //                 ),
+            //                 // filled: true,
+            //                 // Fill the background
+            //                 // fillColor: Colors.white,
+            //                 // White background
+            //                 isDense: true,
+            //                 // Reduces the overall height of the TextField
+            //                 contentPadding: EdgeInsets.symmetric(
+            //                     vertical: 8,
+            //                     horizontal:
+            //                         8), // Remove top padding, minimal horizontal padding
+            //               ),
+            //               cursorColor: Colors.black,
+            //               // Black cursor color
+            //               style: const TextStyle(
+            //                 color: Colors.black,
+            //                 fontSize: 12, // Consistent font size with label
+            //               ),
+            //               // validator: (value) {
+            //               //   if (value == null || value.isEmpty) {
+            //               //     return ''; // Validation still occurs, but no message is shown
+            //               //   }
+            //               //   return null;
+            //               // },
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            // const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -2416,6 +2424,11 @@ class PartyFormState extends State<PartyForm> {
                             color: Colors.black,
                             fontSize: 12, // Consistent font size with label
                           ),
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              _debitController.clear();
+                            }
+                          },
                           // validator: (value) {
                           //   if (value == null || value.isEmpty) {
                           //     return ''; // Validation still occurs, but no message is shown
@@ -2514,195 +2527,200 @@ class PartyFormState extends State<PartyForm> {
                           //   }
                           //   return null;
                           // },
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              _creditController.clear();
+                            }
+                          },
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    // Align vertically centered
-                    children: [
-                      const Text(
-                        'Credit \$',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12, // Font size for the label
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Space between the label and TextFormField
-                      Expanded(
-                        child: TextFormField(
-                          controller: _creditControllerDollor,
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          enabled: _isEnabled,
-                          decoration: const InputDecoration(
-                            errorStyle: TextStyle(
-                              height: 0, // Hides the error message
-                              fontSize:
-                                  0, // Ensures no space is taken by the error message
-                            ),
-                            focusedErrorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border when focused with an error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            errorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border for errors
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.blue,
-                                // Black border when focused without error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.grey,
-                                // Light grey border when enabled
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            // filled: true,
-                            // Fill the background
-                            // fillColor: Colors.white,
-                            // White background
-                            isDense: true,
-                            // Reduces the overall height of the TextField
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal:
-                                    8), // Remove top padding, minimal horizontal padding
-                          ),
-                          cursorColor: Colors.black,
-                          // Black cursor color
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12, // Consistent font size with label
-                          ),
-                          // validator: (value) {
-                          //   if (value == null || value.isEmpty) {
-                          //     return ''; // Validation still occurs, but no message is shown
-                          //   }
-                          //   return null;
-                          // },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    // Align vertically centered
-                    children: [
-                      const Text(
-                        'Debit \$',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12, // Font size for the label
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Space between the label and TextFormField
-                      Expanded(
-                        child: TextFormField(
-                          controller: _debitControllerDollor,
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          enabled: _isEnabled,
-                          decoration: const InputDecoration(
-                            errorStyle: TextStyle(
-                              height: 0, // Hides the error message
-                              fontSize:
-                                  0, // Ensures no space is taken by the error message
-                            ),
-                            focusedErrorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border when focused with an error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            errorBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                // Red border for errors
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.blue,
-                                // Black border when focused without error
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.grey,
-                                // Light grey border when enabled
-                                width: 1.0, // Thin border width
-                              ),
-                              borderRadius:
-                                  BorderRadius.zero, // Squared corners
-                            ),
-                            // filled: true,
-                            // Fill the background
-                            // fillColor: Colors.white,
-                            // White background
-                            isDense: true,
-                            // Reduces the overall height of the TextField
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal:
-                                    8), // Remove top padding, minimal horizontal padding
-                          ),
-                          cursorColor: Colors.black,
-                          // Black cursor color
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12, // Consistent font size with label
-                          ),
-                          // validator: (value) {
-                          //   if (value == null || value.isEmpty) {
-                          //     return ''; // Validation still occurs, but no message is shown
-                          //   }
-                          //   return null;
-                          // },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Expanded(
+                //   child: Row(
+                //     crossAxisAlignment: CrossAxisAlignment.center,
+                //     // Align vertically centered
+                //     children: [
+                //       const Text(
+                //         'Credit \$',
+                //         style: TextStyle(
+                //           color: Colors.black,
+                //           fontWeight: FontWeight.w900,
+                //           fontSize: 12, // Font size for the label
+                //         ),
+                //       ),
+                //       const SizedBox(width: 8),
+                //       // Space between the label and TextFormField
+                //       Expanded(
+                //         child: TextFormField(
+                //           controller: _creditControllerDollor,
+                //           keyboardType: TextInputType.text,
+                //           textInputAction: TextInputAction.next,
+                //           enabled: _isEnabled,
+                //           decoration: const InputDecoration(
+                //             errorStyle: TextStyle(
+                //               height: 0, // Hides the error message
+                //               fontSize:
+                //                   0, // Ensures no space is taken by the error message
+                //             ),
+                //             focusedErrorBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.red,
+                //                 // Red border when focused with an error
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             errorBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.red,
+                //                 // Red border for errors
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             focusedBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.blue,
+                //                 // Black border when focused without error
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             enabledBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.grey,
+                //                 // Light grey border when enabled
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             // filled: true,
+                //             // Fill the background
+                //             // fillColor: Colors.white,
+                //             // White background
+                //             isDense: true,
+                //             // Reduces the overall height of the TextField
+                //             contentPadding: EdgeInsets.symmetric(
+                //                 vertical: 8,
+                //                 horizontal:
+                //                     8), // Remove top padding, minimal horizontal padding
+                //           ),
+                //           cursorColor: Colors.black,
+                //           // Black cursor color
+                //           style: const TextStyle(
+                //             color: Colors.black,
+                //             fontSize: 12, // Consistent font size with label
+                //           ),
+                //           // validator: (value) {
+                //           //   if (value == null || value.isEmpty) {
+                //           //     return ''; // Validation still occurs, but no message is shown
+                //           //   }
+                //           //   return null;
+                //           // },
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
+                // const SizedBox(width: 8),
+                // Expanded(
+                //   child: Row(
+                //     crossAxisAlignment: CrossAxisAlignment.center,
+                //     // Align vertically centered
+                //     children: [
+                //       const Text(
+                //         'Debit \$',
+                //         style: TextStyle(
+                //           color: Colors.black,
+                //           fontWeight: FontWeight.w900,
+                //           fontSize: 12, // Font size for the label
+                //         ),
+                //       ),
+                //       const SizedBox(width: 8),
+                //       // Space between the label and TextFormField
+                //       Expanded(
+                //         child: TextFormField(
+                //           controller: _debitControllerDollor,
+                //           keyboardType: TextInputType.text,
+                //           textInputAction: TextInputAction.next,
+                //           enabled: _isEnabled,
+                //           decoration: const InputDecoration(
+                //             errorStyle: TextStyle(
+                //               height: 0, // Hides the error message
+                //               fontSize:
+                //                   0, // Ensures no space is taken by the error message
+                //             ),
+                //             focusedErrorBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.red,
+                //                 // Red border when focused with an error
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             errorBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.red,
+                //                 // Red border for errors
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             focusedBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.blue,
+                //                 // Black border when focused without error
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             enabledBorder: UnderlineInputBorder(
+                //               borderSide: BorderSide(
+                //                 color: Colors.grey,
+                //                 // Light grey border when enabled
+                //                 width: 1.0, // Thin border width
+                //               ),
+                //               borderRadius:
+                //                   BorderRadius.zero, // Squared corners
+                //             ),
+                //             // filled: true,
+                //             // Fill the background
+                //             // fillColor: Colors.white,
+                //             // White background
+                //             isDense: true,
+                //             // Reduces the overall height of the TextField
+                //             contentPadding: EdgeInsets.symmetric(
+                //                 vertical: 8,
+                //                 horizontal:
+                //                     8), // Remove top padding, minimal horizontal padding
+                //           ),
+                //           cursorColor: Colors.black,
+                //           // Black cursor color
+                //           style: const TextStyle(
+                //             color: Colors.black,
+                //             fontSize: 12, // Consistent font size with label
+                //           ),
+                //           // validator: (value) {
+                //           //   if (value == null || value.isEmpty) {
+                //           //     return ''; // Validation still occurs, but no message is shown
+                //           //   }
+                //           //   return null;
+                //           // },
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
                 const Text(
                   'Active',
                   style: TextStyle(
@@ -2835,7 +2853,7 @@ class PartyFormState extends State<PartyForm> {
                                         : double.tryParse(_igstController.text),
                                     creditOpBalRs:
                                         _creditController.text.isEmpty
-                                            ? null
+                                            ? 0.00
                                             : double.tryParse(
                                                 _creditController.text),
                                     creditOpBalDollor:
@@ -2844,7 +2862,7 @@ class PartyFormState extends State<PartyForm> {
                                             : double.tryParse(
                                                 _creditControllerDollor.text),
                                     debitOpBalRs: _debitController.text.isEmpty
-                                        ? null
+                                        ? 0.00
                                         : double.tryParse(
                                             _debitController.text),
                                     debitOpBalDollor:
@@ -2956,7 +2974,7 @@ class PartyFormState extends State<PartyForm> {
                                                 _igstController.text),
                                         creditOpBalRs:
                                             _creditController.text.isEmpty
-                                                ? null
+                                                ? 0.00
                                                 : double.tryParse(
                                                     _creditController.text),
                                         creditOpBalDollor:
@@ -2967,7 +2985,7 @@ class PartyFormState extends State<PartyForm> {
                                                         .text),
                                         debitOpBalRs:
                                             _debitController.text.isEmpty
-                                                ? null
+                                                ? 0.00
                                                 : double.tryParse(
                                                     _debitController.text),
                                         debitOpBalDollor: _debitControllerDollor
@@ -2980,6 +2998,10 @@ class PartyFormState extends State<PartyForm> {
                                         _codeController.clear();
                                         _clearFormFields();
                                       });
+                                    } else {
+                                      infoDialog(
+                                          messageText:
+                                              'Please Fill Required Field');
                                     }
                                   }
                                 : null,
@@ -3027,7 +3049,9 @@ class PartyFormState extends State<PartyForm> {
                       const SizedBox(width: 8),
                       OutlinedButton(
                         onPressed: () {
-                          menuController.selectedIndex.value = 0;
+                          // menuController.selectedIndex.value = 0;
+                          tabController
+                              .removeTab(tabController.currentIndex.value);
                         },
                         child: const Text("Exit"),
                       ),
@@ -3178,7 +3202,7 @@ class PartyFormState extends State<PartyForm> {
                                                 _igstController.text),
                                         creditOpBalRs:
                                             _creditController.text.isEmpty
-                                                ? null
+                                                ? 0.00
                                                 : double.tryParse(
                                                     _creditController.text),
                                         creditOpBalDollor:
@@ -3189,7 +3213,7 @@ class PartyFormState extends State<PartyForm> {
                                                         .text),
                                         debitOpBalRs:
                                             _debitController.text.isEmpty
-                                                ? null
+                                                ? 0.00
                                                 : double.tryParse(
                                                     _debitController.text),
                                         debitOpBalDollor: _debitControllerDollor
@@ -3314,7 +3338,7 @@ class PartyFormState extends State<PartyForm> {
                                                     _igstController.text),
                                             creditOpBalRs:
                                                 _creditController.text.isEmpty
-                                                    ? null
+                                                    ? 0.00
                                                     : double.tryParse(
                                                         _creditController.text),
                                             creditOpBalDollor:
@@ -3326,7 +3350,7 @@ class PartyFormState extends State<PartyForm> {
                                                             .text),
                                             debitOpBalRs:
                                                 _debitController.text.isEmpty
-                                                    ? null
+                                                    ? 0.00
                                                     : double.tryParse(
                                                         _debitController.text),
                                             debitOpBalDollor:
@@ -3341,6 +3365,10 @@ class PartyFormState extends State<PartyForm> {
                                             _codeController.clear();
                                             _clearFormFields();
                                           });
+                                        } else {
+                                          infoDialog(
+                                              messageText:
+                                                  'Please Fill Required Field');
                                         }
                                       }
                                     : null,
@@ -3391,7 +3419,9 @@ class PartyFormState extends State<PartyForm> {
                           const SizedBox(width: 8),
                           OutlinedButton(
                             onPressed: () {
-                              menuController.selectedIndex.value = 0;
+                              tabController
+                                  .removeTab(tabController.currentIndex.value);
+                              // menuController.selectedIndex.value = 0;
                             },
                             child: const Text("Exit"),
                           ),
@@ -3405,10 +3435,10 @@ class PartyFormState extends State<PartyForm> {
                     ],
                   ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 400,
-              child: Obx(
-                () => SfDataGrid(
+            Obx(
+              () => SizedBox(
+                height: 350,
+                child: SfDataGrid(
                   source: PartyDataGridSource(defaultController.partyMstList),
                   columns: <GridColumn>[
                     GridColumn(
@@ -3459,18 +3489,18 @@ class PartyFormState extends State<PartyForm> {
                         ),
                       ),
                     ),
-                    GridColumn(
-                      columnName: 'Mobile No',
-                      label: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Mobile No',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                    ),
+                    // GridColumn(
+                    //   columnName: 'Mobile No',
+                    //   label: Container(
+                    //     padding: const EdgeInsets.all(8.0),
+                    //     alignment: Alignment.center,
+                    //     child: const Text(
+                    //       'Mobile No',
+                    //       style: TextStyle(
+                    //           fontWeight: FontWeight.bold, fontSize: 12),
+                    //     ),
+                    //   ),
+                    // ),
                     GridColumn(
                       columnName: 'Address',
                       label: Container(
@@ -3495,30 +3525,30 @@ class PartyFormState extends State<PartyForm> {
                         ),
                       ),
                     ),
-                    GridColumn(
-                      columnName: 'Email ID',
-                      label: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Email ID',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                    ),
-                    GridColumn(
-                      columnName: 'Website',
-                      label: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Website',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                    ),
+                    // GridColumn(
+                    //   columnName: 'Email ID',
+                    //   label: Container(
+                    //     padding: const EdgeInsets.all(8.0),
+                    //     alignment: Alignment.center,
+                    //     child: const Text(
+                    //       'Email ID',
+                    //       style: TextStyle(
+                    //           fontWeight: FontWeight.bold, fontSize: 12),
+                    //     ),
+                    //   ),
+                    // ),
+                    // GridColumn(
+                    //   columnName: 'Website',
+                    //   label: Container(
+                    //     padding: const EdgeInsets.all(8.0),
+                    //     alignment: Alignment.center,
+                    //     child: const Text(
+                    //       'Website',
+                    //       style: TextStyle(
+                    //           fontWeight: FontWeight.bold, fontSize: 12),
+                    //     ),
+                    //   ),
+                    // ),
                     GridColumn(
                       columnName: 'CGST',
                       label: Container(
@@ -3639,11 +3669,11 @@ class PartyFormState extends State<PartyForm> {
                       _sortIdController.text =
                           partyEntry.sortID?.toString() ?? '';
                       _creditController.text =
-                          partyEntry.creditOpBalRs?.toString() ?? '';
+                          partyEntry.creditOpBalRs?.toString() ?? '0.00';
                       _creditControllerDollor.text =
                           partyEntry.creditOpBalDollar?.toString() ?? '';
                       _debitController.text =
-                          partyEntry.debitOpBalRs?.toString() ?? '';
+                          partyEntry.debitOpBalRs?.toString() ?? '0.00';
                       _debitControllerDollor.text =
                           partyEntry.debitOpBalDollar?.toString() ?? '';
                       setState(() {

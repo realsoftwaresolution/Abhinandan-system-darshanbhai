@@ -1,21 +1,24 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
+import 'package:real_web_rough_entry_system/memo%20issue/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_datagrid.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
 import 'package:real_web_rough_entry_system/responsive.dart';
-import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoIssFormScreen extends StatefulWidget {
-  const MemoIssFormScreen({super.key});
+  final bool showHeader;
+  const MemoIssFormScreen({super.key, required this.showHeader});
 
   @override
   MemoIssFormScreenState createState() => MemoIssFormScreenState();
@@ -49,7 +52,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
 
   List<Map<String, String>> entries = [];
   final RxString _selectedType = ''.obs;
-  final RxString _selectedTypeBroker = ''.obs;
+  final RxString _selectedTypeBroker = '22'.obs;
   final RxString _selectedTypeParty = ''.obs;
   final RxInt selectedMemoIssueMstID = 0.obs;
   final RxString selectedRoughId = ''.obs;
@@ -77,7 +80,6 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
   final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-  final MenuAppController menuController = Get.find<MenuAppController>();
 
   RxList<MemoIssueModel> memoIssueDataGridSource = <MemoIssueModel>[].obs;
   RxList<MemoIssueModel> filteredDataGridSource = <MemoIssueModel>[].obs;
@@ -190,7 +192,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
         selectedDate = pickedDate;
         dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
         Future.delayed(const Duration(milliseconds: 100), () {
-          _brokerFocus.requestFocus(); // Move focus to the first input field
+          _roughFocNode.requestFocus(); // Move focus to the first input field
         });
       });
       // _updateDueDate();
@@ -337,14 +339,15 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Header(title: 'Memo Issue Search'),
+                widget.showHeader? const Header(title: 'Memo Issue Search'): const SizedBox.shrink(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                   child: Row(
                     children: [
                       Expanded(
                         child: buildTextField(
                           'From Date',
+                          excludeFieldValidation: false,
                           fromDateController,
                           readOnly: true,
                           onTap: () async {
@@ -371,6 +374,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                       Expanded(
                         child: buildTextField(
                           'To Date',
+                          excludeFieldValidation: false,
+
                           toDateController,
                           readOnly: true,
                           onTap: () async {
@@ -539,6 +544,35 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                             ),
                           ),
                         ],
+                        tableSummaryRows: [
+                          GridTableSummaryRow(
+                              title:
+                              'Total ${memoIssueDataGridSource.length}',
+                              showSummaryInRow:
+                              false,
+                              titleColumnSpan: 1,
+                              columns: <GridSummaryColumn>[
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Wt',
+                                    columnName:
+                                    'Tot Wt',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Amt Rs',
+                                    columnName:
+                                    'Tot Amt Rs',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                              ],
+                              position:
+                              GridTableSummaryRowPosition
+                                  .bottom)
+                        ],
                         rowHeight: 25,
                         headerRowHeight: 35,
                         gridLinesVisibility: GridLinesVisibility.both,
@@ -634,7 +668,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Header(title: 'Memo Issue'),
+                widget.showHeader? const Header(title: 'Memo Issue'): const SizedBox.shrink(),
                 Row(
                   children: [
                     Expanded(
@@ -690,7 +724,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -725,7 +759,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -759,7 +793,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
                                             entries.length = 0;
@@ -783,7 +817,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                       dateController.clear();
                                       _selectedTypeParty.value = '';
                                       _selectedType.value = '';
-                                      _selectedTypeBroker.value = '';
+                                      _selectedTypeBroker.value = '22';
                                       setState(() {
                                         entries.length = 0;
                                         _isFromEdit = false;
@@ -794,7 +828,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                   if (!_descFocus.hasFocus) {
                                     if (event.logicalKey ==
                                         LogicalKeyboardKey.keyE) {
-                                      menuController.selectedIndex.value = 0;
+                                      // menuController.selectedIndex.value = 0;
+                                      tabController.removeTab(tabController.currentIndex.value);
                                     }
                                   }
                                   if (!_descFocus.hasFocus) {
@@ -966,6 +1001,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                                       },
                                                 child: buildTextField(
                                                   'DATE',
+                                                  excludeFieldValidation: false,
+
                                                   dateController,
                                                   isEnabled: _isFromEdit
                                                       ? false
@@ -1071,7 +1108,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                                         ),
                                                         items:
                                                             dropdownItemsBroker,
-                                                        onChanged: _isFromEdit
+                                                        onChanged: /*_isFromEdit
                                                             ? null
                                                             : _isEnabled
                                                                 ? (value) {
@@ -1088,7 +1125,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                                                           .requestFocus(); // Move focus to the first input field
                                                                     }); // Handle null case
                                                                   }
-                                                                : null,
+                                                                :*/ null,
                                                       );
                                                     }),
                                                   ),
@@ -1371,7 +1408,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -1407,7 +1444,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -1450,9 +1487,10 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
+                                            _isEnabled = false;
                                             entries.length = 0;
                                           });
                                         });
@@ -1489,7 +1527,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                   dateController.clear();
                                   _selectedTypeParty.value = '';
                                   _selectedType.value = '';
-                                  _selectedTypeBroker.value = '';
+                                  _selectedTypeBroker.value = '22';
                                   setState(() {
                                     entries.length = 0;
                                     _isFromEdit = false;
@@ -1515,7 +1553,9 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  menuController.selectedIndex.value = 0;
+                                  // menuController.selectedIndex.value = 0;
+                                  tabController.removeTab(tabController.currentIndex.value);
+
                                 },
                                 child: const Text.rich(
                                   TextSpan(
@@ -1551,6 +1591,57 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                       ),
                                       TextSpan(
                                         text: 'earch', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: _isFromEdit
+                                    ? () async {
+                                  final invoiceGenerator =
+                                  MemoIssueInvoiceGenerator();
+                                  final pdfData = await invoiceGenerator
+                                      .generateInvoice(
+                                      id: selectedMemoIssueMstID.value,
+                                      invoiceDate: selectedDate!,
+                                      // invoiceNo: invNoController.text,
+                                      partyCode:
+                                      _selectedTypeParty.value,
+                                      // brokerCode:
+                                      // _selectedTypeBroker.value,
+                                      // dueDate: dueDateController.text,
+                                      // dueDays: dueDaysController.text,
+                                      entries: entries,
+                                      totalWt: totalWt,
+                                      totalAmt: totalAmount,
+                                      totalRate: totalRate);
+                                  await Printing.layoutPdf(
+                                    onLayout:
+                                        (PdfPageFormat format) async =>
+                                    pdfData,
+                                  );
+                                  if (!kDebugMode) {
+                                    await Printing.sharePdf(
+                                      bytes: pdfData,
+                                      filename:
+                                      'Memo-Issue/${getPartyName(int.parse(_selectedTypeParty.value))}/${DateTime.now()}.pdf', // Set the custom name here
+                                    );
+                                  }
+                                }
+                                    : null,
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'P', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'rint', // Normal "dd"
                                       ),
                                     ],
                                   ),
@@ -1835,37 +1926,6 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     );
   }
 
-  String formatDate(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  String formatDateWithTime(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  DateTime dateFormat(String date) {
-    DateTime parsedDate = DateTime.parse(date);
-    return parsedDate;
-  }
-
-  String getRoughName(String? typeCode) {
-    final party = defaultController.roughModel.firstWhere(
-        (p) => p.roughTypeCode == int.parse(typeCode!),
-        orElse: () => RoughModel(roughTypeName: 'Unknown'));
-    return party.roughTypeName ?? 'Unknown';
-  }
 
   List<DropdownMenuItem<String>> get dropdownItems {
     return defaultController.roughModel.map((partyType) {
@@ -1878,7 +1938,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsParty {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 1)
+        .where((partyType) => partyType.typeCode == 2 && partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),
@@ -1889,7 +1949,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsBroker {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 5)
+        .where((partyType) => partyType.typeCode == 5 && partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),

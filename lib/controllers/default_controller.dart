@@ -1,26 +1,48 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
+import 'package:real_web_rough_entry_system/credit-debit/credit_debit_model.dart';
+import 'package:real_web_rough_entry_system/main/company_mst_model.dart';
+import 'package:real_web_rough_entry_system/memo%20issue/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
+import 'package:real_web_rough_entry_system/memo%20receive/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
+import 'package:real_web_rough_entry_system/party-ledger/outstanding_payment_details_model.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/party/party_type_model.dart';
+import 'package:real_web_rough_entry_system/payment/payment_det_acc.dart';
+import 'package:real_web_rough_entry_system/payment/payment_det_model.dart';
+import 'package:real_web_rough_entry_system/payment/payment_details_model.dart';
+import 'package:real_web_rough_entry_system/payment/payment_mst_model.dart';
+import 'package:real_web_rough_entry_system/payment/pending_payment_model.dart';
+import 'package:real_web_rough_entry_system/purchase/invoice_generator.dart';
+import 'package:real_web_rough_entry_system/purchase/outstanding_purchase_details.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_model.dart';
+import 'package:real_web_rough_entry_system/sale/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class DefaultController extends GetxController {
   RxList<PartyMstModel> partyMstList = <PartyMstModel>[].obs;
+  RxList<CompanyMst> companies = <CompanyMst>[].obs;
   RxList<PurchaseDetailsModel> purchaseDataList = <PurchaseDetailsModel>[].obs;
+  RxList<CreditDebitMstModel> creditDebitDataList = <CreditDebitMstModel>[].obs;
   RxList<PolishSaleModel> polishSaleList = <PolishSaleModel>[].obs;
   RxList<MemoIssueModel> memoIssueList = <MemoIssueModel>[].obs;
   RxList<MemoRecModel> memoRecList = <MemoRecModel>[].obs;
@@ -33,10 +55,106 @@ class DefaultController extends GetxController {
   RxList<MemoIssueDetailsModel> memoIssueDetailsList =
       <MemoIssueDetailsModel>[].obs;
   RxList<MemoRecDetailsModel> memoRecDetailsList = <MemoRecDetailsModel>[].obs;
+  RxList<PaymentMstModel> paymentMstList = <PaymentMstModel>[].obs;
+  RxList<PaymentDetModel> paymentDetList = <PaymentDetModel>[].obs;
+  RxList<PaymentDetAccModel> paymentDetAccList = <PaymentDetAccModel>[].obs;
+  RxList<PendingPaymentModel> pendingPaymentList = <PendingPaymentModel>[].obs;
+  RxList<PaymentDetailsModel> bookPartyPaymentDetailsList =
+      <PaymentDetailsModel>[].obs;
+  RxList<OutstandingPaymentDetails> outstandingPaymentDetailsList =
+      <OutstandingPaymentDetails>[].obs;
+  RxList<OutstandingPurchaseSaleDetails> outstandingPurchaseSaleDetailsList =
+      <OutstandingPurchaseSaleDetails>[].obs;
+  RxList<PaymentDetailsModel> accPartyPaymentDetailsList =
+      <PaymentDetailsModel>[].obs;
+
   RxMap groupedData = {}.obs;
   RxBool isLoading = false.obs;
   RxBool isDeleteLoading = false.obs;
-  RxInt companyCode = 0.obs;
+  RxInt companyCode = 3.obs;
+  RxString companyPartyCode = '21'.obs;
+  RxString deviceInfo = 'No IP Found'.obs;
+  RxBool enabledAdvancedDashboard = true.obs;
+  RxBool isLoadingDashboardData = false.obs;
+
+  DataGridController accountDataGridController = DataGridController();
+  DataGridController bookDataGridController = DataGridController();
+
+  final RxString selectedTypeAccountParty = ''.obs;
+  final RxString selectedTypeBookParty = ''.obs;
+
+  // String baseUrl= 'http://localhost:301/';
+  String baseUrl = 'http://50.62.183.116:301/';
+  // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  GlobalKey<ScaffoldState> get scaffoldKey => _scaffoldKey;
+
+  Future<void> login(String username, String password) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+      var params = <String, dynamic>{"CrName": username, "CrPass": password};
+      final response =
+          await dio.post('${baseUrl}rough-entry/user/login', data: params);
+      if (response.data['data'] != null) {
+        if (response.data['data']['Active'] == true) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('username', response.data['data']['CrName']);
+          await prefs.setString('password', response.data['data']['CrPass']);
+          await prefs.setBool('isLoggedIn', true);
+          // await prefs.setBool('isDashboard', response.data['data']['Dashboard']);
+          // enabledAdvancedDashboard = response.data['data']['Dashboard'];
+          isLoading.value = false;
+          Get.back();
+          showCompanySelectionDialog(isFromSwitchCompany: false);
+        } else {
+          isLoading.value = false;
+          infoDialog(messageText: 'User Inactive, Please Contact Your Admin.');
+        }
+      } else {
+        isLoading.value = false;
+        infoDialog(messageText: response.data['message']);
+      }
+    } catch (error) {
+      isLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> getCompanies() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/companies',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        companies.value =
+            data.map((json) => CompanyMst.fromJson(json)).toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
 
   Future<void> getPartyData() async {
     try {
@@ -45,7 +163,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/party',
+        '${baseUrl}rough-entry/party',
       );
 
       if (response.statusCode == 200) {
@@ -53,8 +171,39 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        partyMstList.value =
-            data.map((json) => PartyMstModel.fromJson(json)).toList();
+        partyMstList.value = data
+            .map((json) => PartyMstModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> getCreditDebitData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/credit-debit',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        creditDebitDataList.value =
+            data.map((json) => CreditDebitMstModel.fromJson(json)).toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -67,13 +216,14 @@ class DefaultController extends GetxController {
   }
 
   Future<void> getPurchaseData() async {
+    isLoadingDashboardData.value = true;
     try {
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/purchase',
+        '${baseUrl}rough-entry/purchase',
       );
 
       if (response.statusCode == 200) {
@@ -81,12 +231,21 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        purchaseDataList.value =
-            data.map((json) => PurchaseDetailsModel.fromJson(json)).toList();
+        purchaseDataList.value = data
+            .map((json) => PurchaseDetailsModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+        if (kDebugMode) {
+          print('FROM API:${purchaseDataList.length}');
+        }
+        isLoadingDashboardData.value = false;
       } else {
+        isLoadingDashboardData.value = false;
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
+      isLoadingDashboardData.value = false;
       errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
@@ -101,7 +260,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/rough-details',
+        '${baseUrl}rough-entry/rough-details',
       );
 
       if (response.statusCode == 200) {
@@ -109,8 +268,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a RoughDetailsModel
-        roughDetailsModel.value =
-            data.map((json) => RoughDetailsModel.fromJson(json)).toList();
+        roughDetailsModel.value = data
+            .map((json) => RoughDetailsModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
 
         // Grouping by roughTypeCode and summing the wt for each group
 
@@ -125,7 +287,9 @@ class DefaultController extends GetxController {
 
         // Printing the grouped data for debugging
         // groupedData.forEach((key, value) {
-        //   print('RoughTypeCode: $key, Total Weight: $value');
+        //   if (kDebugMode) {
+        //     print('RoughTypeCode: $key, Total Weight: $value');
+        //   }
         // });
 
         // You can now use the groupedData map for further processing
@@ -147,7 +311,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/polish-sale',
+        '${baseUrl}rough-entry/polish-sale',
       );
 
       if (response.statusCode == 200) {
@@ -155,8 +319,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        polishSaleList.value =
-            data.map((json) => PolishSaleModel.fromJson(json)).toList();
+        polishSaleList.value = data
+            .map((json) => PolishSaleModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -175,7 +342,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/memo-issue',
+        '${baseUrl}rough-entry/memo-issue',
       );
 
       if (response.statusCode == 200) {
@@ -183,8 +350,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        memoIssueList.value =
-            data.map((json) => MemoIssueModel.fromJson(json)).toList();
+        memoIssueList.value = data
+            .map((json) => MemoIssueModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -203,7 +373,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/memo-rec',
+        '${baseUrl}rough-entry/memo-rec',
       );
 
       if (response.statusCode == 200) {
@@ -211,8 +381,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        memoRecList.value =
-            data.map((json) => MemoRecModel.fromJson(json)).toList();
+        memoRecList.value = data
+            .map((json) => MemoRecModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -231,18 +404,39 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/sale-details',
+        '${baseUrl}rough-entry/sale-details',
       );
 
       if (response.statusCode == 200) {
-        // Assuming the response.data is a List of JSON objects
         final List<dynamic> data = response.data;
 
-        // Mapping each JSON object to a PartyMstModel
-        saleDetailsList.value =
-            data.map((json) => SaleDetailsModel.fromJson(json)).toList();
+        // Mapping each JSON object to a SaleDetailsModel
+        saleDetailsList.value = data
+            .map((json) => SaleDetailsModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+
+        // Subtracting the wt from groupedData for each roughTypeCode
+        for (var saleDetail in saleDetailsList) {
+          final roughTypeCode = saleDetail.roughTypeCode;
+          final saleWt = saleDetail.carats ?? 0;
+
+          if (groupedData.containsKey(roughTypeCode)) {
+            // Subtract the sale wt from the groupedData wt
+            groupedData[roughTypeCode] = groupedData[roughTypeCode]! - saleWt;
+          }
+        }
+
+        // Printing the updated groupedData for debugging
+        // groupedData.forEach((key, value) {
+        //   if (kDebugMode) {
+        //     print('RoughTypeCode: $key, Total Weight after Sale: $value');
+        //   }
+        // });
       } else {
-        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+        errorDialog(
+            messageText: 'Failed to load sale data: ${response.statusCode}');
       }
     } catch (error) {
       errorDialog(messageText: 'An unexpected error occurred.');
@@ -259,7 +453,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/memo-issue-details',
+        '${baseUrl}rough-entry/memo-issue-details',
       );
 
       if (response.statusCode == 200) {
@@ -267,8 +461,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        memoIssueDetailsList.value =
-            data.map((json) => MemoIssueDetailsModel.fromJson(json)).toList();
+        memoIssueDetailsList.value = data
+            .map((json) => MemoIssueDetailsModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -287,7 +484,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/memo-rec-details',
+        '${baseUrl}rough-entry/memo-rec-details',
       );
 
       if (response.statusCode == 200) {
@@ -295,8 +492,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        memoRecDetailsList.value =
-            data.map((json) => MemoRecDetailsModel.fromJson(json)).toList();
+        memoRecDetailsList.value = data
+            .map((json) => MemoRecDetailsModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -315,7 +515,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/partyType',
+        '${baseUrl}rough-entry/partyType',
       );
 
       if (response.statusCode == 200) {
@@ -323,8 +523,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        partyTypeMstList.value =
-            data.map((json) => PartyTypeMstModel.fromJson(json)).toList();
+        partyTypeMstList.value = data
+            .map((json) => PartyTypeMstModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -343,7 +546,7 @@ class DefaultController extends GetxController {
       }));
 
       final response = await dio.get(
-        'http://50.62.183.116:301/rough-entry/rough',
+        '${baseUrl}rough-entry/rough',
       );
 
       if (response.statusCode == 200) {
@@ -351,8 +554,11 @@ class DefaultController extends GetxController {
         final List<dynamic> data = response.data;
 
         // Mapping each JSON object to a PartyMstModel
-        roughModel.value =
-            data.map((json) => RoughModel.fromJson(json)).toList();
+        roughModel.value = data
+            .map((json) => RoughModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
 
         // for (int i = 0; i < roughModel.length; i++) {
         //   print(roughModel[i].roughTypeName);
@@ -365,6 +571,992 @@ class DefaultController extends GetxController {
       errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
+      }
+    }
+  }
+
+  Future<void> getPaymentMstData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/payment-mst',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        paymentMstList.value = data
+            .map((json) => PaymentMstModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> getPaymentDetData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/payment-det',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        paymentDetList.value = data
+            .map((json) => PaymentDetModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> getPaymentDetAccData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/payment-det-acc',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        paymentDetAccList.value = data
+            .map((json) => PaymentDetAccModel.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> getPendingPaymentData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}executeView/getPendingPayment',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        pendingPaymentList.value =
+            data.map((json) => PendingPaymentModel.fromJson(json)).toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<RxList<PaymentDetailsModel>> getBookPartyPaymentDetails(
+      int partyCode, paymentMstId) async {
+    isLoading.value = true;
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}search/paymentDetails?paymentMstId=$paymentMstId&partyCode=$partyCode',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        bookPartyPaymentDetailsList.value =
+            data.map((json) => PaymentDetailsModel.fromJson(json)).toList();
+        isLoading.value = false;
+        return bookPartyPaymentDetailsList;
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+    return <PaymentDetailsModel>[].obs;
+  }
+
+  Future<RxList<OutstandingPaymentDetails>> getOutstandingPaymentDetails(
+      {required int partyCode,required DateTime fromDate,required DateTime toDate}) async {
+    isLoading.value = true;
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}search/outstandingPaymentDetails?fromDate=$fromDate&toDate=$toDate&partyCode=$partyCode',
+      );
+
+
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+
+        // Mapping each JSON object to a PartyMstModel
+        outstandingPaymentDetailsList.value = data
+            .map((json) => OutstandingPaymentDetails.fromJson(json))
+            .toList();
+        isLoading.value = false;
+        return outstandingPaymentDetailsList;
+      } else {
+        isLoading.value = false;
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+    return <OutstandingPaymentDetails>[].obs;
+  }
+
+  Future<RxList<OutstandingPurchaseSaleDetails>> getOutstandingPurchaseSaleDetails() async {
+    isLoading.value = true;
+    isLoadingDashboardData.value = true;
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}report/outstandingPurchaseDetails',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        if (kDebugMode) {
+          print('OutStanding Purchase Sale Details: ${data.length}');
+        }
+
+        // Mapping each JSON object to a PartyMstModel
+        outstandingPurchaseSaleDetailsList.value = data
+            .map((json) => OutstandingPurchaseSaleDetails.fromJson(json))
+            .toList();
+        isLoading.value = false;
+        isLoadingDashboardData.value = false;
+        return outstandingPurchaseSaleDetailsList;
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+    return <OutstandingPurchaseSaleDetails>[].obs;
+  }
+
+  Future<RxList<PaymentDetailsModel>> getAccPartyPaymentDetails(
+      int partyCode, paymentMstId) async {
+    isLoading.value = true;
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}search/paymentDetails?paymentMstId=$paymentMstId&partyCode=$partyCode',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        accPartyPaymentDetailsList.value =
+            data.map((json) => PaymentDetailsModel.fromJson(json)).toList();
+        for (var i in accPartyPaymentDetailsList) {
+          if (kDebugMode) {
+            print('${i.invNo}  : JAMT ${i.jAmtRs}');
+            print('${i.invNo}  : UAMT ${i.uAmtRs}');
+          }
+        }
+        isLoading.value = false;
+        return accPartyPaymentDetailsList;
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+    return <PaymentDetailsModel>[].obs;
+  }
+
+  Future<void> addPaymentData({
+    DateTime? paymentDate,
+    String? paymentDay,
+    String? chequeNo,
+    int? partyCode,
+    int? accountCode,
+    double? jAmtRs,
+    double? uAmtRs,
+    String? remarks1,
+    double? pAmtRs,
+    double? aAmtRs,
+    double? bookJAmtRs,
+    double? bookUAmtRs,
+    double? accJAmtRs,
+    double? accUAmtRs,
+    required RxList<PendingPaymentModel> accountDataGridSource,
+    required RxList<PendingPaymentModel> bookDataGridSource,
+  }) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+      var params = <String, dynamic>{
+        "PaymentDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(paymentDate!),
+        "PaymentDay": paymentDay,
+        "ChequeNo": chequeNo,
+        "PartyCode": partyCode,
+        "AccountCode": accountCode,
+        "RateType": 'RS',
+        "ExRate": 0.00,
+        "JAmtRs": jAmtRs,
+        // "JAmtDollar": Joi.number().precision(2),
+        "UAmtRs": uAmtRs,
+        // "UAmtDollar": Joi.number().precision(2),
+        "Remarks1": remarks1,
+        // "Remarks2":Joi.string(),
+        "PAmtRs": pAmtRs,
+        // "PAmtDollar": Joi.number().precision(2),
+        "AAmtRs": aAmtRs,
+        // "AAmtDollar": Joi.number().precision(2),
+        "Sflag": "I",
+        "LogID": "0",
+        "PcID": "TESTFROMWEB",
+        "Ever": 0,
+        "CompanyCode": companyCode.value,
+      };
+
+      final response = await dio.post(
+        '${baseUrl}rough-entry/payment-mst/add',
+        data: jsonEncode(params),
+      );
+
+      if (response.statusCode == 200) {
+        isLoading.value = false;
+        // if (bookDataGridSource.isNotEmpty) {
+        if (bookJAmtRs! > 0 || bookUAmtRs! > 0) {
+          addCreditDebitData(
+            mstId: 0,
+            purMstId: 0,
+            saleMstId: 0,
+            invoiceDate: paymentDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(paymentDate),
+            paymentMstId: response.data['data']['PaymentMstID'],
+            dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
+            remarks1: remarks1,
+            remarks2: ' ',
+            partyCode: partyCode.toString(),
+            creditRs: bookJAmtRs,
+            debitRs: bookUAmtRs,
+            invAmtRs: 0.00,
+            drCr: ' ',
+            formType: 'PAYMENT',
+            entryType: 'PAYMENT',
+            traType: 'PAYMENT',
+            formName: 'FrmPayment',
+            perPartyCode: accountCode.toString(),
+            orgCt: 0,
+            dueDays: 0,
+            invoiceNo: 'ON ACCOUNT',
+            srNo: 0,
+            brokerCode: 0,
+          );
+        }
+        await Future.wait(
+          bookDataGridSource
+              .where((value) =>
+                  value.jAmtRs! > 0 || value.uAmtRs! > 0) // Filter entries
+              .map((value) => addCreditDebitData(
+                    mstId: value.mstID,
+                    purMstId: 0,
+                    saleMstId: 0,
+                    invoiceDate: paymentDate,
+                    orgInvoiceDate: value.orgInvDate,
+                    paymentMstId: response.data['data']['PaymentMstID'],
+                    dueDate: value.dueDate,
+                    remarks1: remarks1,
+                    remarks2: ' ',
+                    partyCode: partyCode.toString(),
+                    creditRs: value.jAmtRs,
+                    debitRs: value.uAmtRs,
+                    invAmtRs: value.amtRs,
+                    drCr: value.drCr,
+                    formType: value.trnType,
+                    entryType: 'PAYMENT',
+                    traType: value.traType,
+                    formName: 'FrmPayment',
+                    perPartyCode: accountCode.toString(),
+                    orgCt: value.orgCt,
+                    dueDays: value.dueDays,
+                    invoiceNo: value.invNo,
+                    srNo: value.subRefID,
+                    brokerCode: value.orgBrokerCode,
+                  )),
+        );
+        await Future.wait(bookDataGridSource.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          return _addPaymentDetData(
+              paymentMstId: response.data['data']['PaymentMstID'],
+              partyCode: partyCode,
+              subRefId: value.subRefID,
+              // Need to Verify
+              trnType: value.trnType,
+              // Need To Verify
+              traType: value.traType,
+              srNo: index + 1,
+              mstId: value.mstID,
+              dueDays: value.dueDays,
+              dueDate: value.dueDate,
+              drCr: value.drCr,
+              bdDrCr: value.bDDrCr,
+              odDrCr: value.oDDrCr ?? ' ',
+              amtRs: value.amtRs,
+              bAmtRs: value.bAmtRs,
+              brDrCr: value.bRDrCr,
+              jAmtRs: value.jAmtRs,
+              uAmtRs: value.uAmtRs,
+              oAmtRs: value.oAmtRs,
+              orDrCr: value.oRDrCr ?? ' ',
+              orgInvDate: value.orgInvDate,
+              brokerCode: value.orgBrokerCode,
+              orgCt: value.orgCt,
+              invNo: value.invNo);
+        }));
+
+      // if (accountDataGridSource.isNotEmpty) {
+      if (accJAmtRs! > 0 || accUAmtRs! > 0) {
+        addCreditDebitData(
+          mstId: 0,
+          purMstId: 0,
+          saleMstId: 0,
+          invoiceDate: paymentDate,
+          orgInvoiceDate: DateFormat('yyyy-MM-dd').format(paymentDate),
+          paymentMstId: response.data['data']['PaymentMstID'],
+          dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
+          remarks1: remarks1,
+          remarks2: ' ',
+          partyCode: accountCode.toString(),
+          creditRs: accJAmtRs,
+          debitRs: accUAmtRs,
+          invAmtRs: 0.00,
+          drCr: ' ',
+          formType: 'PAYMENT',
+          entryType: 'PAYMENT',
+          traType: 'PAYMENT',
+          formName: 'FrmPayment',
+          perPartyCode: partyCode.toString(),
+          orgCt: 0,
+          dueDays: 0,
+          invoiceNo: 'ON ACCOUNT',
+          srNo: 0,
+          brokerCode: 0,
+        );
+      }
+      await Future.wait(
+        accountDataGridSource
+            .where((value) =>
+                value.jAmtRs! > 0 || value.uAmtRs! > 0) // Add filtering
+            .map((value) => addCreditDebitData(
+                  mstId: value.mstID,
+                  purMstId: 0,
+                  saleMstId: 0,
+                  invoiceDate: paymentDate,
+                  orgInvoiceDate: value.orgInvDate,
+                  paymentMstId: response.data['data']['PaymentMstID'],
+                  dueDate: value.dueDate,
+                  remarks1: remarks1,
+                  remarks2: ' ',
+                  partyCode: accountCode.toString(),
+                  creditRs: value.jAmtRs,
+                  debitRs: value.uAmtRs,
+                  invAmtRs: value.amtRs,
+                  drCr: value.drCr,
+                  formType: value.trnType,
+                  entryType: 'PAYMENT',
+                  traType: value.traType,
+                  formName: 'FrmPayment',
+                  perPartyCode: partyCode.toString(),
+                  orgCt: value.orgCt,
+                  dueDays: value.dueDays,
+                  invoiceNo: value.invNo,
+                  srNo: value.subRefID,
+                  brokerCode: value.orgBrokerCode,
+                )),
+      );
+      await Future.wait(accountDataGridSource.asMap().entries.map((entry) {
+        int index = entry.key; // index of the current entry
+        var value = entry.value;
+        if (kDebugMode) {
+          print('WHILE CALLING API JAMT:${value.jAmtRs}');
+        print('WHILE CALLING API UAMT:${value.uAmtRs}');
+
+        }
+        // current entry data
+        return _addPaymentDetAccData(
+            paymentMstId: response.data['data']['PaymentMstID'],
+            partyCode: accountCode,
+            subRefId: value.subRefID,
+            // Need to Verify
+            trnType: value.trnType,
+            // Need To Verify
+            traType: value.traType,
+            srNo: index + 1,
+            mstId: value.mstID,
+            dueDays: value.dueDays,
+            dueDate: value.dueDate,
+            bdDrCr: value.bDDrCr,
+            odDrCr: value.oDDrCr ?? ' ',
+            drCr: value.drCr,
+            amtRs: value.amtRs,
+            bAmtRs: value.bAmtRs,
+            brDrCr: value.bRDrCr,
+            jAmtRs: value.jAmtRs,
+            uAmtRs: value.uAmtRs,
+            oAmtRs: value.oAmtRs,
+            orDrCr: value.oRDrCr ?? ' ',
+            orgInvDate: value.orgInvDate,
+            brokerCode: value.orgBrokerCode,
+            orgCt: value.orgCt,
+            invNo: value.invNo);
+      })).then((value) => successDialog(messageText: response.data['message']));
+      // }
+      // if (bookDataGridSource.isEmpty && accountDataGridSource.isEmpty) {
+      //
+      //   successDialog(messageText: response.data['message']);
+      // }
+      await getPaymentMstData();
+      await getPaymentDetData();
+      await getPaymentDetAccData();
+      await getCreditDebitData();
+      await getOutstandingPurchaseSaleDetails();
+      await getPendingPaymentData();
+      /* } else {
+        isLoading.value = false;
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }*/}
+    } catch (error) {
+      isLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error addPaymentData');
+      }
+    }
+  }
+
+  Future<void> updatePaymentData({
+    required int mstId,
+    DateTime? paymentDate,
+    String? paymentDay,
+    String? chequeNo,
+    int? partyCode,
+    int? accountCode,
+    double? jAmtRs,
+    double? uAmtRs,
+    String? remarks1,
+    double? pAmtRs,
+    double? aAmtRs,
+    double? bookJAmtRs,
+    double? bookUAmtRs,
+    double? accJAmtRs,
+    double? accUAmtRs,
+    required RxList<PaymentDetailsModel> accountDataGridSource,
+    required RxList<PaymentDetailsModel> bookDataGridSource,
+  }) async {
+    try {
+      isLoading.value = true;
+      await deletePaymentDetails(id: mstId);
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = <String, dynamic>{
+        "PaymentDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(paymentDate!),
+        "PaymentDay": paymentDay,
+        "ChequeNo": chequeNo,
+        "PartyCode": partyCode,
+        "AccountCode": accountCode,
+        "RateType": 'RS',
+        "ExRate": 0.00,
+        "JAmtRs": jAmtRs,
+        // "JAmtDollar": Joi.number().precision(2),
+        "UAmtRs": uAmtRs,
+        // "UAmtDollar": Joi.number().precision(2),
+        "Remarks1": remarks1,
+        // "Remarks2":Joi.string(),
+        "PAmtRs": pAmtRs,
+        // "PAmtDollar": Joi.number().precision(2),
+        "AAmtRs": aAmtRs,
+        // "AAmtDollar": Joi.number().precision(2),
+        "Sflag": "U",
+        "LogID": "0",
+        "PcID": "TESTFROMWEB",
+        "Ever": 0,
+        "CompanyCode": companyCode.value,
+      };
+
+      final response = await dio.put('${baseUrl}rough-entry/payment-mst/$mstId',
+          data: jsonEncode(params));
+
+      // if (kDebugMode) {
+      //   print(response.data['data']);
+      // }
+
+      if (response.statusCode == 200) {
+        isLoading.value = false;
+        // if (bookDataGridSource.isNotEmpty) {
+        if (bookJAmtRs! > 0 || bookUAmtRs! > 0) {
+          addCreditDebitData(
+            mstId: 0,
+            purMstId: 0,
+            saleMstId: 0,
+            invoiceDate: paymentDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(paymentDate),
+            paymentMstId: response.data['data']['PaymentMstID'],
+            dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
+            remarks1: remarks1,
+            remarks2: ' ',
+            partyCode: partyCode.toString(),
+            creditRs: bookJAmtRs,
+            debitRs: bookUAmtRs,
+            invAmtRs: 0.00,
+            drCr: ' ',
+            formType: 'PAYMENT',
+            entryType: 'PAYMENT',
+            traType: 'PAYMENT',
+            formName: 'FrmPayment',
+            perPartyCode: accountCode.toString(),
+            orgCt: 0,
+            dueDays: 0,
+            invoiceNo: 'ON ACCOUNT',
+            srNo: 0,
+            brokerCode: 0,
+          ).then((v) {
+            log('CREDIT DEBIT ENTRY FOR ${response.data['data']['PaymentMstID']}');
+          });
+        }
+        await Future.wait(
+          bookDataGridSource
+              .where((value) =>
+                  value.jAmtRs! > 0 || value.uAmtRs! > 0) // Filter entries
+              .map((value) => addCreditDebitData(
+                    mstId: value.mstID,
+                    purMstId: 0,
+                    saleMstId: 0,
+                    invoiceDate: paymentDate,
+                    orgInvoiceDate: value.orgInvDate,
+                    paymentMstId: response.data['data']['PaymentMstID'],
+                    dueDate: value.dueDate,
+                    remarks1: remarks1,
+                    remarks2: ' ',
+                    partyCode: partyCode.toString(),
+                    creditRs: value.jAmtRs,
+                    debitRs: value.uAmtRs,
+                    invAmtRs: value.amtRs,
+                    drCr: value.drCr,
+                    formType: value.trnType,
+                    entryType: 'PAYMENT',
+                    traType: value.traType,
+                    formName: 'FrmPayment',
+                    perPartyCode: accountCode.toString(),
+                    orgCt: value.orgCt,
+                    dueDays: value.dueDays,
+                    invoiceNo: value.invNo,
+                    srNo: value.subRefID,
+                    brokerCode: value.orgBrokerCode,
+                  )),
+        );
+        await Future.wait(bookDataGridSource.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          return _addPaymentDetData(
+              paymentMstId: response.data['data']['PaymentMstID'],
+              partyCode: partyCode,
+              subRefId: value.subRefID,
+              // Need to Verify
+              trnType: value.trnType,
+              // Need To Verify
+              traType: value.traType,
+              srNo: index + 1,
+              mstId: value.mstID,
+              dueDays: value.dueDays,
+              dueDate: value.dueDate,
+              drCr: value.drCr,
+              bdDrCr: value.bDDrCr,
+              odDrCr: value.oDDrCr ?? ' ',
+              amtRs: value.amtRs,
+              bAmtRs: value.bAmtRs,
+              brDrCr: value.bRDrCr,
+              jAmtRs: value.jAmtRs,
+              uAmtRs: value.uAmtRs,
+              oAmtRs: value.oAmtRs,
+              orDrCr: value.oRDrCr ?? ' ',
+              orgInvDate: value.orgInvDate,
+              brokerCode: value.orgBrokerCode,
+              orgCt: value.orgCt,
+              invNo: value.invNo);
+        }));
+        // }
+        // if (accountDataGridSource.isNotEmpty) {
+        if (accJAmtRs! > 0 || accUAmtRs! > 0) {
+          addCreditDebitData(
+            mstId: 0,
+            purMstId: 0,
+            saleMstId: 0,
+            invoiceDate: paymentDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(paymentDate),
+            paymentMstId: response.data['data']['PaymentMstID'],
+            dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
+            remarks1: remarks1,
+            remarks2: ' ',
+            partyCode: accountCode.toString(),
+            creditRs: accJAmtRs,
+            debitRs: accUAmtRs,
+            invAmtRs: 0.00,
+            drCr: ' ',
+            formType: 'PAYMENT',
+            entryType: 'PAYMENT',
+            traType: 'PAYMENT',
+            formName: 'FrmPayment',
+            perPartyCode: partyCode.toString(),
+            orgCt: 0,
+            dueDays: 0,
+            invoiceNo: 'ON ACCOUNT',
+            srNo: 0,
+            brokerCode: 0,
+          );
+        }
+        await Future.wait(
+          accountDataGridSource
+              .where((value) =>
+                  value.jAmtRs! > 0 || value.uAmtRs! > 0) // Add filtering
+              .map((value) => addCreditDebitData(
+                    mstId: value.mstID,
+                    purMstId: 0,
+                    saleMstId: 0,
+                    invoiceDate: paymentDate,
+                    orgInvoiceDate: value.orgInvDate,
+                    paymentMstId: response.data['data']['PaymentMstID'],
+                    dueDate: value.dueDate,
+                    remarks1: remarks1,
+                    remarks2: ' ',
+                    partyCode: accountCode.toString(),
+                    creditRs: value.jAmtRs,
+                    debitRs: value.uAmtRs,
+                    invAmtRs: value.amtRs,
+                    drCr: value.drCr,
+                    formType: value.trnType,
+                    entryType: 'PAYMENT',
+                    traType: value.traType,
+                    formName: 'FrmPayment',
+                    perPartyCode: partyCode.toString(),
+                    orgCt: value.orgCt,
+                    dueDays: value.dueDays,
+                    invoiceNo: value.invNo,
+                    srNo: value.subRefID,
+                    brokerCode: value.orgBrokerCode,
+                  )),
+        );
+        await Future.wait(accountDataGridSource.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          return _addPaymentDetAccData(
+              paymentMstId: response.data['data']['PaymentMstID'],
+              partyCode: accountCode,
+              subRefId: value.subRefID,
+              // Need to Verify
+              trnType: value.trnType,
+              // Need To Verify
+              traType: value.traType,
+              srNo: index + 1,
+              mstId: value.mstID,
+              dueDays: value.dueDays,
+              dueDate: value.dueDate,
+              bdDrCr: value.bDDrCr,
+              odDrCr: value.oDDrCr ?? ' ',
+              drCr: value.drCr,
+              amtRs: value.amtRs,
+              bAmtRs: value.bAmtRs,
+              brDrCr: value.bRDrCr,
+              jAmtRs: value.jAmtRs,
+              uAmtRs: value.uAmtRs,
+              oAmtRs: value.oAmtRs,
+              orDrCr: value.oRDrCr ?? ' ',
+              orgInvDate: value.orgInvDate,
+              brokerCode: value.orgBrokerCode,
+              orgCt: value.orgCt,
+              invNo: value.invNo);
+        })).then(
+            (value) => successDialog(messageText: response.data['message']));
+        // }
+        // if (bookDataGridSource.isEmpty && accountDataGridSource.isEmpty) {
+        //   successDialog(messageText: response.data['message']);
+        // }
+        await getPaymentMstData();
+        await getPaymentDetData();
+        await getPaymentDetAccData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+
+      } else {
+        isLoading.value = false;
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> _addPaymentDetData(
+      {paymentMstId,
+      partyCode,
+      subRefId,
+      srNo,
+      trnType,
+      mstId,
+      dueDate,
+      drCr,
+      amtRs,
+      bAmtRs,
+      brDrCr,
+      jAmtRs,
+      uAmtRs,
+      oAmtRs,
+      orDrCr,
+      bdDrCr,
+      odDrCr,
+      traType,
+      orgInvDate,
+      dueDays,
+      brokerCode,
+      orgCt,
+      invNo}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+      var params = <String, dynamic>{
+        "PaymentMstID": paymentMstId,
+        "PartyCode": partyCode,
+        "SubRefID": subRefId,
+        "SrNo": srNo,
+        "TrnType": trnType,
+        "MstID": mstId,
+        "DueDate": dueDate,
+        "DrCr": drCr,
+        "AmtRs": amtRs,
+        // "AmtDollar": Joi.number().precision(2),
+        "BAmtRs": bAmtRs,
+        // "BAmtDollar": Joi.number().precision(2),
+        "BRDrCr": brDrCr,
+        "BDDrCr": bdDrCr,
+        "JAmtRs": jAmtRs,
+        // "JAmtDollar": Joi.number().precision(2),
+        "UAmtRs": uAmtRs,
+        // "UAmtDollar": Joi.number().precision(2),
+        "OAmtRs": oAmtRs,
+        // "OAmtDollar": Joi.number().precision(2),
+        // "ORDrCr": orDrCr,
+        // "ODDrCr": odDrCr,
+        "TraType": traType,
+        "OrgInvDate": orgInvDate,
+        "DueDays": dueDays,
+        "OrgRateType": 'RS',
+        // "OrgExRate": Joi.number().precision(4),
+        "OrgBrokerCode": brokerCode,
+        "OrgCt": orgCt,
+        "InvNo": invNo,
+      };
+
+      final response = await dio.post(
+        '${baseUrl}rough-entry/payment-det/add',
+        data: jsonEncode(params),
+      );
+
+      if (response.statusCode == 200) {
+        isLoading.value = false;
+
+        // successDialog(messageText: response.data['message']);
+        // await getPaymentMstData();
+      } else {
+        isLoading.value = false;
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error  _addPaymentDetData');
+      }
+    }
+  }
+
+  Future<void> _addPaymentDetAccData(
+      {paymentMstId,
+      partyCode,
+      subRefId,
+      srNo,
+      trnType,
+      mstId,
+      dueDate,
+      drCr,
+      amtRs,
+      bAmtRs,
+      brDrCr,
+      jAmtRs,
+      uAmtRs,
+      oAmtRs,
+      orDrCr,
+      traType,
+      orgInvDate,
+      bdDrCr,
+      odDrCr,
+      dueDays,
+      brokerCode,
+      orgCt,
+      invNo}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+      var params = <String, dynamic>{
+        "PaymentMstID": paymentMstId,
+        "PartyCode": partyCode,
+        "SubRefID": subRefId,
+        "SrNo": srNo,
+        "TrnType": trnType,
+        "MstID": mstId,
+        "DueDate": dueDate,
+        "DrCr": drCr,
+        "AmtRs": amtRs,
+        // "AmtDollar": Joi.number().precision(2),
+        "BAmtRs": bAmtRs,
+        // "BAmtDollar": Joi.number().precision(2),
+        "BRDrCr": brDrCr,
+        "BDDrCr": bdDrCr,
+        "JAmtRs": jAmtRs,
+        // "JAmtDollar": Joi.number().precision(2),
+        "UAmtRs": uAmtRs,
+        // "UAmtDollar": Joi.number().precision(2),
+        "OAmtRs": oAmtRs,
+        // "OAmtDollar": Joi.number().precision(2),
+        // "ORDrCr": orDrCr,
+        // "ODDrCr": odDrCr,
+        "TraType": traType,
+        "OrgInvDate": orgInvDate,
+        "DueDays": dueDays,
+        "OrgRateType": 'RS',
+        // "OrgExRate": Joi.number().precision(4),
+        "OrgBrokerCode": brokerCode,
+        "OrgCt": orgCt,
+        "InvNo": invNo,
+      };
+
+      // if (kDebugMode) {
+      //   print('Account Party Params: $params');
+      // }
+
+      final response = await dio.post(
+        '${baseUrl}rough-entry/payment-det-acc/add',
+        data: jsonEncode(params),
+      );
+
+      if (response.statusCode == 200) {
+        isLoading.value = false;
+
+        // successDialog(messageText: response.data['message']);
+        // await getPaymentMstData();
+      } else {
+        isLoading.value = false;
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error  _addPaymentDetAccData');
       }
     }
   }
@@ -452,7 +1644,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-        'http://50.62.183.116:301/rough-entry/party/add',
+        '${baseUrl}rough-entry/party/add',
         data: jsonEncode(params),
       );
 
@@ -557,7 +1749,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-        'http://50.62.183.116:301/rough-entry/party/$id',
+        '${baseUrl}rough-entry/party/$id',
         data: jsonEncode(params),
       );
 
@@ -585,6 +1777,7 @@ class DefaultController extends GetxController {
       brokerCode,
       dueDays,
       dueDate,
+      onlyDueDate,
       double? totalAmt,
       totalWt,
       totalRate,
@@ -680,8 +1873,7 @@ class DefaultController extends GetxController {
         "FinalNetAmtRs": totalAmt
       };
 
-      final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/purchase/add',
+      final response = await dio.post('${baseUrl}rough-entry/purchase/add',
           data: jsonEncode(params));
 
       // if (kDebugMode) {
@@ -703,10 +1895,67 @@ class DefaultController extends GetxController {
               srNo: index + 1 // incremented srNo
               );
         }));
-        isLoading.value = false;
+        Future.wait(List.generate(2, (index) {
+          return addCreditDebitData(
+            mstId: response.data['data']['RoughPurMstID'],
+            purMstId: response.data['data']['RoughPurMstID'],
+            saleMstId: 0,
+            invoiceDate: invoiceDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            paymentMstId: 0,
+            dueDate: dueDate,
+            remarks1: ' ',
+            remarks2: ' ',
+            partyCode:
+                index == 0 ? companyPartyCode.value.toString() : partyCode,
+            creditRs: index == 0 ? 0.00 : totalAmt,
+            debitRs: index == 0 ? totalAmt : 0.00,
+            invAmtRs: totalAmt,
+            drCr: index == 0 ? 'DR' : 'CR',
+            formType: 'Purchase',
+            entryType: index == 0 ? 'NIL' : 'PARTY',
+            traType: index == 0 ? 'NIL' : 'PARTY',
+            formName: 'FrmPurchaseEntry',
+            perPartyCode:
+                index == 0 ? partyCode : companyPartyCode.value.toString(),
+            orgCt: totalWt,
+            dueDays: dueDays,
+            invoiceNo: response.data['data']['InvoiceNo'],
+            srNo: index + 1,
+            brokerCode: brokerCode,
+          );
+        }));
         await getPurchaseData();
         await getPurchaseDetailsData();
-        successDialog(messageText: response.data['message']);
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        isLoading.value = true;
+        final invoiceGenerator = PurchaseInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: purchaseDataList.length + 1,
+            invoiceDate: invoiceDate,
+            invoiceNo: response.data['data']['InvoiceNo'],
+            partyCode: partyCode.toString(),
+            brokerCode: brokerCode,
+            dueDate: onlyDueDate,
+            dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
+        isLoading.value = false;
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        if (!kDebugMode) {
+          await Printing.sharePdf(
+            bytes: pdfData,
+            filename:
+                '${response.data['data']['InvoiceNo']}.pdf', // Set the custom name here
+          );
+        }
       } else {
         isLoading.value = false;
 
@@ -722,6 +1971,108 @@ class DefaultController extends GetxController {
     }
   }
 
+  Future<void> addCreditDebitData({
+    String? partyCode,
+    invoiceNo,
+    invoiceDate,
+    orgInvoiceDate,
+    brokerCode,
+    dueDays,
+    mstId,
+    purMstId,
+    saleMstId,
+    // polishPurMstId,
+    // polishRecMstId,
+    paymentMstId,
+    // exRate,
+    creditRs,
+    debitRs,
+    drCr,
+    formType,
+    entryType,
+    formName,
+    srNo,
+    invAmtRs,
+    perPartyCode,
+    remarks1,
+    remarks2,
+    traType,
+    dueDate,
+    orgCt,
+  }) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "MstID": mstId, // Purchase Sale Mst ID
+        "PurchaseMstID": purMstId,
+        "SaleMstID": saleMstId,
+        // "PolishPurMstID": polishPurMstId,
+        // "PolishRecMstID": polishRecMstId,
+        "PaymentMstID": paymentMstId,
+        "InvDate": DateFormat('yyyy-MM-dd').format(invoiceDate),
+        "DueDate": dueDate,
+        "RateType": 'RS',
+        "ExRate": 0.00,
+        "PartyCode": partyCode,
+        "CreditRs": creditRs,
+        // "CreditDollar":Joi.number().precision(2),
+        "DebitRs": debitRs,
+        // "DebitDollar": Joi.number().precision(2),
+        "InvAmtRs": invAmtRs,
+        // "InvAmtDollar":Joi.number().precision(2),
+        "DrCrType": drCr,
+        "FormType": formType,
+        "EntryType": entryType,
+        "Sflag": 'I',
+        "SDateTime": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        "LogID": "0",
+        "PcID": 'TESTFROMWEB',
+        "Ever": 0,
+        "FormName": formName,
+        "SrNo": srNo,
+        "PerPartyCode": perPartyCode,
+        "Remarks1": remarks1,
+        "Remarks2": remarks2,
+        "CompanyCode": companyCode.value,
+        "TraType": traType,
+        // "OrgInvDate": DateFormat('yyyy-MM-dd HH:mm:ss').parse(orgInvoiceDate),
+        "OrgInvDate": orgInvoiceDate,
+        "DueDays": dueDays,
+        "OrgRateType": 'RS',
+        "OrgExRate": 0.0,
+        "OrgBrokerCode": brokerCode,
+        "OrgCt": orgCt,
+        "InvoiceNo": invoiceNo,
+        // "PolishSaleMstId": Joi.number().integer(),
+        // "ExpenseMstID": Joi.number().integer(),
+      };
+
+      log(params.toString());
+
+      final response = await dio.post('${baseUrl}rough-entry/credit-debit/add',
+          data: jsonEncode(params));
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('${response.data['message']}');
+        }
+        isLoading.value = false;
+      } else {
+        isLoading.value = false;
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error  addCreditDebitData');
+      }
+    }
+  }
+
   Future<void> addSaleData(
       {String? partyCode,
       invoiceNo,
@@ -729,6 +2080,7 @@ class DefaultController extends GetxController {
       brokerCode,
       dueDays,
       dueDate,
+      onlyDueDate,
       roughName,
       description,
       wt,
@@ -793,8 +2145,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value // Global var Company Code
       };
 
-      final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/polish-sale/add',
+      final response = await dio.post('${baseUrl}rough-entry/polish-sale/add',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -812,10 +2163,66 @@ class DefaultController extends GetxController {
               srNo: index + 1 // incremented srNo
               );
         }));
-        isLoading.value = false;
+        Future.wait(List.generate(2, (index) {
+          return addCreditDebitData(
+            mstId: response.data['data']['PolishSaleMstID'],
+            purMstId: 0,
+            saleMstId: response.data['data']['PolishSaleMstID'],
+            invoiceDate: invoiceDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            paymentMstId: 0,
+            dueDate: dueDate,
+            remarks1: ' ',
+            remarks2: ' ',
+            partyCode:
+                index == 0 ? companyPartyCode.value.toString() : partyCode,
+            creditRs: index == 0 ? totalAmt : 0.00,
+            debitRs: index == 0 ? 0.00 : totalAmt,
+            invAmtRs: totalAmt,
+            drCr: index == 0 ? 'CR' : 'DR',
+            formType: 'Sale',
+            entryType: index == 0 ? 'NIL' : 'PARTY',
+            traType: index == 0 ? 'NIL' : 'PARTY',
+            formName: 'FrmSaleEntry',
+            perPartyCode:
+                index == 0 ? partyCode : companyPartyCode.value.toString(),
+            orgCt: totalWt,
+            dueDays: dueDays,
+            invoiceNo: response.data['data']['InvoiceNo'],
+            srNo: index + 1,
+            brokerCode: brokerCode,
+          );
+        }));
         await getSaleData();
         await getSaleDetailsData();
-        successDialog(messageText: response.data['message']);
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        final invoiceGenerator = SaleInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: polishSaleList.length + 1,
+            invoiceDate: invoiceDate,
+            invoiceNo: response.data['data']['InvoiceNo'],
+            partyCode: partyCode.toString(),
+            brokerCode: brokerCode,
+            dueDate: onlyDueDate,
+            dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
+        isLoading.value = false;
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        if (!kDebugMode) {
+          await Printing.sharePdf(
+            bytes: pdfData,
+            filename:
+                '${response.data['data']['InvoiceNo']}.pdf', // Set the custom name here
+          );
+        }
       } else {
         isLoading.value = false;
         errorDialog(
@@ -902,8 +2309,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value // Global var Company Code
       };
 
-      final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/memo-issue/add',
+      final response = await dio.post('${baseUrl}rough-entry/memo-issue/add',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -924,8 +2330,31 @@ class DefaultController extends GetxController {
         }));
         await getMemoIssueData();
         await getMemoIssueDetailsData();
+        isLoading.value = true;
+        final invoiceGenerator = MemoIssueInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: response.data['data']['MemoIssueMstID'],
+            invoiceDate: invoiceDate,
+            // invoiceNo: response.data['data']['InvoiceNo'],
+            partyCode: partyCode.toString(),
+            // brokerCode: brokerCode,
+            // dueDate: onlyDueDate,
+            // dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        if (!kDebugMode) {
+          await Printing.sharePdf(
+            bytes: pdfData,
+            filename:
+                'Memo-Issue/${getPartyName(int.parse(partyCode!))}/${DateTime.now()}.pdf', // Set the custom name here
+          );
+        }
       } else {
         isLoading.value = false;
         errorDialog(messageText: response.data['message']);
@@ -954,6 +2383,9 @@ class DefaultController extends GetxController {
       double? totalAmt,
       totalWt,
       totalRate,
+      totalLossWt,
+      totalRecWt,
+      totalRecAmount,
       memoIssueDetailId,
       required List<Map<String, String>> entries}) async {
     try {
@@ -1011,8 +2443,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value // Global var Company Code
       };
 
-      final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/memo-rec/add',
+      final response = await dio.post('${baseUrl}rough-entry/memo-rec/add',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -1021,8 +2452,10 @@ class DefaultController extends GetxController {
           var value = entry.value;
           // current entry data
           return _addMemoRecRoughData(
+              memoIssueDetId: value['detId'],
               wt: value['wt'],
               recWt: value['recWt'],
+              lossWt: value['lossWt'],
               rate: value['rate'],
               amount: value['amount'],
               roughName: value['rough'],
@@ -1034,15 +2467,41 @@ class DefaultController extends GetxController {
         await Future.wait(entries.asMap().entries.map((entry) {
           var value = entry.value;
           return _updateMemoIssueRoughData(
-              id: value['detId'],
-              rec: 'Y',
+            id: value['detId'],
+            rec: 'Y',
           );
         }));
         await getMemoRecData();
         await getMemoRecDetailsData();
         await getMemoIssueDetailsData();
+        isLoading.value = true;
+        final invoiceGenerator = MemoRecInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: response.data['data']['MemoRecMstID'],
+            invoiceDate: invoiceDate,
+            // invoiceNo: response.data['data']['InvoiceNo'],
+            partyCode: partyCode.toString(),
+            // brokerCode: brokerCode,
+            // dueDate: onlyDueDate,
+            // dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalLossWt: totalLossWt,
+            totalRecWt: totalRecWt,
+            totalAmt: totalAmt!,
+            totalRecAmt: totalRecAmount,
+            totalRate: totalRate);
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        if (!kDebugMode) {
+          await Printing.sharePdf(
+            bytes: pdfData,
+            filename:
+                'Memo-Receive/${getPartyName(int.parse(partyCode!))}/${DateTime.now()}.pdf', // Set the custom name here
+          );
+        }
       } else {
         isLoading.value = false;
 
@@ -1052,7 +2511,7 @@ class DefaultController extends GetxController {
     } catch (error) {
       isLoading.value = false;
 
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: '$error');
       if (kDebugMode) {
         log('$error');
       }
@@ -1067,12 +2526,14 @@ class DefaultController extends GetxController {
       brokerCode,
       dueDays,
       dueDate,
+      onlyDueDate,
       double? totalAmt,
       totalWt,
       totalRate,
       required List entries}) async {
     try {
       isLoading.value = true;
+      await deletePurchaseCreditDebitDetails(id: id);
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
@@ -1162,8 +2623,7 @@ class DefaultController extends GetxController {
         "FinalNetAmtRs": totalAmt
       };
 
-      final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/purchase/$id',
+      final response = await dio.put('${baseUrl}rough-entry/purchase/$id',
           data: jsonEncode(params));
 
       // if (kDebugMode) {
@@ -1201,11 +2661,63 @@ class DefaultController extends GetxController {
             );
           }
         }));
-
+        Future.wait(List.generate(2, (index) {
+          return addCreditDebitData(
+            mstId: response.data['data']['RoughPurMstID'],
+            purMstId: response.data['data']['RoughPurMstID'],
+            saleMstId: 0,
+            invoiceDate: invoiceDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            paymentMstId: 0,
+            dueDate: dueDate,
+            remarks1: ' ',
+            remarks2: ' ',
+            partyCode:
+                index == 0 ? companyPartyCode.value.toString() : partyCode,
+            creditRs: index == 0 ? 0.00 : totalAmt,
+            debitRs: index == 0 ? totalAmt : 0.00,
+            invAmtRs: totalAmt,
+            drCr: index == 0 ? 'DR' : 'CR',
+            formType: 'Purchase',
+            entryType: index == 0 ? 'NIL' : 'PARTY',
+            traType: index == 0 ? 'NIL' : 'PARTY',
+            formName: 'FrmPurchaseEntry',
+            perPartyCode:
+                index == 0 ? partyCode : companyPartyCode.value.toString(),
+            orgCt: totalWt,
+            dueDays: dueDays,
+            invoiceNo: response.data['data']['InvoiceNo'],
+            srNo: index + 1,
+            brokerCode: brokerCode,
+          );
+        }));
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
         await getPurchaseData();
         await getPurchaseDetailsData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        final invoiceGenerator = PurchaseInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: purchaseDataList.length + 1,
+            invoiceDate: invoiceDate,
+            invoiceNo: invoiceNo,
+            partyCode: partyCode.toString(),
+            brokerCode: brokerCode,
+            dueDate: onlyDueDate,
+            dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        await Printing.sharePdf(
+          bytes: pdfData,
+          filename: '$invoiceNo.pdf', // Set the custom name here
+        );
       } else {
         isLoading.value = false;
 
@@ -1230,6 +2742,7 @@ class DefaultController extends GetxController {
       brokerCode,
       dueDays,
       dueDate,
+      onlyDueDate,
       roughName,
       description,
       wt,
@@ -1241,6 +2754,7 @@ class DefaultController extends GetxController {
       required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
+      await deleteSaleCreditDebitDetails(id: id);
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
@@ -1294,8 +2808,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value // Global var Company Code
       };
 
-      final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/polish-sale/$id',
+      final response = await dio.put('${baseUrl}rough-entry/polish-sale/$id',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -1326,11 +2839,63 @@ class DefaultController extends GetxController {
                 );
           }
         }));
-        isLoading.value = false;
-        successDialog(messageText: response.data['message']);
-
+        Future.wait(List.generate(2, (index) {
+          return addCreditDebitData(
+            mstId: response.data['data']['PolishSaleMstID'],
+            purMstId: 0,
+            saleMstId: response.data['data']['PolishSaleMstID'],
+            invoiceDate: invoiceDate,
+            orgInvoiceDate:
+                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            paymentMstId: 0,
+            dueDate: dueDate,
+            remarks1: ' ',
+            remarks2: ' ',
+            partyCode:
+                index == 0 ? companyPartyCode.value.toString() : partyCode,
+            creditRs: index == 0 ? 0.00 : totalAmt,
+            debitRs: index == 0 ? totalAmt : 0.00,
+            invAmtRs: totalAmt,
+            drCr: index == 0 ? 'DR' : 'CR',
+            formType: 'Sale',
+            entryType: index == 0 ? 'NIL' : 'PARTY',
+            traType: index == 0 ? 'NIL' : 'PARTY',
+            formName: 'FrmSaleEntry',
+            perPartyCode:
+                index == 0 ? partyCode : companyPartyCode.value.toString(),
+            orgCt: totalWt,
+            dueDays: dueDays,
+            invoiceNo: response.data['data']['InvoiceNo'],
+            srNo: index + 1,
+            brokerCode: brokerCode,
+          );
+        }));
         await getSaleData();
         await getSaleDetailsData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        isLoading.value = false;
+        final invoiceGenerator = SaleInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: polishSaleList.length + 1,
+            invoiceDate: invoiceDate,
+            invoiceNo: invoiceNo,
+            partyCode: partyCode.toString(),
+            brokerCode: brokerCode,
+            dueDate: onlyDueDate,
+            dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        await Printing.sharePdf(
+          bytes: pdfData,
+          filename: '$invoiceNo.pdf', // Set the custom name here
+        );
       } else {
         isLoading.value = false;
 
@@ -1419,8 +2984,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value // Global var Company Code
       };
 
-      final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/memo-issue/$id',
+      final response = await dio.put('${baseUrl}rough-entry/memo-issue/$id',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -1453,11 +3017,33 @@ class DefaultController extends GetxController {
                 );
           }
         }));
-        isLoading.value = false;
-        successDialog(messageText: response.data['message']);
-
         await getMemoIssueData();
         await getMemoIssueDetailsData();
+        isLoading.value = true;
+        final invoiceGenerator = MemoIssueInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: response.data['data']['MemoIssueMstID'],
+            invoiceDate: invoiceDate,
+            // invoiceNo: response.data['data']['InvoiceNo'],
+            partyCode: partyCode.toString(),
+            // brokerCode: brokerCode,
+            // dueDate: onlyDueDate,
+            // dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
+        isLoading.value = false;
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        if (!kDebugMode) {
+          await Printing.sharePdf(
+            bytes: pdfData,
+            filename:
+                'Memo-Issue/${getPartyName(int.parse(partyCode!))}/${DateTime.now()}.pdf', // Set the custom name here
+          );
+        }
       } else {
         isLoading.value = false;
 
@@ -1546,8 +3132,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value // Global var Company Code
       };
 
-      final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/memo-rec/$id',
+      final response = await dio.put('${baseUrl}rough-entry/memo-rec/$id',
           data: jsonEncode(params));
 
       if (response.data['data'] != null) {
@@ -1579,11 +3164,33 @@ class DefaultController extends GetxController {
                 );
           }
         }));
-        isLoading.value = false;
-        successDialog(messageText: response.data['message']);
-
         await getMemoRecData();
         await getMemoRecDetailsData();
+        isLoading.value = true;
+        final invoiceGenerator = MemoRecInvoiceGenerator();
+        final pdfData = await invoiceGenerator.generateInvoice(
+            id: response.data['data']['MemoRecMstID'],
+            invoiceDate: invoiceDate,
+            // invoiceNo: response.data['data']['InvoiceNo'],
+            partyCode: partyCode.toString(),
+            // brokerCode: brokerCode,
+            // dueDate: onlyDueDate,
+            // dueDays: dueDays,
+            entries: entries,
+            totalWt: totalWt,
+            totalAmt: totalAmt!,
+            totalRate: totalRate);
+        isLoading.value = false;
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfData,
+        ).then((value) => successDialog(messageText: response.data['message']));
+        if (!kDebugMode) {
+          await Printing.sharePdf(
+            bytes: pdfData,
+            filename:
+                'Memo-Receive/${getPartyName(int.parse(partyCode!))}/${DateTime.now()}.pdf', // Set the custom name here
+          );
+        }
       } else {
         isLoading.value = false;
 
@@ -1626,8 +3233,7 @@ class DefaultController extends GetxController {
         "Description": description
       };
 
-      final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/rough-details/add',
+      final response = await dio.post('${baseUrl}rough-entry/rough-details/add',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1672,8 +3278,7 @@ class DefaultController extends GetxController {
         "Description": description
       };
 
-      final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/sale-details/add',
+      final response = await dio.post('${baseUrl}rough-entry/sale-details/add',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1727,7 +3332,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/memo-issue-details/add',
+          '${baseUrl}rough-entry/memo-issue-details/add',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1747,9 +3352,11 @@ class DefaultController extends GetxController {
   }
 
   Future<void> _addMemoRecRoughData(
-      {roughName,
+      {memoIssueDetId,
+      roughName,
       wt,
       recWt,
+      lossWt,
       rate,
       amount,
       description,
@@ -1762,11 +3369,13 @@ class DefaultController extends GetxController {
 
       var params = {
         "MemoRecMstID": memoRecMstID,
+        "MemoIssueDetID": memoIssueDetId,
         "SrNo": srNo,
         // "ClarityCode": 1,
         // "CharniCode": 1,
         // "Pcs": 1,
         "RecCarats": recWt,
+        "LossCarats": lossWt,
         "Carats": wt,
         "RateRs": rate,
         "AmountRs": amount,
@@ -1781,7 +3390,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.post(
-          'http://50.62.183.116:301/rough-entry/memo-rec-details/add',
+          '${baseUrl}rough-entry/memo-rec-details/add',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1833,8 +3442,7 @@ class DefaultController extends GetxController {
         "Description": description
       };
 
-      final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/sale-details/$id',
+      final response = await dio.put('${baseUrl}rough-entry/sale-details/$id',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1889,12 +3497,12 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/memo-issue-details/$id',
+          '${baseUrl}rough-entry/memo-issue-details/$id',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
-          print('Updated! $id');
+          print('Updated! $id $rec');
         }
       } else {
         errorDialog(
@@ -1944,7 +3552,7 @@ class DefaultController extends GetxController {
       };
 
       final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/memo-rec-details/$id',
+          '${baseUrl}rough-entry/memo-rec-details/$id',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -1996,8 +3604,7 @@ class DefaultController extends GetxController {
         "Description": description
       };
 
-      final response = await dio.put(
-          'http://50.62.183.116:301/rough-entry/rough-details/$id',
+      final response = await dio.put('${baseUrl}rough-entry/rough-details/$id',
           data: jsonEncode(params));
 
       if (response.statusCode == 200) {
@@ -2023,8 +3630,8 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response = await dio
-          .delete('http://50.62.183.116:301/rough-entry/rough-details/$id');
+      final response =
+          await dio.delete('${baseUrl}rough-entry/rough-details/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2055,8 +3662,8 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response = await dio
-          .delete('http://50.62.183.116:301/rough-entry/sale-details/$id');
+      final response =
+          await dio.delete('${baseUrl}rough-entry/sale-details/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2088,8 +3695,8 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response = await dio.delete(
-          'http://50.62.183.116:301/rough-entry/memo-issue-details/$id');
+      final response =
+          await dio.delete('${baseUrl}rough-entry/memo-issue-details/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2113,7 +3720,7 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> deleteMemoRecRoughData({required id}) async {
+  Future<void> deleteMemoRecRoughData({required id, detId}) async {
     try {
       isDeleteLoading.value = true;
 
@@ -2121,14 +3728,16 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response = await dio
-          .delete('http://50.62.183.116:301/rough-entry/memo-rec-details/$id');
+      final response =
+          await dio.delete('${baseUrl}rough-entry/memo-rec-details/$id');
 
       if (response.statusCode == 200) {
+        _updateMemoIssueRoughData(id: detId, rec: 'N');
         if (kDebugMode) {
           print('Deleted!');
         }
         await getMemoRecDetailsData();
+        await getMemoIssueDetailsData();
         isDeleteLoading.value = false;
       } else {
         isDeleteLoading.value = false;
@@ -2153,8 +3762,7 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response =
-          await dio.delete('http://50.62.183.116:301/rough-entry/party/$id');
+      final response = await dio.delete('${baseUrl}rough-entry/party/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2183,13 +3791,12 @@ class DefaultController extends GetxController {
       {required int id, required List entries}) async {
     try {
       isDeleteLoading.value = true;
-
+      await deletePurchaseCreditDebitDetails(id: id);
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
-      final response =
-          await dio.delete('http://50.62.183.116:301/rough-entry/purchase/$id');
+      final response = await dio.delete('${baseUrl}rough-entry/purchase/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2209,6 +3816,9 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getPurchaseDetailsData();
         await getPurchaseData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
         isDeleteLoading.value = false;
 
         successDialog(messageText: response.data['message']);
@@ -2229,13 +3839,13 @@ class DefaultController extends GetxController {
   Future<void> deleteSaleData({required int id, required List entries}) async {
     try {
       isDeleteLoading.value = true;
-
+      await deleteSaleCreditDebitDetails(id: id);
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
       }));
 
-      final response = await dio
-          .delete('http://50.62.183.116:301/rough-entry/polish-sale/$id');
+      final response =
+          await dio.delete('${baseUrl}rough-entry/polish-sale/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2255,8 +3865,10 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getSaleDetailsData();
         await getSaleData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
         isDeleteLoading.value = false;
-
         successDialog(messageText: response.data['message']);
       } else {
         isDeleteLoading.value = false;
@@ -2281,8 +3893,7 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response = await dio
-          .delete('http://50.62.183.116:301/rough-entry/memo-issue/$id');
+      final response = await dio.delete('${baseUrl}rough-entry/memo-issue/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2328,8 +3939,7 @@ class DefaultController extends GetxController {
         'content-type': 'application/json',
       }));
 
-      final response =
-          await dio.delete('http://50.62.183.116:301/rough-entry/memo-rec/$id');
+      final response = await dio.delete('${baseUrl}rough-entry/memo-rec/$id');
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -2341,13 +3951,15 @@ class DefaultController extends GetxController {
           // Ensure we create a list of Future<void> for Future.wait to process
           await Future.wait(
             entries.map((value) {
-              return deleteMemoRecRoughData(id: value['id']);
+              return deleteMemoRecRoughData(
+                  id: value['id'], detId: value['detId']);
             }).toList(),
           );
         }
 
         // After processing deletion, refresh data and stop loading
         await getMemoRecDetailsData();
+        await getMemoIssueDetailsData();
         await getMemoRecData();
         isDeleteLoading.value = false;
 
@@ -2366,11 +3978,246 @@ class DefaultController extends GetxController {
     }
   }
 
+  Future<void> deletePaymentData({required int id}) async {
+    try {
+      isDeleteLoading.value = true;
+      await deletePaymentDetails(id: id);
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response =
+          await dio.delete('${baseUrl}rough-entry/payment-mst/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        // if (entries.isNotEmpty) {
+        //   // Ensure we create a list of Future<void> for Future.wait to process
+        //   await Future.wait(
+        //     entries.map((value) {
+        //       return deleteMemoRecRoughData(
+        //           id: value['id'], detId: value['detId']);
+        //     }).toList(),
+        //   );
+        // }
+
+        // After processing deletion, refresh data and stop loading
+        await getPaymentMstData();
+        await getPaymentDetData();
+        await getPaymentDetAccData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+
+        isDeleteLoading.value = false;
+
+        successDialog(messageText: response.data['message']);
+      } else {
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deletePaymentDetails({required int id}) async {
+    try {
+      // isDeleteLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response =
+          await dio.delete('${baseUrl}delete/payment-details?paymentMstId=$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        // if (entries.isNotEmpty) {
+        //   // Ensure we create a list of Future<void> for Future.wait to process
+        //   await Future.wait(
+        //     entries.map((value) {
+        //       return deleteMemoIssueRoughData(id: value['id']);
+        //     }).toList(),
+        //   );
+        // }
+
+        // After processing deletion, refresh data and stop loading
+        await getCreditDebitData();
+        await getPaymentDetData();
+        await getPaymentDetAccData();
+        await getPaymentMstData();
+        // isDeleteLoading.value = false;
+        log(response.data['message']);
+      } else {
+        // isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      // isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deletePurchaseCreditDebitDetails({required int id}) async {
+    try {
+      // isDeleteLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio
+          .delete('${baseUrl}delete/purchase-credit-debit-details?mstId=$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        // if (entries.isNotEmpty) {
+        //   // Ensure we create a list of Future<void> for Future.wait to process
+        //   await Future.wait(
+        //     entries.map((value) {
+        //       return deleteMemoIssueRoughData(id: value['id']);
+        //     }).toList(),
+        //   );
+        // }
+
+        // After processing deletion, refresh data and stop loading
+        await getCreditDebitData();
+        log(response.data['message']);
+      } else {
+        // isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      // isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deleteSaleCreditDebitDetails({required int id}) async {
+    try {
+      // isDeleteLoading.value = true;
+
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio
+          .delete('${baseUrl}delete/sale-credit-debit-details?mstId=$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        // if (entries.isNotEmpty) {
+        //   // Ensure we create a list of Future<void> for Future.wait to process
+        //   await Future.wait(
+        //     entries.map((value) {
+        //       return deleteMemoIssueRoughData(id: value['id']);
+        //     }).toList(),
+        //   );
+        // }
+
+        // After processing deletion, refresh data and stop loading
+        await getCreditDebitData();
+        log(response.data['message']);
+      } else {
+        // isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      // isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+//   Future<void> getIpAddress() async {
+//     deviceInfo.value = 'Searching...';
+//     // final info = NetworkInfo();
+//     // String? ip = await info.getWifiIP(); // Get the Wi-Fi IP address
+//     //   ipAddress.value = ip ?? 'No IP found'; // Update state with IP address
+//     try {
+//       /// Initialize Ip Address
+//       var ip = IpAddress(type: RequestType.json);
+// print(ip.getIp());
+//       /// Get the IpAddress based on requestType.
+//       dynamic data = await ip.getIp();
+//       deviceInfo.value = data['ip'];
+//     } on IpAddressException catch (exception) {
+//       errorDialog(messageText: exception.message);
+//
+//       /// Handle the exception.
+//       if (kDebugMode) {
+//         print(exception.message);
+//       }
+//     }
+//   }
+
+  // Future<void> getHostName() async {
+  //   deviceInfo.value = Platform.lo;
+  // }
+
+  Future<void> getDeviceInfo() async {
+    final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+    // String deviceInfo;
+
+    // if (Platform.isWindows) {
+    var info = await deviceInfoPlugin.webBrowserInfo;
+    if (kDebugMode) {
+      print(info.data);
+    }
+    deviceInfo.value = info.browserName.name; // Get Android version
+    // } else if (Platform.isMacOS) {
+    //   var iosInfo = await deviceInfoPlugin.macOsInfo;
+    //   deviceInfo.value = 'MacOS ${iosInfo.computerName}'; // Get iOS version
+    // } else {
+    //   deviceInfo.value = 'Unknown Device';
+    // }
+  }
+
   @override
   Future<void> onInit() async {
-    await getPartyData();
+    // await getIpAddress();
+    await getDeviceInfo();
+    await getOutstandingPurchaseSaleDetails();
     await getPurchaseData();
+    // await getHostName();
+    await getCompanies();
+    await getPartyData();
+    await getCreditDebitData();
     await getPartyTypeData();
+    await getPurchaseDetailsData();
     await getSaleDetailsData();
     await getMemoIssueData();
     await getMemoIssueDetailsData();
@@ -2378,7 +4225,10 @@ class DefaultController extends GetxController {
     await getMemoRecDetailsData();
     await getSaleData();
     await getRoughData();
-    await getPurchaseDetailsData();
+    await getPaymentMstData();
+    await getPaymentDetData();
+    await getPaymentDetAccData();
+    await getPendingPaymentData();
     super.onInit();
   }
 }

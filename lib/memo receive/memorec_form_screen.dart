@@ -1,24 +1,27 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_datagrid.dart';
+import 'package:real_web_rough_entry_system/memo%20receive/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
 import 'package:real_web_rough_entry_system/memo%20receive/memo_receive_datagrid.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_details_model.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
-import 'package:real_web_rough_entry_system/responsive.dart';
-import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class MemoRecFormScreen extends StatefulWidget {
-  const MemoRecFormScreen({super.key});
+  final bool showHeader;
+
+  const MemoRecFormScreen({super.key, required this.showHeader});
 
   @override
   MemoRecFormScreenState createState() => MemoRecFormScreenState();
@@ -37,6 +40,8 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   final TextEditingController descripController = TextEditingController();
   final TextEditingController issWtController = TextEditingController();
   final TextEditingController recWtController = TextEditingController();
+  final TextEditingController lossWtController =
+      TextEditingController(text: '0.0');
   final TextEditingController rateController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController stockcontroller =
@@ -53,11 +58,13 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   List<Map<String, String>> entries = [];
   List<Map<String, String>> recEntries = [];
   RxList<MemoIssueDetailsModel> allRoughDetails = <MemoIssueDetailsModel>[].obs;
+  RxList<MemoIssueDetailsModel> selectedRoughDetails =
+      <MemoIssueDetailsModel>[].obs;
   RxList<MemoIssueModel> allSelectedMemoIssue = <MemoIssueModel>[].obs;
   Map<int, List<MemoIssueDetailsModel>> groupedRoughDetails = {};
   RxList selectedBroker = <int>[].obs;
   final RxString _selectedType = ''.obs;
-  final RxString _selectedTypeBroker = ''.obs;
+  final RxString _selectedTypeBroker = '22'.obs;
   final RxString _selectedTypeParty = ''.obs;
   final RxInt selectedMemoRecMstID = 0.obs;
   final RxString selectedMemoIssueDetID = ''.obs;
@@ -77,6 +84,8 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   double get totalRecWt =>
       recEntries.fold(0.0, (prev, e) => prev + double.parse(e['recWt']!));
 
+  double get totalLossWt => totalWt - totalRecWt;
+
   double get totalRecRate => totalRecWt == 0 ? 0 : totalRecAmount / totalRecWt;
 
   double get totalRecAmount =>
@@ -95,7 +104,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   final toDateController = TextEditingController();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-  final MenuAppController menuController = Get.find<MenuAppController>();
 
   RxList<MemoRecModel> memoRecDataGridSource = <MemoRecModel>[].obs;
   RxList<MemoRecModel> filteredDataGridSource = <MemoRecModel>[].obs;
@@ -115,18 +123,38 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
   @override
   void initState() {
+    super.initState();
+
+    // Adding listeners for calculating amount and loss
+    _addListeners();
+
+    // Initializing memoRecDataGridSource with defaultController.memoRecList
+    memoRecDataGridSource.value = defaultController.memoRecList;
+
+    // Post-frame callbacks for focusing on specific text fields
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setInitialFocus();
+    });
+  }
+
+// Method to add listeners to controllers for calculations
+  void _addListeners() {
     issWtController.addListener(_updateAmount);
     recWtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
-    memoRecDataGridSource.value = defaultController.memoRecList;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _keyBoardFocus.requestFocus();
-      _formKeyBoardFocus.requestFocus();
-      if (_isSearch) {
-        _searchKeyBoardFocus.requestFocus();
-      }
-    });
-    super.initState();
+
+    issWtController.addListener(_calculateLoss);
+    recWtController.addListener(_calculateLoss);
+  }
+
+// Method to handle setting initial focus on widgets
+  void _setInitialFocus() {
+    _keyBoardFocus.requestFocus();
+    _formKeyBoardFocus.requestFocus();
+
+    if (_isSearch) {
+      _searchKeyBoardFocus.requestFocus();
+    }
   }
 
   @override
@@ -145,6 +173,23 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
     fromDateController.dispose();
     toDateController.dispose();
     super.dispose();
+  }
+
+  void _calculateLoss() {
+    double issWt = double.tryParse(issWtController.text) ?? 0.0;
+    double recWt = double.tryParse(recWtController.text) ?? 0.0;
+    if (recWt <= issWt) {
+      // Parse the text values as doubles
+
+      // Calculate the loss weight
+      double lossWt = issWt - recWt;
+
+      // Update the lossWtController value
+      lossWtController.text = lossWt.toStringAsFixed(3);
+    } else {
+      // Handle any error that might occur during parsing
+      lossWtController.text = '0.00';
+    }
   }
 
   void _updateAmount() {
@@ -237,6 +282,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
         'description': descripController.text,
         'wt': issWtController.text,
         'recWt': recWtController.text,
+        'lossWt': lossWtController.text,
         'rate': rateController.text,
         'amount': (double.parse(recWtController.text) *
                 double.parse(rateController.text))
@@ -248,6 +294,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
       descripController.clear();
       issWtController.clear();
       recWtController.clear();
+      lossWtController.clear();
       rateController.clear();
       amountController.clear();
       stockcontroller.clear();
@@ -255,7 +302,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
         _brokerFocus.requestFocus(); // Move focus to the first input field
       });
     });
-    // print("${entries.length}FROM ...");
   }
 
   @override
@@ -312,10 +358,12 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                     for (var roughEntry in roughEntries) {
                       recEntries.add({
                         'id': roughEntry.memoRecDetID.toString(),
+                        'detId': roughEntry.memoIssueDetID.toString(),
                         'rough': roughEntry.roughTypeCode.toString(),
                         'description': roughEntry.description.toString(),
                         'wt': roughEntry.carats.toString(),
                         'recWt': roughEntry.recCarats.toString(),
+                        'lossWt': roughEntry.lossCarats.toString(),
                         'rate': roughEntry.rateRs.toString(),
                         'amount':
                             (double.parse(roughEntry.recCarats.toString()) *
@@ -371,13 +419,17 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Header(title: 'Memo Receive Search'),
+                widget.showHeader
+                    ? const Header(title: 'Memo Receive Search')
+                    : const SizedBox.shrink(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 16.0),
                   child: Row(
                     children: [
                       Expanded(
                         child: buildTextField(
+                          excludeFieldValidation: false,
                           'From Date',
                           fromDateController,
                           readOnly: true,
@@ -404,6 +456,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: buildTextField(
+                          excludeFieldValidation: false,
                           'To Date',
                           toDateController,
                           readOnly: true,
@@ -705,6 +758,35 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                           //   ),
                           // ),
                         ],
+                        tableSummaryRows: [
+                          GridTableSummaryRow(
+                              title:
+                              'Total ${memoRecDataGridSource.length}',
+                              showSummaryInRow:
+                              false,
+                              titleColumnSpan: 1,
+                              columns: <GridSummaryColumn>[
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Wt',
+                                    columnName:
+                                    'Tot Wt',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                                const GridSummaryColumn(
+                                    name:
+                                    'Tot Amt Rs',
+                                    columnName:
+                                    'Tot Amt Rs',
+                                    summaryType:
+                                    GridSummaryType
+                                        .sum),
+                              ],
+                              position:
+                              GridTableSummaryRowPosition
+                                  .bottom)
+                        ],
                         rowHeight: 25,
                         headerRowHeight: 35,
                         gridLinesVisibility: GridLinesVisibility.both,
@@ -759,15 +841,21 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                             _selectedTypeBroker.value =
                                 partyEntry.brokerCode.toString();
                             // _selectedTypeParty.value = partyEntry.partyCode;
+
                             setState(() {
                               for (var roughEntry in roughEntries) {
+                                if (kDebugMode) {
+                                  print(roughEntry.lossCarats);
+                                }
                                 recEntries.add({
                                   'id': roughEntry.memoRecDetID.toString(),
+                                  'detId': roughEntry.memoIssueDetID.toString(),
                                   'rough': roughEntry.roughTypeCode.toString(),
                                   'description':
                                       roughEntry.description.toString(),
                                   'wt': roughEntry.carats.toString(),
                                   'recWt': roughEntry.recCarats.toString(),
+                                  'lossWt': roughEntry.lossCarats.toString(),
                                   'rate': roughEntry.rateRs.toString(),
                                   'amount': (double.parse(
                                               roughEntry.recCarats.toString()) *
@@ -801,7 +889,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Header(title: 'Memo Receive'),
+                widget.showHeader
+                    ? const Header(title: 'Memo Receive')
+                    : const SizedBox.shrink(),
                 Row(
                   children: [
                     Expanded(
@@ -855,7 +945,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         // invNoController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                       } else {
                                         infoDialog(
                                             messageText:
@@ -877,7 +967,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                 dueDate: dueDate,
                                                 entries: recEntries,
                                                 totalAmt: totalRecAmount,
-                                                totalWt: totalRecWt,
+                                                totalWt: totalWt,
+                                                totalRecWt: totalRecWt,
+                                                totalRecAmount: totalRecAmount,
+                                                totalLossWt: totalLossWt,
                                                 totalRate: totalRecRate)
                                             .then((onValue) {
                                           setState(() {
@@ -894,7 +987,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         // invNoController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                       } else {
                                         infoDialog(
                                             messageText:
@@ -923,9 +1016,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         // invNoController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                         setState(() {
                                           _isFromEdit = false;
+                                          _isEnabled = false;
                                           recEntries.clear();
                                         });
                                       });
@@ -949,7 +1043,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                     rateController.clear();
                                     _selectedTypeParty.value = '';
                                     _selectedType.value = '';
-                                    _selectedTypeBroker.value = '';
+                                    _selectedTypeBroker.value = '22';
                                     recWtController.clear();
                                     setState(() {
                                       entries.clear();
@@ -960,7 +1054,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                   }
                                   if (event.logicalKey ==
                                       LogicalKeyboardKey.keyE) {
-                                    menuController.selectedIndex.value = 0;
+                                    // menuController.selectedIndex.value = 0;
+                                    tabController.removeTab(
+                                        tabController.currentIndex.value);
                                   }
                                   if (HardwareKeyboard
                                           .instance.isShiftPressed &&
@@ -1077,7 +1173,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                         ),
                                                         items:
                                                             dropdownItemsParty,
-                                                        onChanged: _isFromEdit
+                                                        onChanged: _isFromEdit || recEntries.isNotEmpty
                                                             ? null
                                                             : _isEnabled
                                                                 ? (value) {
@@ -1271,7 +1367,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
                                                                                             // Find the corresponding rough data for the selected memo issue detail
                                                                                             MemoIssueDetailsModel roughEntry = defaultController.memoIssueDetailsList.firstWhere((entry) => entry.memoIssueDetID == int.parse(selectedMemoIssueDetID.value));
-
+                                                                                            selectedRoughDetails.add(roughEntry); // Update the form fields with the selected rough entry details
                                                                                             // Update the form fields with the selected rough entry details
                                                                                             _selectedType.value = roughEntry.roughTypeCode.toString();
                                                                                             issWtController.text = roughEntry.carats.toString();
@@ -1280,7 +1376,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                                                             descripController.text = roughEntry.description.toString();
                                                                                             dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
                                                                                             selectedDate = DateTime.now();
-
+                                                                                            defaultController.memoIssueDetailsList.remove(roughEntry);
                                                                                             Future.delayed(const Duration(milliseconds: 100), () {
                                                                                               _buttonFocus.requestFocus();
                                                                                             });
@@ -1372,8 +1468,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
                                                                                             // Find the corresponding rough data for the selected memo issue detail
                                                                                             MemoIssueDetailsModel roughEntry = defaultController.memoIssueDetailsList.firstWhere((entry) => entry.memoIssueDetID == int.parse(selectedMemoIssueDetID.value));
-
-                                                                                            // Update the form fields with the selected rough entry details
+                                                                                            selectedRoughDetails.add(roughEntry); // Update the form fields with the selected rough entry details
                                                                                             _selectedType.value = roughEntry.roughTypeCode.toString();
                                                                                             issWtController.text = roughEntry.carats.toString();
                                                                                             rateController.text = roughEntry.rateRs.toString();
@@ -1381,6 +1476,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                                                             descripController.text = roughEntry.description.toString();
                                                                                             dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
                                                                                             selectedDate = DateTime.now();
+                                                                                            defaultController.memoIssueDetailsList.remove(roughEntry);
                                                                                             _enableFields();
                                                                                             Get.back(); // Close the dialog
                                                                                           }
@@ -1388,11 +1484,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                                                             _buttonFocus.requestFocus(); // Move focus to the first input field
                                                                                           });
                                                                                         },
-                                                                                        // onSelectionChanged: (List<DataGridRow> addedRows, List<DataGridRow> removedRows) {
-                                                                                        //   if (addedRows.isNotEmpty) {
-                                                                                        //     final DataGridRow selectedRow = addedRows.first;
-                                                                                        //   }
-                                                                                        // },
                                                                                         columnWidthMode: ColumnWidthMode.fill,
                                                                                         frozenColumnsCount: 1,
                                                                                         allowFiltering: true,
@@ -1469,6 +1560,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                             .ignored;
                                                       },
                                                 child: buildTextField(
+                                                  excludeFieldValidation: false,
                                                   'DATE',
                                                   dateController,
                                                   isEnabled: _isFromEdit
@@ -1497,8 +1589,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         2: FlexColumnWidth(1), // WT column
                                         3: FlexColumnWidth(1), // RATE column
                                         4: FlexColumnWidth(1), // RATE column
-                                        5: FlexColumnWidth(1), // AMOUNT column
-                                        6: FlexColumnWidth(
+                                        5: FlexColumnWidth(1), // RATE column
+                                        6: FlexColumnWidth(1), // AMOUNT column
+                                        7: FlexColumnWidth(
                                             0.25), // AMOUNT column
                                       },
                                       children: [
@@ -1547,6 +1640,18 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                 child: Padding(
                                               padding: EdgeInsets.all(3.0),
                                               child: Text('REC WT',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize:
+                                                        12, // Font size for the label
+                                                  ),
+                                                  textAlign: TextAlign.start),
+                                            )),
+                                            TableCell(
+                                                child: Padding(
+                                              padding: EdgeInsets.all(3.0),
+                                              child: Text('LOSS WT',
                                                   style: TextStyle(
                                                     color: Colors.black,
                                                     fontWeight: FontWeight.w900,
@@ -1704,6 +1809,18 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                             ),
                                             TableCell(
                                               child: buildTextField2(
+                                                'LOSS WT',
+                                                lossWtController,
+                                                inputFormatterList: [
+                                                  FilteringTextInputFormatter
+                                                      .allow(RegExp(
+                                                          r'^\d+\.?\d{0,3}')),
+                                                ],
+                                                isEnabled: false,
+                                              ),
+                                            ),
+                                            TableCell(
+                                              child: buildTextField2(
                                                   'RATE', rateController,
                                                   inputFormatterList: [
                                                     FilteringTextInputFormatter
@@ -1815,7 +1932,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                         } else {
                                           infoDialog(
                                               messageText:
@@ -1841,7 +1958,11 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                                       dueDate: dueDate,
                                                       entries: recEntries,
                                                       totalAmt: totalRecAmount,
-                                                      totalWt: totalRecWt,
+                                                      totalWt: totalWt,
+                                                      totalRecWt: totalRecWt,
+                                                      totalRecAmount:
+                                                          totalRecAmount,
+                                                      totalLossWt: totalLossWt,
                                                       totalRate: totalRecRate)
                                                   .then((onValue) {
                                                 setState(() {
@@ -1858,7 +1979,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                               // invNoController.clear();
                                               _selectedTypeParty.value = '';
                                               _selectedType.value = '';
-                                              _selectedTypeBroker.value = '';
+                                              _selectedTypeBroker.value = '22';
                                             } else {
                                               infoDialog(
                                                   messageText:
@@ -1902,9 +2023,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           // invNoController.clear();
                                           _selectedTypeParty.value = '';
                                           _selectedType.value = '';
-                                          _selectedTypeBroker.value = '';
+                                          _selectedTypeBroker.value = '22';
                                           setState(() {
                                             _isFromEdit = false;
+                                            _isEnabled = false;
                                             recEntries.clear();
                                           });
                                         });
@@ -1946,7 +2068,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         rateController.clear();
                                         _selectedTypeParty.value = '';
                                         _selectedType.value = '';
-                                        _selectedTypeBroker.value = '';
+                                        _selectedTypeBroker.value = '22';
                                         recWtController.clear();
                                         setState(() {
                                           entries.clear();
@@ -1975,7 +2097,8 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  menuController.selectedIndex.value = 0;
+                                  tabController.removeTab(
+                                      tabController.currentIndex.value);
                                 },
                                 child: const Text.rich(
                                   TextSpan(
@@ -2016,13 +2139,67 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: _isFromEdit
+                                    ? () async {
+                                        final invoiceGenerator =
+                                            MemoRecInvoiceGenerator();
+                                        final pdfData = await invoiceGenerator
+                                            .generateInvoice(
+                                                id: selectedMemoRecMstID.value,
+                                                invoiceDate: selectedDate!,
+                                                // invoiceNo: invNoController.text,
+                                                partyCode:
+                                                    _selectedTypeParty.value,
+                                                // brokerCode:
+                                                // _selectedTypeBroker.value,
+                                                // dueDate: dueDateController.text,
+                                                // dueDays: dueDaysController.text,
+                                                entries: recEntries,
+                                                totalWt: totalWt,
+                                                totalLossWt: totalLossWt,
+                                                totalRecWt: totalRecWt,
+                                                totalAmt: totalAmount,
+                                                totalRecAmt: totalRecAmount,
+                                                totalRate: totalRate);
+                                        await Printing.layoutPdf(
+                                          onLayout:
+                                              (PdfPageFormat format) async =>
+                                                  pdfData,
+                                        );
+                                        if (!kDebugMode) {
+                                          await Printing.sharePdf(
+                                            bytes: pdfData,
+                                            filename:
+                                                'Memo-Receive/${getPartyName(int.parse(_selectedTypeParty.value))}/${DateTime.now()}.pdf', // Set the custom name here
+                                          );
+                                        }
+                                      }
+                                    : null,
+                                child: const Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'P', // Underlined "A"
+                                        style: TextStyle(
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: 'rint', // Normal "dd"
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           )
                         ],
                       ),
                     ),
-                    if (!Responsive.isMobile(context))
-                      const SizedBox(width: 16),
+                    // if (!Responsive.isMobile(context))
+                    //   const SizedBox(width: 16),
                     // On Mobile means if the screen is less than 850 we don't want to show it
                     // if (!Responsive.isMobile(context))
                     //   const Expanded(
@@ -2074,9 +2251,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
         4: FixedColumnWidth(80),
         5: FixedColumnWidth(80),
         6: FixedColumnWidth(80),
-        7: FixedColumnWidth(40),
+        7: FixedColumnWidth(80),
         8: FixedColumnWidth(40),
         9: FixedColumnWidth(40),
+        10: FixedColumnWidth(40),
       },
       children: [
         // Table Header Row
@@ -2118,6 +2296,14 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
               padding: EdgeInsets.all(3.0),
               child: Text(
                 'REC WT',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(3.0),
+              child: Text(
+                'LOSS WT',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.start,
               ),
@@ -2203,6 +2389,14 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
               Padding(
                 padding: const EdgeInsets.all(3.0),
                 child: Text(
+                  recEntries[index]['lossWt']!,
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
                   recEntries[index]['rate']!,
                   style: const TextStyle(fontSize: 12),
                   textAlign: TextAlign.start,
@@ -2234,14 +2428,24 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                           'Can not delete Single Rough Entry')
                                   : defaultController
                                       .deleteMemoRecRoughData(
+                                          detId: int.parse(
+                                              recEntries[index]['detId']!),
                                           id: int.parse(
                                               recEntries[index]['id']!))
                                       .then((onValue) {
                                       setState(() {
                                         recEntries.removeAt(index);
                                       });
+                                      // defaultController.memoIssueDetailsList
+                                      //     .add(removedEntry);
                                     });
                             } else {
+                              MemoIssueDetailsModel removedEntry =
+                                  selectedRoughDetails.firstWhere((w) =>
+                                      w.memoIssueDetID.toString() ==
+                                      recEntries[index]['detId']);
+                              defaultController.memoIssueDetailsList
+                                  .add(removedEntry);
                               setState(() {
                                 recEntries.removeAt(index);
                               });
@@ -2309,6 +2513,15 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
             Padding(
               padding: const EdgeInsets.all(3.0),
               child: Text(
+                totalLossWt.toStringAsFixed(2),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: Text(
                 totalRecRate.toStringAsFixed(2),
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -2332,38 +2545,6 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
     );
   }
 
-  String formatDate(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  String formatDateWithTime(String date) {
-    // Parse the date string into a DateTime object
-    DateTime parsedDate = DateTime.parse(date);
-
-    // Format the DateTime object into the desired format
-    String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
-
-    return formattedDate;
-  }
-
-  DateTime dateFormat(String date) {
-    DateTime parsedDate = DateTime.parse(date);
-    return parsedDate;
-  }
-
-  String getRoughName(String? typeCode) {
-    final party = defaultController.roughModel.firstWhere(
-        (p) => p.roughTypeCode == int.parse(typeCode!),
-        orElse: () => RoughModel(roughTypeName: 'Unknown'));
-    return party.roughTypeName ?? 'Unknown';
-  }
-
   List<DropdownMenuItem<String>> get dropdownItems {
     return defaultController.roughModel.map((partyType) {
       return DropdownMenuItem<String>(
@@ -2375,7 +2556,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
   List<DropdownMenuItem<String>> get dropdownItemsParty {
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 1)
+        .where((partyType) =>
+            partyType.typeCode == 2 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),
@@ -2387,7 +2570,9 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
   List<DropdownMenuItem<String>> get dropdownItemsBroker {
     if (groupedRoughDetails.isNotEmpty) {}
     return defaultController.partyMstList
-        .where((partyType) => partyType.typeCode == 5)
+        .where((partyType) =>
+            partyType.typeCode == 5 &&
+            partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
       return DropdownMenuItem<String>(
         value: partyType.partyCode.toString(),

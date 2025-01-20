@@ -1,6 +1,7 @@
 class MemoRecDetailsModel {
   int? memoRecDetID;
   int? memoRecMstID;
+  int? memoIssueDetID;
   int? srNo;
 
   // int clarityCode;
@@ -8,6 +9,7 @@ class MemoRecDetailsModel {
   // int pcs;
   double? carats;
   double? recCarats;
+  double? lossCarats;
   double? rateRs;
   double? amountRs;
   double? rateD;
@@ -24,12 +26,14 @@ class MemoRecDetailsModel {
   MemoRecDetailsModel(
       {this.memoRecDetID,
       this.memoRecMstID,
+      this.memoIssueDetID,
       this.srNo,
       // this.clarityCode,
       // this.charniCode,
       // this.pcs,
       this.carats,
       this.recCarats,
+      this.lossCarats,
       this.rateRs,
       this.amountRs,
       this.rateD,
@@ -44,12 +48,14 @@ class MemoRecDetailsModel {
   MemoRecDetailsModel.fromJson(Map<String, dynamic> json) {
     memoRecDetID = json['MemoRecDetID'];
     memoRecMstID = json['MemoRecMstID'];
+    memoIssueDetID = json['MemoIssueDetID'];
     srNo = json['SrNo'];
     // clarityCode = json['ClarityCode'];
     // charniCode = json['CharniCode'];
     // pcs = json['Pcs'];
     carats = json['Carats'];
     recCarats = json['RecCarats'];
+    lossCarats = json['LossCarats'];
     rateRs = json['RateRs'];
     amountRs = json['AmountRs'];
     rateD = json['RateD'];
@@ -66,12 +72,14 @@ class MemoRecDetailsModel {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['MemoRecDetID'] = memoRecDetID;
     data['MemoRecMstID'] = memoRecMstID;
+    data['MemoIssueDetID'] = memoIssueDetID;
     data['SrNo'] = srNo;
     // data['ClarityCode'] = clarityCode;
     // data['CharniCode'] = charniCode;
     // data['Pcs'] = pcs;
     data['Carats'] = carats;
     data['RecCarats'] = recCarats;
+    data['LossCarats'] = lossCarats;
     data['RateRs'] = rateRs;
     data['AmountRs'] = amountRs;
     data['RateD'] = rateD;
