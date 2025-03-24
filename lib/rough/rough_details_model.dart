@@ -6,11 +6,11 @@ class RoughDetailsModel {
   int? roughQualityCode;
   int? roughCharniCode;
   int? pc;
-  double? wt;
-  double? rateRs;
-  double? amtRs;
-  double? rateDollar;
-  double? amtDollar;
+  dynamic wt;
+  dynamic rateRs;
+  dynamic amtRs;
+  dynamic rateDollar;
+  dynamic amtDollar;
   String? site;
   int? rec;
   String? oldInvoiceNo;

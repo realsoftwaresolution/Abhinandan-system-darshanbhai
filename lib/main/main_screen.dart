@@ -13,16 +13,14 @@ class MainScreen extends StatelessWidget {
 
     return Scaffold(
       key: defaultController.scaffoldKey,
-      body: const SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 5,
-              child: DashboardWithDynamicTabs(),
-            ),
-          ],
-        ),
+      body: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 5,
+            child: DashboardWithDynamicTabs(),
+          ),
+        ],
       ),
     );
   }

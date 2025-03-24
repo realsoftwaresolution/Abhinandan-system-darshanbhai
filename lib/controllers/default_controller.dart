@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
@@ -10,6 +11,9 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
+import 'package:real_web_rough_entry_system/assort/assort_group_model.dart';
+import 'package:real_web_rough_entry_system/assort/assort_model.dart';
+import 'package:real_web_rough_entry_system/assort/rough_assort_mst_model.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/credit-debit/credit_debit_model.dart';
 import 'package:real_web_rough_entry_system/main/company_mst_model.dart';
@@ -38,9 +42,15 @@ import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
+import '../assort/rough_assort_det_mst_model.dart';
+
 class DefaultController extends GetxController {
   RxList<PartyMstModel> partyMstList = <PartyMstModel>[].obs;
+  RxList<AssortGroupMst> assortGroupMstList = <AssortGroupMst>[].obs;
+  RxList<AssortMst> assortMstList = <AssortMst>[].obs;
   RxList<CompanyMst> companies = <CompanyMst>[].obs;
+  RxList<RoughAssortMst> roughAssortMstList = <RoughAssortMst>[].obs;
+  RxList<RoughAssortDetMst> roughAssortMstDetList = <RoughAssortDetMst>[].obs;
   RxList<PurchaseDetailsModel> purchaseDataList = <PurchaseDetailsModel>[].obs;
   RxList<CreditDebitMstModel> creditDebitDataList = <CreditDebitMstModel>[].obs;
   RxList<PolishSaleModel> polishSaleList = <PolishSaleModel>[].obs;
@@ -85,6 +95,8 @@ class DefaultController extends GetxController {
 
   // String baseUrl= 'http://localhost:301/';
   String baseUrl = 'http://50.62.183.116:301/';
+
+  // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
   // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -149,7 +161,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getCompanies');
       if (kDebugMode) {
         log('$error');
       }
@@ -180,7 +192,125 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPartyData');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> getAssortGroupData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/assort-group',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        assortGroupMstList.value = data
+            .map((json) => AssortGroupMst.fromJson(json))
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.getAssortGroupData');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> getAssortData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/assort',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        assortMstList.value = data
+            .map((json) => AssortMst.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.getAssortData');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> getRoughAssortData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/rough-assort',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        roughAssortMstList.value = data
+            .map((json) => RoughAssortMst.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.getRoughAssortData');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+  Future<void> getRoughAssortDetailsData() async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/rough-assort-det',
+      );
+
+      if (response.statusCode == 200) {
+        // Assuming the response.data is a List of JSON objects
+        final List<dynamic> data = response.data;
+
+        // Mapping each JSON object to a PartyMstModel
+        roughAssortMstDetList.value = data
+            .map((json) => RoughAssortDetMst.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      } else {
+        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.getRoughAssortDetData');
       if (kDebugMode) {
         log('$error');
       }
@@ -208,7 +338,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getCreditDebitData');
       if (kDebugMode) {
         log('$error');
       }
@@ -246,7 +376,7 @@ class DefaultController extends GetxController {
       }
     } catch (error) {
       isLoadingDashboardData.value = false;
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPurchaseData');
       if (kDebugMode) {
         log('$error');
       }
@@ -297,7 +427,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPurchaseDetailsData');
       if (kDebugMode) {
         log('$error');
       }
@@ -328,7 +458,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getSaleData');
       if (kDebugMode) {
         log('$error');
       }
@@ -359,7 +489,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getMemoIssueData');
       if (kDebugMode) {
         log('$error');
       }
@@ -390,7 +520,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getMemoRecData');
       if (kDebugMode) {
         log('$error');
       }
@@ -439,7 +569,7 @@ class DefaultController extends GetxController {
             messageText: 'Failed to load sale data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getSaleDetailsData');
       if (kDebugMode) {
         log('$error');
       }
@@ -470,7 +600,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getMemoIssueDetailsData');
       if (kDebugMode) {
         log('$error');
       }
@@ -501,7 +631,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getMemoRecDetailsData');
       if (kDebugMode) {
         log('$error');
       }
@@ -532,7 +662,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPartyTypeData');
       if (kDebugMode) {
         log('$error');
       }
@@ -568,7 +698,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getRoughData');
       if (kDebugMode) {
         log('$error');
       }
@@ -599,7 +729,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPaymentMstData');
       if (kDebugMode) {
         log('$error');
       }
@@ -630,7 +760,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPaymentDetData');
       if (kDebugMode) {
         log('$error');
       }
@@ -661,7 +791,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPaymentDetAccData');
       if (kDebugMode) {
         log('$error');
       }
@@ -689,7 +819,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getPendingPaymentData');
       if (kDebugMode) {
         log('$error');
       }
@@ -721,7 +851,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getBookPartyPaymentDetails');
       if (kDebugMode) {
         log('$error');
       }
@@ -730,7 +860,9 @@ class DefaultController extends GetxController {
   }
 
   Future<RxList<OutstandingPaymentDetails>> getOutstandingPaymentDetails(
-      {required int partyCode,required DateTime fromDate,required DateTime toDate}) async {
+      {required int partyCode,
+      required DateTime fromDate,
+      required DateTime toDate}) async {
     isLoading.value = true;
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -741,12 +873,9 @@ class DefaultController extends GetxController {
         '${baseUrl}search/outstandingPaymentDetails?fromDate=$fromDate&toDate=$toDate&partyCode=$partyCode',
       );
 
-
-
       if (response.statusCode == 200) {
         // Assuming the response.data is a List of JSON objects
         final List<dynamic> data = response.data;
-
 
         // Mapping each JSON object to a PartyMstModel
         outstandingPaymentDetailsList.value = data
@@ -760,7 +889,7 @@ class DefaultController extends GetxController {
       }
     } catch (error) {
       isLoading.value = false;
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getOutstandingPaymentDetails');
       if (kDebugMode) {
         log('$error');
       }
@@ -768,7 +897,8 @@ class DefaultController extends GetxController {
     return <OutstandingPaymentDetails>[].obs;
   }
 
-  Future<RxList<OutstandingPurchaseSaleDetails>> getOutstandingPurchaseSaleDetails() async {
+  Future<RxList<OutstandingPurchaseSaleDetails>>
+      getOutstandingPurchaseSaleDetails() async {
     isLoading.value = true;
     isLoadingDashboardData.value = true;
     try {
@@ -799,7 +929,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred. getOutstandingPurchaseSaleDetails');
       if (kDebugMode) {
         log('$error');
       }
@@ -838,7 +968,7 @@ class DefaultController extends GetxController {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
     } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred.getAccPartyPaymentDetails');
       if (kDebugMode) {
         log('$error');
       }
@@ -908,8 +1038,7 @@ class DefaultController extends GetxController {
             purMstId: 0,
             saleMstId: 0,
             invoiceDate: paymentDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(paymentDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             paymentMstId: response.data['data']['PaymentMstID'],
             dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             remarks1: remarks1,
@@ -994,117 +1123,118 @@ class DefaultController extends GetxController {
               invNo: value.invNo);
         }));
 
-      // if (accountDataGridSource.isNotEmpty) {
-      if (accJAmtRs! > 0 || accUAmtRs! > 0) {
-        addCreditDebitData(
-          mstId: 0,
-          purMstId: 0,
-          saleMstId: 0,
-          invoiceDate: paymentDate,
-          orgInvoiceDate: DateFormat('yyyy-MM-dd').format(paymentDate),
-          paymentMstId: response.data['data']['PaymentMstID'],
-          dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
-          remarks1: remarks1,
-          remarks2: ' ',
-          partyCode: accountCode.toString(),
-          creditRs: accJAmtRs,
-          debitRs: accUAmtRs,
-          invAmtRs: 0.00,
-          drCr: ' ',
-          formType: 'PAYMENT',
-          entryType: 'PAYMENT',
-          traType: 'PAYMENT',
-          formName: 'FrmPayment',
-          perPartyCode: partyCode.toString(),
-          orgCt: 0,
-          dueDays: 0,
-          invoiceNo: 'ON ACCOUNT',
-          srNo: 0,
-          brokerCode: 0,
-        );
-      }
-      await Future.wait(
-        accountDataGridSource
-            .where((value) =>
-                value.jAmtRs! > 0 || value.uAmtRs! > 0) // Add filtering
-            .map((value) => addCreditDebitData(
-                  mstId: value.mstID,
-                  purMstId: 0,
-                  saleMstId: 0,
-                  invoiceDate: paymentDate,
-                  orgInvoiceDate: value.orgInvDate,
-                  paymentMstId: response.data['data']['PaymentMstID'],
-                  dueDate: value.dueDate,
-                  remarks1: remarks1,
-                  remarks2: ' ',
-                  partyCode: accountCode.toString(),
-                  creditRs: value.jAmtRs,
-                  debitRs: value.uAmtRs,
-                  invAmtRs: value.amtRs,
-                  drCr: value.drCr,
-                  formType: value.trnType,
-                  entryType: 'PAYMENT',
-                  traType: value.traType,
-                  formName: 'FrmPayment',
-                  perPartyCode: partyCode.toString(),
-                  orgCt: value.orgCt,
-                  dueDays: value.dueDays,
-                  invoiceNo: value.invNo,
-                  srNo: value.subRefID,
-                  brokerCode: value.orgBrokerCode,
-                )),
-      );
-      await Future.wait(accountDataGridSource.asMap().entries.map((entry) {
-        int index = entry.key; // index of the current entry
-        var value = entry.value;
-        if (kDebugMode) {
-          print('WHILE CALLING API JAMT:${value.jAmtRs}');
-        print('WHILE CALLING API UAMT:${value.uAmtRs}');
-
-        }
-        // current entry data
-        return _addPaymentDetAccData(
+        // if (accountDataGridSource.isNotEmpty) {
+        if (accJAmtRs! > 0 || accUAmtRs! > 0) {
+          addCreditDebitData(
+            mstId: 0,
+            purMstId: 0,
+            saleMstId: 0,
+            invoiceDate: paymentDate,
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             paymentMstId: response.data['data']['PaymentMstID'],
-            partyCode: accountCode,
-            subRefId: value.subRefID,
-            // Need to Verify
-            trnType: value.trnType,
-            // Need To Verify
-            traType: value.traType,
-            srNo: index + 1,
-            mstId: value.mstID,
-            dueDays: value.dueDays,
-            dueDate: value.dueDate,
-            bdDrCr: value.bDDrCr,
-            odDrCr: value.oDDrCr ?? ' ',
-            drCr: value.drCr,
-            amtRs: value.amtRs,
-            bAmtRs: value.bAmtRs,
-            brDrCr: value.bRDrCr,
-            jAmtRs: value.jAmtRs,
-            uAmtRs: value.uAmtRs,
-            oAmtRs: value.oAmtRs,
-            orDrCr: value.oRDrCr ?? ' ',
-            orgInvDate: value.orgInvDate,
-            brokerCode: value.orgBrokerCode,
-            orgCt: value.orgCt,
-            invNo: value.invNo);
-      })).then((value) => successDialog(messageText: response.data['message']));
-      // }
-      // if (bookDataGridSource.isEmpty && accountDataGridSource.isEmpty) {
-      //
-      //   successDialog(messageText: response.data['message']);
-      // }
-      await getPaymentMstData();
-      await getPaymentDetData();
-      await getPaymentDetAccData();
-      await getCreditDebitData();
-      await getOutstandingPurchaseSaleDetails();
-      await getPendingPaymentData();
-      /* } else {
+            dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
+            remarks1: remarks1,
+            remarks2: ' ',
+            partyCode: accountCode.toString(),
+            creditRs: accJAmtRs,
+            debitRs: accUAmtRs,
+            invAmtRs: 0.00,
+            drCr: ' ',
+            formType: 'PAYMENT',
+            entryType: 'PAYMENT',
+            traType: 'PAYMENT',
+            formName: 'FrmPayment',
+            perPartyCode: partyCode.toString(),
+            orgCt: 0,
+            dueDays: 0,
+            invoiceNo: 'ON ACCOUNT',
+            srNo: 0,
+            brokerCode: 0,
+          );
+        }
+        await Future.wait(
+          accountDataGridSource
+              .where((value) =>
+                  value.jAmtRs! > 0 || value.uAmtRs! > 0) // Add filtering
+              .map((value) => addCreditDebitData(
+                    mstId: value.mstID,
+                    purMstId: 0,
+                    saleMstId: 0,
+                    invoiceDate: paymentDate,
+                    orgInvoiceDate: value.orgInvDate,
+                    paymentMstId: response.data['data']['PaymentMstID'],
+                    dueDate: value.dueDate,
+                    remarks1: remarks1,
+                    remarks2: ' ',
+                    partyCode: accountCode.toString(),
+                    creditRs: value.jAmtRs,
+                    debitRs: value.uAmtRs,
+                    invAmtRs: value.amtRs,
+                    drCr: value.drCr,
+                    formType: value.trnType,
+                    entryType: 'PAYMENT',
+                    traType: value.traType,
+                    formName: 'FrmPayment',
+                    perPartyCode: partyCode.toString(),
+                    orgCt: value.orgCt,
+                    dueDays: value.dueDays,
+                    invoiceNo: value.invNo,
+                    srNo: value.subRefID,
+                    brokerCode: value.orgBrokerCode,
+                  )),
+        );
+        await Future.wait(accountDataGridSource.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          if (kDebugMode) {
+            print('WHILE CALLING API JAMT:${value.jAmtRs}');
+            print('WHILE CALLING API UAMT:${value.uAmtRs}');
+          }
+          // current entry data
+          return _addPaymentDetAccData(
+              paymentMstId: response.data['data']['PaymentMstID'],
+              partyCode: accountCode,
+              subRefId: value.subRefID,
+              // Need to Verify
+              trnType: value.trnType,
+              // Need To Verify
+              traType: value.traType,
+              srNo: index + 1,
+              mstId: value.mstID,
+              dueDays: value.dueDays,
+              dueDate: value.dueDate,
+              bdDrCr: value.bDDrCr,
+              odDrCr: value.oDDrCr ?? ' ',
+              drCr: value.drCr,
+              amtRs: value.amtRs,
+              bAmtRs: value.bAmtRs,
+              brDrCr: value.bRDrCr,
+              jAmtRs: value.jAmtRs,
+              uAmtRs: value.uAmtRs,
+              oAmtRs: value.oAmtRs,
+              orDrCr: value.oRDrCr ?? ' ',
+              orgInvDate: value.orgInvDate,
+              brokerCode: value.orgBrokerCode,
+              orgCt: value.orgCt,
+              invNo: value.invNo);
+        })).then(
+            (value) => successDialog(messageText: response.data['message']));
+        // }
+        // if (bookDataGridSource.isEmpty && accountDataGridSource.isEmpty) {
+        //
+        //   successDialog(messageText: response.data['message']);
+        // }
+        await getPaymentMstData();
+        await getPaymentDetData();
+        await getPaymentDetAccData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        /* } else {
         isLoading.value = false;
         errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
-      }*/}
+      }*/
+      }
     } catch (error) {
       isLoading.value = false;
       errorDialog(messageText: 'An unexpected error occurred.');
@@ -1181,8 +1311,7 @@ class DefaultController extends GetxController {
             purMstId: 0,
             saleMstId: 0,
             invoiceDate: paymentDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(paymentDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             paymentMstId: response.data['data']['PaymentMstID'],
             dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             remarks1: remarks1,
@@ -1276,8 +1405,7 @@ class DefaultController extends GetxController {
             purMstId: 0,
             saleMstId: 0,
             invoiceDate: paymentDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(paymentDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             paymentMstId: response.data['data']['PaymentMstID'],
             dueDate: DateFormat('yyyy-MM-dd').format(paymentDate),
             remarks1: remarks1,
@@ -1372,7 +1500,6 @@ class DefaultController extends GetxController {
         await getCreditDebitData();
         await getOutstandingPurchaseSaleDetails();
         await getPendingPaymentData();
-
       } else {
         isLoading.value = false;
         errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
@@ -1901,8 +2028,7 @@ class DefaultController extends GetxController {
             purMstId: response.data['data']['RoughPurMstID'],
             saleMstId: 0,
             invoiceDate: invoiceDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(invoiceDate),
             paymentMstId: 0,
             dueDate: dueDate,
             remarks1: ' ',
@@ -2007,7 +2133,8 @@ class DefaultController extends GetxController {
       }));
 
       var params = {
-        "MstID": mstId, // Purchase Sale Mst ID
+        "MstID": mstId,
+        // Purchase Sale Mst ID
         "PurchaseMstID": purMstId,
         "SaleMstID": saleMstId,
         // "PolishPurMstID": polishPurMstId,
@@ -2169,8 +2296,7 @@ class DefaultController extends GetxController {
             purMstId: 0,
             saleMstId: response.data['data']['PolishSaleMstID'],
             invoiceDate: invoiceDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(invoiceDate),
             paymentMstId: 0,
             dueDate: dueDate,
             remarks1: ' ',
@@ -2667,8 +2793,7 @@ class DefaultController extends GetxController {
             purMstId: response.data['data']['RoughPurMstID'],
             saleMstId: 0,
             invoiceDate: invoiceDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(invoiceDate),
             paymentMstId: 0,
             dueDate: dueDate,
             remarks1: ' ',
@@ -2845,8 +2970,7 @@ class DefaultController extends GetxController {
             purMstId: 0,
             saleMstId: response.data['data']['PolishSaleMstID'],
             invoiceDate: invoiceDate,
-            orgInvoiceDate:
-                DateFormat('yyyy-MM-dd').format(invoiceDate),
+            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(invoiceDate),
             paymentMstId: 0,
             dueDate: dueDate,
             remarks1: ' ',
@@ -3836,6 +3960,44 @@ class DefaultController extends GetxController {
     }
   }
 
+  Future<void> deleteAssortData(
+      {required int id}) async {
+    try {
+      isDeleteLoading.value = true;
+      // await deletePurchaseCreditDebitDetails(id: id);
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.delete('${baseUrl}rough-entry/assort/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+
+        // After processing deletion, refresh data and stop loading
+
+        await getAssortData();
+        isDeleteLoading.value = false;
+
+        successDialog(messageText: response.data['message']);
+      } else {
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
   Future<void> deleteSaleData({required int id, required List entries}) async {
     try {
       isDeleteLoading.value = true;
@@ -4192,12 +4354,21 @@ class DefaultController extends GetxController {
     final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
     // String deviceInfo;
 
-    // if (Platform.isWindows) {
-    var info = await deviceInfoPlugin.webBrowserInfo;
-    if (kDebugMode) {
-      print(info.data);
-    }
-    deviceInfo.value = info.browserName.name; // Get Android version
+    if (kIsWeb) {
+      var info = await deviceInfoPlugin.webBrowserInfo;
+      if (kDebugMode) {
+        print(info.data);
+      }
+      deviceInfo.value = info.browserName.name;
+    } else {
+      if (Platform.isAndroid) {
+        var androidInfo = await deviceInfoPlugin.androidInfo;
+        deviceInfo.value = androidInfo.model;
+      } else if (Platform.isIOS) {
+        var iosInfo = await deviceInfoPlugin.iosInfo;
+        deviceInfo.value = iosInfo.model;
+      }
+    }// Get Android version
     // } else if (Platform.isMacOS) {
     //   var iosInfo = await deviceInfoPlugin.macOsInfo;
     //   deviceInfo.value = 'MacOS ${iosInfo.computerName}'; // Get iOS version
@@ -4206,10 +4377,400 @@ class DefaultController extends GetxController {
     // }
   }
 
+  Future<void> addAssortData(
+      {String? name,
+        sortId,
+        group,
+      }) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "Name": "$name",
+        "SortID": sortId,
+        "AssortGroup": group,
+        // "Active": true,
+      };
+
+      final response = await dio.post('${baseUrl}rough-entry/assort/add',
+          data: jsonEncode(params));
+
+      // if (kDebugMode) {
+      //   print(response.data['data']);
+      // }
+
+      if (response.statusCode == 200) {
+        await getAssortData();
+        isLoading.value = false;
+        successDialog(messageText: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> updateAssortData(
+      {required int id , String? name,
+        sortId,
+        group,
+      }) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "Name": "$name",
+        "SortID": sortId,
+        "AssortGroup": group,
+        // "Active": true,
+      };
+
+      final response = await dio.put('${baseUrl}rough-entry/assort/$id',
+          data: jsonEncode(params));
+
+      // if (kDebugMode) {
+      //   print(response.data['data']);
+      // }
+
+      if (response.statusCode == 200) {
+        await getAssortData();
+        isLoading.value = false;
+        successDialog(messageText: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> updateRoughAssortData(
+      {required int id,
+        String? invoiceNo,
+        wt,
+        assWt,
+        penWt,
+        required List entries}) async {
+    try {
+      isLoading.value = true;
+      await deletePurchaseCreditDebitDetails(id: id);
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "InvoiceNo": "$invoiceNo",
+        "Wt": wt,
+        "AssortWt": assWt,
+        "PendingWt": penWt,
+        "LogID": 0,
+        "PCID": "TESTFROMWEB",
+        "Ever": 0,
+        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "CompanyCode": companyCode.value,
+      };
+
+      final response = await dio.put('${baseUrl}rough-entry/rough-assort/$id',
+          data: jsonEncode(params));
+
+      // if (kDebugMode) {
+      //   print(response.data['data']);
+      // }
+
+      if (response.statusCode == 200) {
+        await Future.wait(entries.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+
+          // Check if the 'id' exists in the entry data
+          if (value.containsKey('id') && value['id'] != null) {
+            // Call the update function if 'id' exists
+            return _updateAssortRoughData(
+              id: value['id'],
+              wt: value['wt'],
+              rate: value['rate'],
+              amount: value['amount'],
+              assort: value['assort'],
+              roughAssortMstID: response.data['data']['RoughAssortMstID'],
+              // srNo: index + 1, // incremented srNo
+            );
+          } else {
+            // Call the add function if 'id' does not exist
+            return _addAssortRoughData(
+              wt: value['wt'],
+              rate: value['rate'],
+              amount: value['amount'],
+              // description: value['description'],
+              assort: value['assort'],
+              roughAssortMstID: response.data['data']['RoughAssortMstID'],
+              // srNo: index + 1, // incremented srNo
+            );
+          }
+        }));
+        await getRoughAssortData();
+        await getRoughAssortDetailsData();
+        isLoading.value = false;
+        // await getRoughAssortData();
+       successDialog(messageText: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> _updateAssortRoughData(
+      {required id,
+        assort,
+        wt,
+        rate,
+        amount,
+        srNo,
+        roughAssortMstID}) async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "RoughAssortMstID": roughAssortMstID,
+        "AssortName": assort,
+        "Wt": wt,
+        "Rate": rate,
+        "Ammount": amount,
+      };
+
+      final response = await dio.put('${baseUrl}rough-entry/rough-assort-det/$id',
+          data: jsonEncode(params));
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Updated!');
+        }
+      } else {
+        errorDialog(
+            messageText: 'Failed to Update Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> _addAssortRoughData(
+      {assort, roughAssortMstID, wt, rate, amount, srNo}) async {
+    try {
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "RoughAssortMstID": roughAssortMstID,
+        "AssortName": assort,
+        "Wt": wt,
+        "Rate": rate,
+        "Ammount": amount,
+      };
+
+      final response = await dio.post('${baseUrl}rough-entry/rough-assort-det/add',
+          data: jsonEncode(params));
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Added!');
+        }
+      } else {
+        errorDialog(
+            messageText: 'Failed to Add data: : ${response.data['message']}');
+      }
+    } catch (error) {
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> addRoughAssortData(
+      {String? invoiceNo,
+        wt,
+        assWt,
+        penWt,
+        required List entries}) async {
+    try {
+      isLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      var params = {
+        "InvoiceNo": "$invoiceNo",
+        "Wt": wt,
+        "AssortWt": assWt,
+        "PendingWt": penWt,
+        "LogID": 0,
+        "PCID": "TESTFROMWEB",
+        "Ever": 0,
+        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "CompanyCode": companyCode.value,
+      };
+
+      final response = await dio.post('${baseUrl}rough-entry/rough-assort/add',
+          data: jsonEncode(params));
+
+      // if (kDebugMode) {
+      //   print(response.data['data']);
+      // }
+
+      if (response.statusCode == 200) {
+        await Future.wait(entries.asMap().entries.map((entry) {
+          int index = entry.key; // index of the current entry
+          var value = entry.value;
+          // current entry data
+          return _addAssortRoughData(
+              wt: value['wt'],
+              rate: value['rate'],
+              amount: value['amount'],
+              assort: value['assort'],
+              // description: value['description'],
+              roughAssortMstID: response.data['data']['RoughAssortMstID'],
+              // srNo: index + 1 // incremented srNo
+          );
+        }));
+        await getRoughAssortData();
+        await getRoughAssortDetailsData();
+        isLoading.value = false;
+       successDialog(messageText: response.data['message']);
+      } else {
+        isLoading.value = false;
+
+        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isLoading.value = false;
+
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deleteRoughAssortData(
+      {required int id, required List entries}) async {
+    try {
+      isDeleteLoading.value = true;
+      // await deletePurchaseCreditDebitDetails(id: id);
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response = await dio.delete('${baseUrl}rough-entry/rough-assort/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+
+        // Ensure entries is not null and is a list
+        if (entries.isNotEmpty) {
+          // Ensure we create a list of Future<void> for Future.wait to process
+          await Future.wait(
+            entries.map((value) {
+              return deleteRoughAssortDetData(id: value['id']);
+            }).toList(),
+          );
+        }
+        await getRoughAssortData();
+        await getRoughAssortDetailsData();
+        // After processing deletion, refresh data and stop loading
+        isDeleteLoading.value = false;
+
+        successDialog(messageText: response.data['message']);
+      } else {
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
+  Future<void> deleteRoughAssortDetData({required id}) async {
+    try {
+      isDeleteLoading.value = true;
+      final dio = Dio(BaseOptions(headers: {
+        'content-type': 'application/json',
+      }));
+
+      final response =
+      await dio.delete('${baseUrl}rough-entry/rough-assort-det/$id');
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Deleted!');
+        }
+        isDeleteLoading.value = false;
+      } else {
+        isDeleteLoading.value = false;
+        errorDialog(
+            messageText: 'Failed to Delete Data: ${response.statusCode}');
+      }
+    } catch (error) {
+      isDeleteLoading.value = false;
+
+      errorDialog(messageText: 'An unexpected error occurred.');
+      if (kDebugMode) {
+        log('$error');
+      }
+    }
+  }
+
   @override
   Future<void> onInit() async {
     // await getIpAddress();
     await getDeviceInfo();
+    await getAssortGroupData();
+    await getAssortData();
+    await getRoughAssortData();
+    await getRoughAssortDetailsData();
     await getOutstandingPurchaseSaleDetails();
     await getPurchaseData();
     // await getHostName();

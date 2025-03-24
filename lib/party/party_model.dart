@@ -31,15 +31,15 @@ class PartyMstModel {
   String? state;
   int? pinCode;
   String? gstNo;
-  double? cGST;
-  double? sGST;
-  double? iGST;
+  dynamic cGST;
+  dynamic sGST;
+  dynamic iGST;
   bool? isDelete;
   int? typeCode;
-  double? creditOpBalRs;
-  double? creditOpBalDollar;
-  double? debitOpBalRs;
-  double? debitOpBalDollar;
+  dynamic creditOpBalRs;
+  dynamic creditOpBalDollar;
+  dynamic debitOpBalRs;
+  dynamic debitOpBalDollar;
   String? remarks;
 
   PartyMstModel(

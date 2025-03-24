@@ -6,11 +6,11 @@ class SaleDetailsModel {
   // int clarityCode;
   // int charniCode;
   // int pcs;
-  double? carats;
-  double? rateRs;
-  double? amountRs;
-  double? rateD;
-  double? amountD;
+  dynamic carats;
+  dynamic rateRs;
+  dynamic amountRs;
+  dynamic rateD;
+  dynamic amountD;
 
   // double? penCarats;
   String? type;
