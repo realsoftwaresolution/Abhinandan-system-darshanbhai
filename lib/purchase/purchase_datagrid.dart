@@ -30,8 +30,8 @@ class PurchaseDataGridSource extends DataGridSource {
             columnName: 'Broker', value: getPartyName(purchase.brokerCode)),
         // DataGridCell<double>(columnName: 'Rs /\$', value: purchase.addFixRs),
         // DataGridCell<double>(columnName: 'Exchange', value: purchase.exchange),
-        DataGridCell<double>(columnName: 'Tot Wt', value: purchase.tWeight),
-        DataGridCell<double>(
+        DataGridCell<dynamic>(columnName: 'Tot Wt', value: purchase.tWeight),
+        DataGridCell<dynamic>(
             columnName: 'Tot Amt Rs', value: purchase.totAmtRs),
         // DataGridCell<double>(columnName: 'Tot Amt (\$)', value: purchase.totAmtDollar),
         // DataGridCell<String>(columnName: 'Bill Type', value: purchase.bIllType),

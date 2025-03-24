@@ -3094,13 +3094,7 @@ class PartyFormState extends State<PartyForm> {
                           OutlinedButton(
                             onPressed: _isFromEdit
                                 ? () {
-                                    // if (_isFromEdit) {
                                     _enableEditFields();
-                                    // } else {
-                                    //   infoDialog(
-                                    //       messageText:
-                                    //           'Please Select Party to Edit.');
-                                    // }
                                   }
                                 : null,
                             child: const Text("Edit"),

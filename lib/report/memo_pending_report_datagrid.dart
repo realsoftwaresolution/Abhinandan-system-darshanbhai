@@ -147,9 +147,9 @@ class MemoPendingReportDataGridSource extends DataGridSource {
         DataGridCell<String>(
             columnName: 'Rough',
             value: getRoughName(entry.roughTypeCode.toString())),
-        DataGridCell<double>(columnName: 'Iss Wt', value: entry.carats),
-        DataGridCell<double>(columnName: 'Rate', value: entry.rateRs),
-        DataGridCell<double>(columnName: 'Amount', value: entry.amountRs),
+        DataGridCell<dynamic>(columnName: 'Iss Wt', value: entry.carats),
+        DataGridCell<dynamic>(columnName: 'Rate', value: entry.rateRs),
+        DataGridCell<dynamic>(columnName: 'Amount', value: entry.amountRs),
         DataGridCell<String>(columnName: 'Party', value: getPartyName(party)),
         DataGridCell<String>(columnName: 'Broker', value: getPartyName(broker)),
       ]);

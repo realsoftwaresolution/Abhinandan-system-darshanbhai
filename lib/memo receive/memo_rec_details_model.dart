@@ -7,13 +7,13 @@ class MemoRecDetailsModel {
   // int clarityCode;
   // int charniCode;
   // int pcs;
-  double? carats;
-  double? recCarats;
-  double? lossCarats;
-  double? rateRs;
-  double? amountRs;
-  double? rateD;
-  double? amountD;
+  dynamic carats;
+  dynamic recCarats;
+  dynamic lossCarats;
+  dynamic rateRs;
+  dynamic amountRs;
+  dynamic rateD;
+  dynamic amountD;
 
   // double? penCarats;
   String? type;

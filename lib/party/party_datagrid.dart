@@ -23,9 +23,9 @@ class PartyDataGridSource extends DataGridSource {
         DataGridCell<String>(columnName: 'Location', value: party.location),
         // DataGridCell<String>(columnName: 'Email ID', value: party.emailID),
         // DataGridCell<String>(columnName: 'Website', value: party.webSite),
-        DataGridCell<double>(columnName: 'CGST', value: party.cGST),
-        DataGridCell<double>(columnName: 'SGST', value: party.sGST),
-        DataGridCell<double>(columnName: 'IGST', value: party.iGST),
+        DataGridCell<dynamic>(columnName: 'CGST', value: party.cGST),
+        DataGridCell<dynamic>(columnName: 'SGST', value: party.sGST),
+        DataGridCell<dynamic>(columnName: 'IGST', value: party.iGST),
         DataGridCell<int>(columnName: 'Sort Id', value: party.sortID),
         DataGridCell<bool>(columnName: 'Active', value: party.active),
       ]);

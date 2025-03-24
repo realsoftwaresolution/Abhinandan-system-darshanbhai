@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/assort/assort_form_screen.dart';
+import 'package:real_web_rough_entry_system/assort/rough_assort_form_screen.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/header.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memoiss_form_screen.dart';
@@ -26,6 +28,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
     final ScrollController scrollController = ScrollController();
     return Obx(
       () => Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: Colors.white,
         appBar: AppBar(
           title: Row(
@@ -52,129 +55,171 @@ class DashboardWithDynamicTabs extends StatelessWidget {
           ),
           backgroundColor: Colors.white,
           actions: [
-            // Dynamic buttons to add new tabs
-            IconButton(
-              icon: const Icon(Icons.people_alt_sharp),
-              tooltip: 'Party',
-              onPressed: () {
-                tabController.isReportForm.value = false;
+            SizedBox(
+              width:
+                  MediaQuery.of(context).size.width * 0.85, // Adjust width as needed
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.sort_by_alpha),
+                    tooltip: 'Assort',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
+                      // Example: Add a new Party view tab
+                      tabController.addTab(TabItem(
+                          view: const AssortFormScreen(
+                            showHeader: false,
+                          ),
+                          label: 'Assort',
+                          icon: const Icon(Icons.sort_by_alpha)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.sort),
+                    tooltip: 'Rough Assort',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
 
-                // Example: Add a new Party view tab
-                tabController.addTab(TabItem(
-                    view: const PartyFormScreen(
-                      showHeader: false,
-                    ),
-                    label: 'Party',
-                    icon: const Icon(Icons.people_alt_sharp)));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.shopping_bag),
-              tooltip: 'Purchase',
-              onPressed: () {
-                tabController.isReportForm.value = false;
+                      // Example: Add a new Party view tab
+                      tabController.addTab(TabItem(
+                          view: const RoughAssortFormScreen(
+                            showHeader: false,
+                          ),
+                          label: 'Rough Assort',
+                          icon: const Icon(Icons.sort)));
+                    },
+                  ),
+                  // Dynamic buttons to add new tabs
+                  IconButton(
+                    icon: const Icon(Icons.people_alt_sharp),
+                    tooltip: 'Party',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
 
-                // Example: Add a new Purchase view tab
-                tabController.addTab(TabItem(
-                    view: const PurchaseFormScreen(
-                      showHeader: false,
-                    ),
-                    label: 'Purchase',
-                    icon: const Icon(Icons.shopping_bag)));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.sell),
-              tooltip: 'Sale',
-              onPressed: () {
-                tabController.isReportForm.value = false;
+                      // Example: Add a new Party view tab
+                      tabController.addTab(TabItem(
+                          view: const PartyFormScreen(
+                            showHeader: false,
+                          ),
+                          label: 'Party',
+                          icon: const Icon(Icons.people_alt_sharp)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.shopping_bag),
+                    tooltip: 'Purchase',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
 
-                // Example: Add a new Purchase view tab
-                tabController.addTab(TabItem(
-                    view: const SaleFormScreen(
-                      showHeader: false,
-                    ),
-                    label: 'Sale',
-                    icon: const Icon(Icons.sell)));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.checklist_sharp),
-              tooltip: 'Memo Issue',
-              onPressed: () {
-                tabController.isReportForm.value = false;
+                      // Example: Add a new Purchase view tab
+                      tabController.addTab(TabItem(
+                          view: const PurchaseFormScreen(
+                            showHeader: false,
+                          ),
+                          label: 'Purchase',
+                          icon: const Icon(Icons.shopping_bag)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.sell),
+                    tooltip: 'Sale',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
 
-                // Example: Add a new Purchase view tab
-                tabController.addTab(TabItem(
-                    view: const MemoIssFormScreen(showHeader: false),
-                    label: 'Memo Issue',
-                    icon: const Icon(Icons.checklist_sharp)));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.checklist_rtl_sharp),
-              tooltip: 'Memo Receive',
-              onPressed: () {
-                tabController.isReportForm.value = false;
+                      // Example: Add a new Purchase view tab
+                      tabController.addTab(TabItem(
+                          view: const SaleFormScreen(
+                            showHeader: false,
+                          ),
+                          label: 'Sale',
+                          icon: const Icon(Icons.sell)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.checklist_sharp),
+                    tooltip: 'Memo Issue',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
 
-                // Example: Add a new Purchase view tab
-                tabController.addTab(TabItem(
-                    view: const MemoRecFormScreen(showHeader: false),
-                    label: 'Memo Receive',
-                    icon: const Icon(Icons.checklist_rtl_sharp)));
-              },
-            ),
-            // IconButton(
-            //   icon: const Icon(Icons.list_alt),
-            //   tooltip: 'Expense',
-            //   onPressed: () {
-            //     tabController.isReportForm.value = false;
-            //
-            //     // Example: Add a new Purchase view tab
-            //     tabController.addTab(TabItem(
-            //         view: const ExpenseFormScreen(showHeader: false),
-            //         label: 'Expense',
-            //         icon: const Icon(Icons.payment)));
-            //   },
-            // ),
-            IconButton(
-              icon: const Icon(Icons.payment),
-              tooltip: 'Payment',
-              onPressed: () {
-                tabController.isReportForm.value = false;
+                      // Example: Add a new Purchase view tab
+                      tabController.addTab(TabItem(
+                          view: const MemoIssFormScreen(showHeader: false),
+                          label: 'Memo Issue',
+                          icon: const Icon(Icons.checklist_sharp)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.checklist_rtl_sharp),
+                    tooltip: 'Memo Receive',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
 
-                // Example: Add a new Purchase view tab
-                tabController.addTab(TabItem(
-                    view: const PaymentFormScreen(showHeader: false),
-                    label: 'Payment',
-                    icon: const Icon(Icons.payment)));
-              },
+                      // Example: Add a new Purchase view tab
+                      tabController.addTab(TabItem(
+                          view: const MemoRecFormScreen(showHeader: false),
+                          label: 'Memo Receive',
+                          icon: const Icon(Icons.checklist_rtl_sharp)));
+                    },
+                  ),
+                  // IconButton(
+                  //   icon: const Icon(Icons.list_alt),
+                  //   tooltip: 'Expense',
+                  //   onPressed: () {
+                  //     tabController.isReportForm.value = false;
+                  //
+                  //     // Example: Add a new Purchase view tab
+                  //     tabController.addTab(TabItem(
+                  //         view: const ExpenseFormScreen(showHeader: false),
+                  //         label: 'Expense',
+                  //         icon: const Icon(Icons.payment)));
+                  //   },
+                  // ),
+                  IconButton(
+                    icon: const Icon(Icons.payment),
+                    tooltip: 'Payment',
+                    onPressed: () {
+                      tabController.isReportForm.value = false;
+
+                      // Example: Add a new Purchase view tab
+                      tabController.addTab(TabItem(
+                          view: const PaymentFormScreen(showHeader: false),
+                          label: 'Payment',
+                          icon: const Icon(Icons.payment)));
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.receipt_long),
+                    tooltip: 'Reports',
+                    onPressed: () {
+                      tabController.isReportForm.value = true;
+                      // Example: Add a new Purchase view tab
+                      // tabController.addTab(TabItem(
+                      //     view: const ReportScreen(showHeader: false),
+                      //     label: 'Reports',
+                      //     icon: const Icon(Icons.file_copy_outlined)));
+                    },
+                  ),
+                  // if (!Responsive.isMobile(context))
+                  //   Spacer(flex: Responsive.isDesktop(context) ? 2 : 1),
+                  // // const Expanded(child: SearchField()),
+                  !Responsive.isMobile(context)
+                      ? const SizedBox(width: 150, child: SearchField())
+                      : const SizedBox.shrink(),
+
+                ],
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.receipt_long),
-              tooltip: 'Reports',
-              onPressed: () {
-                tabController.isReportForm.value = true;
-                // Example: Add a new Purchase view tab
-                // tabController.addTab(TabItem(
-                //     view: const ReportScreen(showHeader: false),
-                //     label: 'Reports',
-                //     icon: const Icon(Icons.file_copy_outlined)));
-              },
-            ),
-            // if (!Responsive.isMobile(context))
-            //   Spacer(flex: Responsive.isDesktop(context) ? 2 : 1),
-            // // const Expanded(child: SearchField()),
-            const SizedBox(width: 150, child: SearchField()),
             Obx(
-              () => IconButton(
+                  () => IconButton(
                 icon: const Icon(Icons.account_circle_rounded),
-                tooltip: getCompanyName(defaultController.companyCode.value),
+                tooltip:
+                getCompanyName(defaultController.companyCode.value),
                 onPressed: () {
                   _showAccountMenu(context);
                 },
               ),
-            ),
+            )
           ],
           // bottom: const PreferredSize(
           //     preferredSize: Size.fromHeight(kToolbarHeight * 1.2),
@@ -182,117 +227,117 @@ class DashboardWithDynamicTabs extends StatelessWidget {
           //       padding: EdgeInsets.only(left: 8.0, bottom: 8.0, right: 8.0),
           //     )),
           bottom: tabController.isReportForm.value
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight * 1.2),
-              child: Padding(
-                padding: const EdgeInsets.only(
-                    left: 8.0, bottom: 8.0, right: 8.0),
-                child: Row(children: [
-                  GestureDetector(
-                    onTap: () {
-                      // Example: Add a new Purchase view tab
-                      // tabController.addTab(TabItem(
-                      //     view: const PartyLedgerFormScreen(showHeader: false),
-                      //     label: ' Party\nLedger',
-                      //     icon: const Icon(Icons.account_balance)));
-                      tabController.addTab(TabItem(
-                          view: const ReportScreen(showHeader: false),
-                          label: 'Reports',
-                          icon: const Icon(Icons.file_copy_outlined)));
-                      // tabController.isPArtyLedgerForm.value = false;
-                      // tabController.isReportForm.value = true;
-                    },
-                    // style: OutlinedButton.styleFrom(
-                    //   // backgroundColor: Colors.grey,
-                    //   // minimumSize: const Size(50, 70),
-                    //   padding: const EdgeInsets.symmetric(vertical: 8),
-                    // ),
-                    child: Container(
-                      // width: 50,
-                      padding: const EdgeInsets.all(5),
-                      margin: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                        // border: Border.all()
-                      ),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.receipt_long, // Choose an icon
-                            color: Colors.white,
-                            size: 24,
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(kToolbarHeight * 1.2),
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                        left: 8.0, bottom: 8.0, right: 8.0),
+                    child: Row(children: [
+                      GestureDetector(
+                        onTap: () {
+                          // Example: Add a new Purchase view tab
+                          // tabController.addTab(TabItem(
+                          //     view: const PartyLedgerFormScreen(showHeader: false),
+                          //     label: ' Party\nLedger',
+                          //     icon: const Icon(Icons.account_balance)));
+                          tabController.addTab(TabItem(
+                              view: const ReportScreen(showHeader: false),
+                              label: 'Reports',
+                              icon: const Icon(Icons.file_copy_outlined)));
+                          // tabController.isPArtyLedgerForm.value = false;
+                          // tabController.isReportForm.value = true;
+                        },
+                        // style: OutlinedButton.styleFrom(
+                        //   // backgroundColor: Colors.grey,
+                        //   // minimumSize: const Size(50, 70),
+                        //   padding: const EdgeInsets.symmetric(vertical: 8),
+                        // ),
+                        child: Container(
+                          // width: 50,
+                          padding: const EdgeInsets.all(5),
+                          margin: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            borderRadius: BorderRadius.circular(8),
+                            // border: Border.all()
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Report',
-                            // maxLines: 1,
-                            textAlign: TextAlign.justify,
-                            // overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 12),
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.receipt_long, // Choose an icon
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Report',
+                                // maxLines: 1,
+                                textAlign: TextAlign.justify,
+                                // overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      // tabController.isReportForm.value = false;
-                      // tabController.isPArtyLedgerForm.value = true;
-                      tabController.addTab(TabItem(
-                          view: const PartyLedgerFormScreen(
-                              showHeader: false),
-                          label: 'Party Ledger',
-                          icon: const Icon(Icons.account_balance)));
+                      GestureDetector(
+                        onTap: () {
+                          // tabController.isReportForm.value = false;
+                          // tabController.isPArtyLedgerForm.value = true;
+                          tabController.addTab(TabItem(
+                              view: const PartyLedgerFormScreen(
+                                  showHeader: false),
+                              label: 'Party Ledger',
+                              icon: const Icon(Icons.account_balance)));
 
-                      // Example: Add a new Purchase view tab
-                      // tabController.addTab(TabItem(
-                      //     view: const PartyLedgerFormScreen(showHeader: false),
-                      //     label: ' Party\nLedger',
-                      //     icon: const Icon(Icons.account_balance)));
-                    },
-                    // style: OutlinedButton.styleFrom(
-                    //   // backgroundColor: Colors.grey,
-                    //   // minimumSize: const Size(50, 70),
-                    //   padding: const EdgeInsets.symmetric(vertical: 8),
-                    // ),
-                    child: Container(
-                      // width: 50,
-                      padding: const EdgeInsets.all(5),
-                      margin: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                        // border: Border.all()
-                      ),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.account_balance, // Choose an icon
-                            color: Colors.white,
-                            size: 24,
+                          // Example: Add a new Purchase view tab
+                          // tabController.addTab(TabItem(
+                          //     view: const PartyLedgerFormScreen(showHeader: false),
+                          //     label: ' Party\nLedger',
+                          //     icon: const Icon(Icons.account_balance)));
+                        },
+                        // style: OutlinedButton.styleFrom(
+                        //   // backgroundColor: Colors.grey,
+                        //   // minimumSize: const Size(50, 70),
+                        //   padding: const EdgeInsets.symmetric(vertical: 8),
+                        // ),
+                        child: Container(
+                          // width: 50,
+                          padding: const EdgeInsets.all(5),
+                          margin: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            borderRadius: BorderRadius.circular(8),
+                            // border: Border.all()
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Party Ledger',
-                            maxLines: 1,
-                            textAlign: TextAlign.justify,
-                            overflow: TextOverflow.clip,
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 12),
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.account_balance, // Choose an icon
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Party Ledger',
+                                maxLines: 1,
+                                textAlign: TextAlign.justify,
+                                overflow: TextOverflow.clip,
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  )
-                ]
-                    // reportList.map((report)=> getBottomAppMenu(onTap: onTap, context: context, label: report, icon: Icons.account_balance)).toList(),
-                    ),
-              ))
-          : null,
+                        ),
+                      )
+                    ]
+                        // reportList.map((report)=> getBottomAppMenu(onTap: onTap, context: context, label: report, icon: Icons.account_balance)).toList(),
+                        ),
+                  ))
+              : null,
         ),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,171 +629,178 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                                       .map((tab) => tab.view)
                                       .toList(),
                                 )
-                              : !defaultController.enabledAdvancedDashboard.value ?  Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SvgPicture.asset(
-                                        "assets/images/logo.svg",
-                                        // ignore: deprecated_member_use
-                                        color: Colors.grey[200],
-                                        height:
-                                            200, // Reduced logo size to fit smaller header
-                                      ),
-                                      Text(
-                                        'Real Software Solutions',
-                                        style: TextStyle(
-                                            color: Colors.grey[200]!,
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
-                                  ),
-                                ) : const AdvancedDashboard(),
-                        ),
-                        Container(
-                          margin: const EdgeInsets.only(top: 5.0),
-                          // Set the margin around the container
-                          decoration: const BoxDecoration(
-                            color:
-                                Colors.black45, // Fill color// Rounded corners
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5.0),
-                            // Padding inside the container
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.person,
-                                        color: Colors.white),
-                                    const SizedBox(width: 4),
-                                    // Add some spacing
-                                    FutureBuilder<String?>(
-                                      future: getUsername(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Text(
-                                            'Loading...',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          );
-                                        } else if (snapshot.hasError) {
-                                          return const Text(
-                                            'Error',
-                                            style: TextStyle(
-                                              color: Colors.red,
-                                              fontSize: 12,
-                                            ),
-                                          );
-                                        } else if (snapshot.hasData) {
-                                          return Text(
-                                            snapshot.data ?? 'Unknown User',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          );
-                                        } else {
-                                          return const Text(
-                                            'No Username Found',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.storage,
-                                        color: Colors.white),
-                                    const SizedBox(width: 4),
-                                    // Add some spacing
-                                    Text(
-                                      defaultController.baseUrl
-                                          .split('//')
-                                          .last
-                                          .split('/')
-                                          .first,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                // Obx(
-                                //   () => Row(
-                                //     children: [
-                                //       const Icon(Icons.computer,
-                                //           color: Colors.white),
-                                //       const SizedBox(width: 4),
-                                //       // Add some spacing
-                                //       Text(
-                                //         defaultController.deviceInfo.value,
-                                //         style: const TextStyle(
-                                //           color: Colors.white,
-                                //           fontSize: 12,
-                                //         ),
-                                //       ),
-                                //     ],
-                                //   ),
-                                // ),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.calendar_month,
-                                        color: Colors.white),
-                                    const SizedBox(width: 4),
-                                    // Add some spacing
-                                    Text(
-                                      DateFormat('dd-MM-yyyy')
-                                          .format(DateTime.now()),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.access_time,
-                                        color: Colors.white),
-                                    const SizedBox(width: 4),
-                                    // Add some spacing
-                                    StreamBuilder(
-                                      stream: Stream.periodic(
-                                          const Duration(seconds: 1)),
-                                      builder: (context, snapshot) {
-                                        return Text(
-                                          DateFormat('hh:mm:ss a')
-                                              .format(DateTime.now()),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
+                              : !defaultController
+                                      .enabledAdvancedDashboard.value
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          SvgPicture.asset(
+                                            "assets/images/logo.svg",
+                                            // ignore: deprecated_member_use
+                                            color: Colors.grey[200],
+                                            height:
+                                                200, // Reduced logo size to fit smaller header
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
+                                          Text(
+                                            'Real Software Solutions',
+                                            style: TextStyle(
+                                                color: Colors.grey[200]!,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : const AdvancedDashboard(),
+                        ),
                       ]),
                 );
               }),
             ),
           ],
+        ),
+        bottomNavigationBar: Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
+          margin: const EdgeInsets.only(top: 5.0),
+          // Set the margin around the container
+          decoration: const BoxDecoration(
+            color:
+            Colors.black45, // Fill color// Rounded corners
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
+            // Padding inside the container
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.person,
+                        color: Colors.white),
+                    const SizedBox(width: 4),
+                    // Add some spacing
+                    FutureBuilder<String?>(
+                      future: getUsername(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Text(
+                            'Loading...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          );
+                        } else if (snapshot.hasError) {
+                          return const Text(
+                            'Error',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
+                          );
+                        } else if (snapshot.hasData) {
+                          return Text(
+                            snapshot.data ?? 'Unknown User',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          );
+                        } else {
+                          return const Text(
+                            'No Username Found',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                Responsive.isMobile(context) ? const Spacer() : const SizedBox.shrink(),
+                Row(
+                  children: [
+                    const Icon(Icons.storage,
+                        color: Colors.white),
+                    const SizedBox(width: 4),
+                    // Add some spacing
+                    Text(
+                      defaultController.baseUrl
+                          .split('//')
+                          .last
+                          .split('/')
+                          .first,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Obx(
+                //   () => Row(
+                //     children: [
+                //       const Icon(Icons.computer,
+                //           color: Colors.white),
+                //       const SizedBox(width: 4),
+                //       // Add some spacing
+                //       Text(
+                //         defaultController.deviceInfo.value,
+                //         style: const TextStyle(
+                //           color: Colors.white,
+                //           fontSize: 12,
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
+                Responsive.isMobile(context) ? const SizedBox.shrink() :Row(
+                  children: [
+                    const Icon(Icons.calendar_month,
+                        color: Colors.white),
+                    const SizedBox(width: 4),
+                    // Add some spacing
+                    Text(
+                      DateFormat('dd-MM-yyyy')
+                          .format(DateTime.now()),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                Responsive.isMobile(context) ? const SizedBox.shrink() :Row(
+                  children: [
+                    const Icon(Icons.access_time,
+                        color: Colors.white),
+                    const SizedBox(width: 4),
+                    // Add some spacing
+                    StreamBuilder(
+                      stream: Stream.periodic(
+                          const Duration(seconds: 1)),
+                      builder: (context, snapshot) {
+                        return Text(
+                          DateFormat('hh:mm:ss a')
+                              .format(DateTime.now()),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -758,13 +810,15 @@ class DashboardWithDynamicTabs extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0), // Rounded corners for the dialog
+          borderRadius:
+              BorderRadius.circular(15.0), // Rounded corners for the dialog
         ),
         contentPadding: const EdgeInsets.all(20), // Padding around content
         content: SizedBox(
           height: 200, // Adjusted height for better content spacing
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, // Align content to start
+            crossAxisAlignment: CrossAxisAlignment.start,
+            // Align content to start
             children: [
               // Profile Header
               Container(
@@ -807,7 +861,8 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 15), // Spacing between header and details
+              const SizedBox(height: 15),
+              // Spacing between header and details
               // Company Address
               SizedBox(
                 width: double.infinity,
@@ -815,7 +870,8 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                   getCompanyDetails(defaultController.companyCode.value)
                       .address!,
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis, // Ensure text doesn't overflow
+                  overflow: TextOverflow.ellipsis,
+                  // Ensure text doesn't overflow
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
@@ -926,7 +982,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
             onTap: () {
-             showSettingsDialog(context);
+              showSettingsDialog(context);
               // Handle settings tap
               // Navigator.of(context).pop(); // Close the menu after selection
             },

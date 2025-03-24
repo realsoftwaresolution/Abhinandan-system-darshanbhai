@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -275,6 +277,34 @@ Widget buildTextField2(String label, TextEditingController? controller,
   );
 }
 
+Widget buildBottomButton(
+    {required String text,
+    required VoidCallback? onPressed,
+    double width = 65}) {
+  return SizedBox(
+    width: width, // Adjust width as per your requirement
+    height: 25, // Adjust height to match the TextField's height
+    child: OutlinedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        // side: const BorderSide(color: Colors.blue), // Border color
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero, // No rounded corners
+        ),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 10, vertical: 5), // Padding similar to TextField
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black,
+            fontWeight: FontWeight.bold), // Same font size as TextFormField
+      ),
+    ),
+  );
+}
+
 String getRoughName(String? typeCode) {
   final party = defaultController.roughModel.firstWhere(
       (p) => p.roughTypeCode == int.parse(typeCode!),
@@ -301,6 +331,13 @@ String getCompanyName(int? cmpCode) {
       (pt) => pt.companyCode == cmpCode,
       orElse: () => CompanyMst(companyName: 'Unknown'));
   return partyType.companyName ?? 'Unknown';
+}
+
+dynamic getTotalWeight(String? invNo) {
+  final partyType = defaultController.purchaseDataList.firstWhere(
+    (pt) => pt.invoiceNo == invNo,
+  );
+  return partyType.tWeight ?? 'Unknown';
 }
 
 CompanyMst getCompanyDetails(int? cmpCode) {
@@ -362,6 +399,31 @@ String formatDateToddMMMyyyy(String date) {
 String formatDateFromDateTime(DateTime date) {
   String formattedDate = DateFormat('dd-MM-yyyy').format(date);
   return formattedDate;
+}
+
+double getTotalAssortWt(String invoiceNo, bool isFromEdit, int id) {
+  double totalAssortWt = 0.0;
+  var transactions = defaultController.roughAssortMstList
+      .where((trn) => trn.invoiceNo == invoiceNo)
+      .toList();
+
+  totalAssortWt = transactions.fold(0.0, (previousValue, trn) {
+    return previousValue + (trn.assortWt ?? 0);
+  });
+
+  double totalAssortWtForEditEntry = transactions.where((trn)=> trn.roughAssortMstID == id).fold(0.0,  (previousValue, trn) {
+    return previousValue + (trn.assortWt ?? 0);
+  });
+
+  totalAssortWt = totalAssortWt - totalAssortWtForEditEntry;
+  
+  log(totalAssortWtForEditEntry.toStringAsFixed(2));
+  // }).toList();
+  return totalAssortWt;
+  // var transactionDetails = defaultController.roughAssortMstDetList
+  //     .where((trnDet) => trnDet.roughAssortMstID == partyType.roughPurMstID)
+  //     .toList();
+  //
 }
 
 double getSelectedPartyBalance(
@@ -544,7 +606,8 @@ void showPurchaseInvoiceDetails(
               e.invoiceNo.toString() == payment.invNo &&
               e.entryType == 'PAYMENT')
           .toList()
-      ..sort((a, b) => DateTime.parse(b.invDate!).compareTo(DateTime.parse(a.invDate!)));
+        ..sort((a, b) =>
+            DateTime.parse(b.invDate!).compareTo(DateTime.parse(a.invDate!)));
 
       return AlertDialog(
         // title: Text("Invoice Details: ${payment.invNo}"),
@@ -909,8 +972,9 @@ void showPurchaseInvoiceDetails(
                               ),
                               Text(
                                 'No payment records were found for this invoice.',
+                                maxLines: 2,
                                 style: TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.bold),
+                                    fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ))
@@ -991,8 +1055,9 @@ void showSaleInvoiceDetails(
           .where((e) =>
               e.invoiceNo.toString() == payment.invNo &&
               e.entryType == 'PAYMENT')
-          .toList()..sort((a, b) => DateTime.parse(b.invDate!).compareTo(DateTime.parse(a.invDate!)));
-
+          .toList()
+        ..sort((a, b) =>
+            DateTime.parse(b.invDate!).compareTo(DateTime.parse(a.invDate!)));
 
       return AlertDialog(
         contentPadding: EdgeInsets.zero,
@@ -1584,12 +1649,12 @@ void showSettingsDialog(BuildContext context) {
   );
 }
 
-Widget buildBottomButton(String text) {
-  return OutlinedButton(
-    onPressed: () {},
-    child: Text(text),
-  );
-}
+// Widget buildBottomButton(String text) {
+//   return OutlinedButton(
+//     onPressed: () {},
+//     child: Text(text),
+//   );
+// }
 
 Color getPartyTypeColor(int typeCode) {
   switch (typeCode) {
@@ -1644,4 +1709,3 @@ IconData getPartyTypeIcon(int typeCode) {
       return Icons.error; // Default color for unclassified types
   }
 }
-
