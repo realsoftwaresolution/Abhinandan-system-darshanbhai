@@ -94,7 +94,7 @@ class DefaultController extends GetxController {
   final RxString selectedTypeBookParty = ''.obs;
 
   // String baseUrl= 'http://localhost:301/';
-  String baseUrl = 'http://50.62.183.116:301/';
+  String baseUrl = 'http://50.62.183.116:8080/';
 
   // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
   // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
@@ -4555,7 +4555,6 @@ class DefaultController extends GetxController {
         wt,
         rate,
         amount,
-        srNo,
         roughAssortMstID}) async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -4590,7 +4589,7 @@ class DefaultController extends GetxController {
   }
 
   Future<void> _addAssortRoughData(
-      {assort, roughAssortMstID, wt, rate, amount, srNo}) async {
+      {assort, roughAssortMstID, wt, rate, amount}) async {
     try {
       final dio = Dio(BaseOptions(headers: {
         'content-type': 'application/json',
@@ -4767,10 +4766,10 @@ class DefaultController extends GetxController {
   Future<void> onInit() async {
     // await getIpAddress();
     await getDeviceInfo();
-    await getAssortGroupData();
-    await getAssortData();
-    await getRoughAssortData();
-    await getRoughAssortDetailsData();
+    // await getAssortGroupData();
+    // await getAssortData();
+    // await getRoughAssortData();
+    // await getRoughAssortDetailsData();
     await getOutstandingPurchaseSaleDetails();
     await getPurchaseData();
     // await getHostName();

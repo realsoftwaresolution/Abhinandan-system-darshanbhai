@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:multi_dropdown/multi_dropdown.dart';
+import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+
+import 'package:real_web_rough_entry_system/app_theme.dart';
+import 'package:real_web_rough_entry_system/common/components/app_button.dart';
+import 'package:real_web_rough_entry_system/common/components/app_data_grid.dart';
+import 'package:real_web_rough_entry_system/common/components/app_dropdown.dart';
+import 'package:real_web_rough_entry_system/common/components/app_shortcuts.dart';
+import 'package:real_web_rough_entry_system/common/components/app_text_field.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
-import 'package:real_web_rough_entry_system/party-ledger/credit_debit_datagrid.dart';
+import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/credit-debit/credit_debit_model.dart';
 import 'package:real_web_rough_entry_system/header.dart';
+import 'package:real_web_rough_entry_system/party-ledger/credit_debit_datagrid.dart';
 import 'package:real_web_rough_entry_system/party-ledger/outstanding_payment_datagrid.dart';
 import 'package:real_web_rough_entry_system/party-ledger/outstanding_payment_details_model.dart';
-import 'package:real_web_rough_entry_system/payment/payment_details_model.dart';
-import 'package:real_web_rough_entry_system/report/memo_pending_report_datagrid.dart';
-import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:real_web_rough_entry_system/responsive.dart';
 
 class PartyLedgerFormScreen extends StatefulWidget {
   final bool showHeader;
@@ -19,12 +25,13 @@ class PartyLedgerFormScreen extends StatefulWidget {
   const PartyLedgerFormScreen({super.key, required this.showHeader});
 
   @override
-  State<PartyLedgerFormScreen> createState() => _ReportScreenState();
+  State<PartyLedgerFormScreen> createState() => _PartyLedgerFormScreenState();
 }
 
-class _ReportScreenState extends State<PartyLedgerFormScreen> {
+class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
   DateTime? fromDate;
   DateTime? toDate;
+
   final TextEditingController fromDateController = TextEditingController();
   final TextEditingController toDateController = TextEditingController();
   final TextEditingController creditTotalController = TextEditingController();
@@ -32,12 +39,8 @@ class _ReportScreenState extends State<PartyLedgerFormScreen> {
   final TextEditingController debitBalanceController = TextEditingController();
   final TextEditingController creditBalanceController = TextEditingController();
 
-  final TextEditingController crOpeningBalanceController =
-      TextEditingController();
-  final TextEditingController drOpeningBalanceController =
-      TextEditingController();
-  final GlobalKey bookPartyDataGridKey = GlobalKey();
-  final GlobalKey bookPartyDataGridKey2 = GlobalKey();
+  final TextEditingController crOpeningBalanceController = TextEditingController();
+  final TextEditingController drOpeningBalanceController = TextEditingController();
 
   final FocusNode _partyFocus = FocusNode();
   final FocusNode _fromDateFocus = FocusNode();
@@ -46,1400 +49,1184 @@ class _ReportScreenState extends State<PartyLedgerFormScreen> {
   final RxString _selectedTypeParty = ''.obs;
   final RxBool _isFiltered = false.obs;
   final RxDouble openingBalance = 0.00.obs;
-  final RxInt selectedPaymentMstID = 0.obs;
-  RxList<PaymentDetailsModel> editBookPartyCreditDebitDataGridSource =
-      <PaymentDetailsModel>[].obs;
-  RxList<PaymentDetailsModel> editAccountPartyCreditDebitDataGridSource =
-      <PaymentDetailsModel>[].obs;
-
-  // final RxList<String> _selectedTypeBrokers = <String>[].obs;
-  // final RxList<String> _selectedTypeRoughs = <String>[].obs;
 
   final DataGridController _dataGridController = DataGridController();
+  final DataGridController _outstandingDataGridController = DataGridController();
 
-  // RxList<Pa> purchaseDataGridSource =
-  //     <PurchaseDetailsModel>[].obs;
-  RxList<CreditDebitMstModel> filteredDataGridSource =
-      <CreditDebitMstModel>[].obs;
-  RxList<CreditDebitMstModel> creditDebitDataGridSource =
-      <CreditDebitMstModel>[].obs;
-  RxList<OutstandingPaymentDetails> outstandingPaymentDataGridSource =
-      <OutstandingPaymentDetails>[].obs;
+  RxList<CreditDebitMstModel> filteredDataGridSource = <CreditDebitMstModel>[].obs;
+  RxList<CreditDebitMstModel> creditDebitDataGridSource = <CreditDebitMstModel>[].obs;
+  RxList<OutstandingPaymentDetails> outstandingPaymentDataGridSource = <OutstandingPaymentDetails>[].obs;
 
-  late MemoPendingReportDataGridSource dataGridSource;
+  final DefaultController defaultController = Get.find<DefaultController>();
 
   @override
   void initState() {
-    dataGridSource = MemoPendingReportDataGridSource();
     super.initState();
   }
 
-  void _applyDateFilter() async {
-    if (fromDate != null && toDate != null) {
-      _isFiltered.value = true;
+  @override
+  void dispose() {
+    fromDateController.dispose();
+    toDateController.dispose();
+    creditTotalController.dispose();
+    debitTotalController.dispose();
+    debitBalanceController.dispose();
+    creditBalanceController.dispose();
+    crOpeningBalanceController.dispose();
+    drOpeningBalanceController.dispose();
 
-      outstandingPaymentDataGridSource.value =
-          await defaultController.getOutstandingPaymentDetails(
-              partyCode: int.parse(_selectedTypeParty.value),
-              fromDate: fromDate!,
-              toDate: toDate!);
+    _partyFocus.dispose();
+    _fromDateFocus.dispose();
+    _toDateFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _applyDateFilter() async {
+    if (_selectedTypeParty.value.isEmpty) {
+      infoDialog(messageText: 'Please select an Account / Party first.');
+      _partyFocus.requestFocus();
+      return;
+    }
+    if (fromDate == null || toDate == null) {
+      infoDialog(messageText: 'Please select both From Date and To Date');
+      return;
+    }
+
+    _isFiltered.value = true;
+
+    try {
+      defaultController.isLoading.value = true;
+      final partyCode = int.tryParse(_selectedTypeParty.value);
+      if (partyCode != null) {
+        outstandingPaymentDataGridSource.value =
+            await defaultController.getOutstandingPaymentDetails(
+                partyCode: partyCode,
+                fromDate: fromDate!,
+                toDate: toDate!);
+      }
 
       final openingBalanceEntries = defaultController.creditDebitDataList
           .where((data) {
-            final invoiceDate = DateTime.parse(data.invDate!);
-            return invoiceDate.isBefore(fromDate!) &&
-                invoiceDate.isBefore(toDate!.add(const Duration(days: 1)));
+            if (data.invDate == null) return false;
+            final invoiceDate = DateTime.tryParse(data.invDate!);
+            if (invoiceDate == null) return false;
+            return invoiceDate.isBefore(fromDate!);
           })
           .where((e) => e.partyCode.toString() == _selectedTypeParty.value)
           .toList();
 
       final openingCrTotal = openingBalanceEntries.fold<double>(
         0.0,
-        (sum, item) => sum + (item.creditRs ?? 0.0),
+        (sum, item) => sum + (item.creditRs != null ? (double.tryParse(item.creditRs.toString()) ?? 0.0) : 0.0),
       );
       final openingDrTotal = openingBalanceEntries.fold<double>(
         0.0,
-        (sum, item) => sum + (item.debitRs ?? 0.0),
+        (sum, item) => sum + (item.debitRs != null ? (double.tryParse(item.debitRs.toString()) ?? 0.0) : 0.0),
       );
       openingBalance.value = openingCrTotal - openingDrTotal;
 
-      if (openingBalance >= 0) {
-        crOpeningBalanceController.text = openingBalance.toStringAsFixed(2);
+      if (openingBalance.value >= 0) {
+        crOpeningBalanceController.text = openingBalance.value.toStringAsFixed(2);
         drOpeningBalanceController.text = '0.00';
       } else {
-        drOpeningBalanceController.text =
-            openingBalance.abs().toStringAsFixed(2);
+        drOpeningBalanceController.text = openingBalance.value.abs().toStringAsFixed(2);
         crOpeningBalanceController.text = '0.00';
       }
 
-      // Filter data within the specified date range and selected party code
+      // Filter transactions within the specified date range and selected party code
       filteredDataGridSource.value = defaultController.creditDebitDataList
-          .where((purchase) {
-            final invoiceDate = DateTime.parse(purchase.invDate!);
-            return invoiceDate.isAfter(fromDate!) &&
+          .where((transaction) {
+            if (transaction.invDate == null) return false;
+            final invoiceDate = DateTime.tryParse(transaction.invDate!);
+            if (invoiceDate == null) return false;
+            return invoiceDate.isAfter(fromDate!.subtract(const Duration(seconds: 1))) &&
                 invoiceDate.isBefore(toDate!.add(const Duration(days: 1)));
           })
           .where((e) => e.partyCode.toString() == _selectedTypeParty.value)
           .toList();
 
-      // outstandingPaymentDataGridSource.value = defaultController.pendingPaymentList.where((e)=> e.partyCode.toString() == _selectedTypeParty.value).toList();
-
       // Calculate the sums of Cr Rs and Dr Rs columns within the date range
       final crTotal = filteredDataGridSource.fold<double>(
         0.0,
-        (sum, item) => sum + (item.creditRs ?? 0.0),
+        (sum, item) => sum + (item.creditRs != null ? (double.tryParse(item.creditRs.toString()) ?? 0.0) : 0.0),
       );
       final drTotal = filteredDataGridSource.fold<double>(
         0.0,
-        (sum, item) => sum + (item.debitRs ?? 0.0),
+        (sum, item) => sum + (item.debitRs != null ? (double.tryParse(item.debitRs.toString()) ?? 0.0) : 0.0),
       );
-      final balance = crTotal - drTotal;
 
       creditTotalController.text = crTotal.toStringAsFixed(2);
       debitTotalController.text = drTotal.toStringAsFixed(2);
 
-      // Set balance display based on whether it's a credit or debit
-      if (balance >= 0) {
-        creditBalanceController.text =
-            (balance + double.parse(crOpeningBalanceController.text))
-                .toStringAsFixed(2);
+      final crOp = double.tryParse(crOpeningBalanceController.text) ?? 0.0;
+      final drOp = double.tryParse(drOpeningBalanceController.text) ?? 0.0;
+
+      // Net closing balance
+      final netBalance = (crTotal + crOp) - (drTotal + drOp);
+      if (netBalance >= 0) {
+        creditBalanceController.text = netBalance.toStringAsFixed(2);
         debitBalanceController.text = '0.00';
       } else {
-        debitBalanceController.text =
-            (balance.abs() + double.parse(drOpeningBalanceController.text))
-                .toStringAsFixed(2);
+        debitBalanceController.text = netBalance.abs().toStringAsFixed(2);
         creditBalanceController.text = '0.00';
       }
 
-      // Update the data grid source with the filtered data
       creditDebitDataGridSource.value = filteredDataGridSource;
-    } else {
-      infoDialog(messageText: 'Please select both From Date and To Date');
+    } finally {
+      defaultController.isLoading.value = false;
     }
   }
 
   void _removeDateFilter() {
-    // Reset the data grid source to the full list
     creditDebitDataGridSource.clear();
     outstandingPaymentDataGridSource.clear();
-
-    // Clear filter values
     toDateController.clear();
     fromDateController.clear();
+    _selectedTypeParty.value = '';
+    crOpeningBalanceController.clear();
+    drOpeningBalanceController.clear();
+    creditBalanceController.clear();
+    creditTotalController.clear();
+    debitBalanceController.clear();
+    debitTotalController.clear();
     fromDate = null;
     toDate = null;
-
     _isFiltered.value = false;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          widget.showHeader
-              ? const Header(title: 'Party Ledger')
-              : const SizedBox.shrink(),
-          Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+  void _handlePrintPdf() {
+    if (creditDebitDataGridSource.isEmpty) {
+      infoDialog(messageText: 'No ledger data available to print.');
+      return;
+    }
+    CreditDebitDataGrid(creditDebitDataGridSource, openingBalance.value).exportToPdf(
+      context,
+      getPartyName(int.tryParse(_selectedTypeParty.value)),
+      formatDateFromDateTime(fromDate ?? DateTime.now()),
+      formatDateFromDateTime(toDate ?? DateTime.now()),
+    );
+  }
+
+  void _handleExportExcel() {
+    if (creditDebitDataGridSource.isEmpty) {
+      infoDialog(messageText: 'No ledger data available to export.');
+      return;
+    }
+    CreditDebitDataGrid(creditDebitDataGridSource, openingBalance.value).exportToExcel(
+      getPartyName(int.tryParse(_selectedTypeParty.value)),
+      formatDateFromDateTime(fromDate ?? DateTime.now()),
+      formatDateFromDateTime(toDate ?? DateTime.now()),
+    );
+  }
+
+  void _handlePrintOutstandingPdf() {
+    if (outstandingPaymentDataGridSource.isEmpty) {
+      infoDialog(messageText: 'No outstanding data available to print.');
+      return;
+    }
+    OutstandingPaymentDataGrid(outstandingPaymentDataGridSource).exportToPdf(
+      context,
+      getPartyName(int.tryParse(_selectedTypeParty.value)),
+      formatDateFromDateTime(fromDate ?? DateTime.now()),
+      formatDateFromDateTime(toDate ?? DateTime.now()),
+    );
+  }
+
+  // Dropdown list for parties
+  List<DropdownMenuItem<String>> get dropdownItemsParty {
+    final seenCodes = <int>{};
+    return defaultController.partyMstList
+        .where((p) =>
+            p.companyCode == defaultController.companyCode.value &&
+            p.partyCode != null &&
+            seenCodes.add(p.partyCode!))
+        .map((p) {
+      final partyTransactions = defaultController.creditDebitDataList
+          .where((cd) => cd.partyCode == p.partyCode)
+          .toList();
+
+      final double sumCredit = partyTransactions.fold(0.0, (prev, cd) => prev + (cd.creditRs != null ? (double.tryParse(cd.creditRs.toString()) ?? 0.0) : 0.0));
+      final double sumDebit = partyTransactions.fold(0.0, (prev, cd) => prev + (cd.debitRs != null ? (double.tryParse(cd.debitRs.toString()) ?? 0.0) : 0.0));
+      final double balance = (sumCredit - sumDebit) +
+          ((p.creditOpBalRs ?? 0.0) - (p.debitOpBalRs ?? 0.0));
+
+      final Color badgeBg = getPartyTypeColor(p.typeCode ?? 0);
+      final IconData badgeIcon = getPartyTypeIcon(p.typeCode ?? 0);
+
+      return DropdownMenuItem<String>(
+        value: p.partyCode.toString(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeBg.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: badgeBg.withValues(alpha: 0.3), width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      KeyboardListener(
-                        focusNode: FocusNode(),
-                        autofocus: true,
-                        child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: Column(
-                              children: [
-                                buildRow([
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        'A/C',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w900,
-                                          fontSize:
-                                              12, // Font size for the label
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Obx(() {
-                                          return DropdownButtonFormField<
-                                              String>(
-                                            focusNode: _partyFocus,
-                                            style:
-                                                const TextStyle(fontSize: 12),
-                                            value:
-                                                _selectedTypeParty.value.isEmpty
-                                                    ? null
-                                                    : _selectedTypeParty.value,
-                                            decoration: const InputDecoration(
-                                              errorStyle: TextStyle(
-                                                height: 0,
-                                                // Hides the error message
-                                                fontSize:
-                                                    0, // Ensures no space is taken by the error message
-                                              ),
-                                              focusedErrorBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: Colors.red,
-                                                  width:
-                                                      1.0, // Thin border width
-                                                ),
-                                                borderRadius: BorderRadius
-                                                    .zero, // Squared corners
-                                              ),
-                                              errorBorder: UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: Colors.red,
-                                                  width:
-                                                      1.0, // Thin border width
-                                                ),
-                                                borderRadius: BorderRadius
-                                                    .zero, // Squared corners
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: Colors.blue,
-                                                  width:
-                                                      1.0, // Thin border width
-                                                ),
-                                                borderRadius: BorderRadius
-                                                    .zero, // Squared corners
-                                              ),
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: Colors.grey,
-                                                  width:
-                                                      1.0, // Thin border width
-                                                ),
-                                                borderRadius: BorderRadius
-                                                    .zero, // Squared corners
-                                              ),
-                                              isDense: true,
-                                              contentPadding:
-                                                  EdgeInsets.symmetric(
-                                                vertical: 8,
-                                                horizontal: 8,
-                                              ),
-                                            ),
-                                            items: dropdownItemsParty,
-                                            onChanged: (value) {
-                                              _selectedTypeParty.value =
-                                                  value ?? '';
-                                              Future.delayed(
-                                                  const Duration(
-                                                      milliseconds: 100), () {
-                                                _fromDateFocus
-                                                    .requestFocus(); // Move focus to the first input field
-                                              }); // Handle null case
-                                            },
-                                            selectedItemBuilder:
-                                                (BuildContext context) {
-                                              return dropdownItemsParty.map(
-                                                  (DropdownMenuItem<String>
-                                                      item) {
-                                                return Container(
-                                                  alignment:
-                                                      Alignment.centerLeft,
-                                                  child: Text(item.value !=
-                                                              null &&
-                                                          _selectedTypeParty
-                                                              .isNotEmpty
-                                                      ? getPartyName(int.parse(
-                                                          _selectedTypeParty
-                                                              .value))
-                                                      : ''),
-                                                );
-                                              }).toList();
-                                            },
-                                          );
-                                        }),
-                                      ),
-                                    ],
-                                  ),
-                                  buildTextField(
-                                    excludeFieldValidation: false,
-                                    'From Date',
-                                    focusNode: _fromDateFocus,
-                                    fromDateController,
-                                    readOnly: true,
-                                    onTap: () async {
-                                      DateTime? pickedDate =
-                                          await showDatePicker(
-                                        context: context,
-                                        initialDate: DateTime.now(),
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                      );
-                                      if (pickedDate != null) {
-                                        dataGridSource.setFromDate(pickedDate);
-                                        setState(() {
-                                          fromDate = pickedDate;
-                                          fromDateController.text =
-                                              DateFormat('dd-MM-yyyy')
-                                                  .format(fromDate!);
-                                          if (toDateController
-                                              .text.isNotEmpty) {
-                                            _applyDateFilter();
-                                          }
-                                        });
-                                        Future.delayed(
-                                            const Duration(milliseconds: 100),
-                                            () {
-                                          _toDateFocus
-                                              .requestFocus(); // Move focus to the first input field
-                                        });
-                                      }
-                                    },
-                                  ),
-                                  buildTextField(
-                                    excludeFieldValidation: false,
-                                    'To Date',
-                                    focusNode: _toDateFocus,
-                                    toDateController,
-                                    readOnly: true,
-                                    onTap: () async {
-                                      DateTime? pickedDate =
-                                          await showDatePicker(
-                                        context: context,
-                                        initialDate: DateTime.now(),
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                      );
-                                      if (pickedDate != null) {
-                                        dataGridSource.setToDate(pickedDate);
-
-                                        setState(() {
-                                          toDate = pickedDate;
-                                          toDateController.text =
-                                              DateFormat('dd-MM-yyyy')
-                                                  .format(toDate!);
-                                          if (fromDateController
-                                              .text.isNotEmpty) {
-                                            _applyDateFilter();
-                                          }
-                                        });
-                                      }
-                                    },
-                                  ),
-
-                                  // _buildTextField('PURID', 'AUTO', purIdController),
-                                ]),
-                              ],
-                            )),
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          OutlinedButton(
-                            onPressed: _applyDateFilter,
-                            // onPressed: _enableFields,
-                            // onPressed: !_isEnabled ? _enableFields : null,
-                            child: const Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'S', // Underlined "A"
-                                    style: TextStyle(
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: 'how', // Normal "dd"
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton(
-                            onPressed: () {
-                              _removeDateFilter();
-                              dataGridSource.clearFilter();
-                              fromDateController.clear();
-                              toDateController.clear();
-                              _selectedTypeParty.value = '';
-                              crOpeningBalanceController.clear();
-                              drOpeningBalanceController.clear();
-                              creditBalanceController.clear();
-                              creditTotalController.clear();
-                              debitBalanceController.clear();
-                              debitTotalController.clear();
-                              // _selectedTypeBrokers.value = [];
-                              // _selectedTypeRoughs.value = [];
-
-                              // menuController.selectedIndex.value = 0;
-                            },
-                            child: const Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'R', // Underlined "A"
-                                    style: TextStyle(
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: 'eset', // Normal "dd"
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton(
-                            onPressed: () {
-                              // menuController.selectedIndex.value = 0;
-                              tabController
-                                  .removeTab(tabController.currentIndex.value);
-                            },
-                            child: const Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'E', // Underlined "A"
-                                    style: TextStyle(
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: 'xit', // Normal "dd"
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-
-                      // Align(
-                      //   alignment: Alignment.topRight,
-                      //   child: Container(
-                      //       padding: const EdgeInsets.all(5),
-                      //       decoration: const BoxDecoration(
-                      //           borderRadius: BorderRadius.only(
-                      //               topLeft: Radius.circular(5),
-                      //               topRight: Radius.circular(5)),
-                      //           color: Colors.black87),
-                      //       child: Row(
-                      //         children: [
-                      //           const Text(
-                      //             'OUTSTANDING LIST (BOOK )',
-                      //             style: TextStyle(
-                      //                 fontSize: 12,
-                      //                 fontWeight: FontWeight.w900,
-                      //                 color: Colors.white),
-                      //           ),
-                      //         ],
-                      //       )),
-                      // ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              CreditDebitDataGrid(creditDebitDataGridSource,
-                                      openingBalance.value)
-                                  .exportToPdf(
-                                      context,
-                                      getPartyName(int.tryParse(
-                                          _selectedTypeParty.value)),
-                                      formatDateFromDateTime(
-                                          fromDate ?? DateTime.now()),
-                                      formatDateFromDateTime(
-                                          toDate ?? DateTime.now()));
-                            },
-                            tooltip: 'Print as PDF',
-                            icon: const Icon(
-                              Icons.print,
-                              color: Colors.black,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              CreditDebitDataGrid(creditDebitDataGridSource,
-                                      openingBalance.value)
-                                  .exportToExcel(
-                                      getPartyName(int.tryParse(
-                                          _selectedTypeParty.value)),
-                                      formatDateFromDateTime(
-                                          fromDate ?? DateTime.now()),
-                                      formatDateFromDateTime(
-                                          toDate ?? DateTime.now()));
-                            },
-                            tooltip: 'Export as Excel',
-                            icon: SvgPicture.asset(
-                              'assets/icons/excel.svg',
-                              height: 20,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: Colors.grey),
-                            left: BorderSide(color: Colors.grey),
-                            right: BorderSide(color: Colors.grey),
-                            bottom: BorderSide(color: Colors.grey),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            buildRow([
-                              buildTextField(
-                                'CR OPENING BALANCE',
-                                crOpeningBalanceController,
-                                excludeFieldValidation: true,
-                                isEnabled:
-                                    false, // Disable input since it's auto-filled
-                              ),
-                              buildTextField(
-                                'DR OPENING BALANCE',
-                                excludeFieldValidation: true,
-                                drOpeningBalanceController,
-                                isEnabled:
-                                    false, // Disable input since it's auto-filled
-                              ),
-                              const SizedBox(
-                                width: 50,
-                              ),
-                            ]),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Column(
-                              children: [
-                                Obx(
-                                  () => defaultController.isLoading.value
-                                      ? const LinearProgressIndicator()
-                                      : const SizedBox.shrink(),
-                                ),
-                                SizedBox(
-                                  height: 150,
-                                  child: Obx(
-                                    () => SfDataGrid(
-                                      key: bookPartyDataGridKey2,
-                                      controller: _dataGridController,
-                                      source: CreditDebitDataGrid(
-                                          creditDebitDataGridSource,
-                                          openingBalance.value),
-                                      columns: <GridColumn>[
-                                        GridColumn(
-                                          columnName: 'Id',
-                                          visible: false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Id',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Date',
-                                          allowEditing: false,
-                                          visible: true,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Date',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Particulars',
-                                          allowEditing: false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Particulars',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Inv No',
-                                          allowEditing: false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Inv No',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Cr Rs',
-                                          allowEditing:
-                                              crOpeningBalanceController
-                                                      .text.isNotEmpty
-                                                  ? true
-                                                  : false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Cr Rs',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Dr Rs',
-                                          allowEditing:
-                                              drOpeningBalanceController
-                                                      .text.isNotEmpty
-                                                  ? true
-                                                  : false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Dr Rs',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Closing Rs',
-                                          allowEditing: false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Closing Rs',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                        GridColumn(
-                                          columnName: 'Remarks',
-                                          allowEditing: false,
-                                          label: Container(
-                                            padding: const EdgeInsets.all(8.0),
-                                            alignment: Alignment.center,
-                                            child: const Text(
-                                              'Remarks',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      gridLinesVisibility:
-                                          GridLinesVisibility.both,
-                                      // Both horizontal and vertical grid lines
-                                      headerGridLinesVisibility:
-                                          GridLinesVisibility.both,
-                                      columnWidthMode: ColumnWidthMode.auto,
-                                      navigationMode: GridNavigationMode.cell,
-                                      frozenColumnsCount: 1,
-                                      rowHeight: 25,
-                                      headerRowHeight: 35,
-                                      showSortNumbers: true,
-                                      allowFiltering: true,
-                                      selectionMode: SelectionMode.single,
-                                      // onSelectionChanged: (List<DataGridRow>
-                                      //         addedRows,
-                                      //     List<DataGridRow> removedRows) async {
-                                      /*setState(() {
-                                          entries.length = 0;
-                                          _isFromEdit = true;
-                                        });*/
-                                      // if (addedRows.isNotEmpty) {
-                                      // final DataGridRow selectedRow =
-                                      //     addedRows.first;
-
-                                      // print(selectedRow.getCells()[0].value);
-
-                                      // selectedPaymentMstID.value =
-                                      //     selectedRow.getCells()[0].value;
-                                      // print(selectedPaymentMstID.value);
-
-                                      // PaymentMstModel selectedPaymentData =
-                                      //     defaultController.paymentMstList
-                                      //         .firstWhere((e) =>
-                                      //             e.paymentMstID ==
-                                      //             selectedPaymentMstID
-                                      //                 .value);
-
-                                      // editBookPartyCreditDebitDataGridSource
-                                      //         .value =
-                                      //     await defaultController
-                                      //         .getBookPartyPaymentDetails(
-                                      //             selectedPaymentData
-                                      //                 .partyCode!,
-                                      //             selectedPaymentMstID
-                                      //                 .value);
-                                      // editAccountPartyCreditDebitDataGridSource
-                                      //         .value =
-                                      //     await defaultController
-                                      //         .getAccPartyPaymentDetails(
-                                      //             selectedPaymentData
-                                      //                 .accountCode!,
-                                      //             selectedPaymentMstID
-                                      //                 .value);
-
-                                      // mstIdController.text =
-                                      //     selectedPaymentMstID.value
-                                      //         .toString();
-                                      // balance1Controller.text =
-                                      //     getSelectedPartyBalance(
-                                      //             partyCode:
-                                      //                 selectedPaymentData
-                                      //                     .partyCode,
-                                      //             isFromEdit: true)
-                                      //         .toStringAsFixed(2);
-                                      // balance2Controller.text =
-                                      //     getSelectedPartyBalance(
-                                      //             partyCode:
-                                      //                 selectedPaymentData
-                                      //                     .accountCode,
-                                      //             isFromEdit: true)
-                                      //         .toStringAsFixed(2);
-                                      // checkNoController.text =
-                                      //     selectedPaymentData.chequeNo!;
-                                      // dateController.text = formatDate(
-                                      //     selectedPaymentData.paymentDate!,
-                                      //     showDayOfWeek: true);
-                                      // jamaCreditController.text =
-                                      //     selectedPaymentData.jAmtRs!
-                                      //         .toStringAsFixed(2);
-                                      // udharDebitController.text =
-                                      //     selectedPaymentData.uAmtRs!
-                                      //         .toStringAsFixed(2);
-                                      // remarks1Controller.text =
-                                      //     selectedPaymentData.remarks1!;
-                                      // selectedTypeBookParty.value =
-                                      //     selectedPaymentData.partyCode
-                                      //         .toString();
-                                      // selectedTypeAccountParty.value =
-                                      //     selectedPaymentData.accountCode
-                                      //         .toString();
-                                      // if (selectedPaymentData.jAmtRs! >
-                                      //     0.00) {
-                                      // bookUdharController.text =
-                                      //     (double.parse(
-                                      //                 jamaCreditController
-                                      //                     .text) -
-                                      //             totalUAmtRsBook)
-                                      //         .toStringAsFixed(2);
-                                      //   accountCreditController.text =
-                                      //       (double.parse(
-                                      //                   jamaCreditController
-                                      //                       .text) -
-                                      //               totalJAmtRsAccount)
-                                      //           .toStringAsFixed(2);
-                                      // } else if (selectedPaymentData
-                                      //         .uAmtRs! >
-                                      //     0.00) {
-                                      // bookCreditController.text =
-                                      //     (double.parse(
-                                      //                 udharDebitController
-                                      //                     .text) -
-                                      //             totalJAmtRsBook)
-                                      //         .toStringAsFixed(2);
-                                      // accountUdharController.text =
-                                      //     (double.parse(
-                                      //                 udharDebitController
-                                      //                     .text) -
-                                      //             totalUAmtRsAccount)
-                                      //         .toStringAsFixed(2);
-                                      // }
-                                      // _enableFields();
-                                      // setState(() {
-                                      // _isSearch = false;
-                                      // });
-                                      // tabController.addTab(TabItem(
-                                      //     view: PaymentFormScreen(
-                                      //       showHeader: false,
-                                      //       editAccountPartyCreditDebitDataGridSource:
-                                      //           editAccountPartyCreditDebitDataGridSource,
-                                      //       editBookPartyCreditDebitDataGridSource:
-                                      //           editBookPartyCreditDebitDataGridSource,
-                                      //       // selectedTypeBookParty:
-                                      //       //     selectedPaymentData
-                                      //       //         .partyCode
-                                      //       //         .toString()
-                                      //       //         .obs,
-                                      //       // selectedTypeAccountParty:
-                                      //       //     selectedPaymentData
-                                      //       //         .accountCode
-                                      //       //         .toString()
-                                      //       //         .obs,
-                                      //       preFilledData: {
-                                      //         // 'invNo': '12345',
-                                      //         // 'date': formatDate(
-                                      //         //     selectedPaymentData
-                                      //         //         .paymentDate!,
-                                      //         //     showDayOfWeek: true),
-                                      //         // 'date' : '2024-10-30',
-                                      //         // 'checkNo': selectedPaymentData
-                                      //         //     .chequeNo!,
-                                      //         // 'dueDate': '2024-11-30',
-                                      //         // 'balance1':
-                                      //         //     getSelectedPartyBalance(
-                                      //         //             partyCode:
-                                      //         //                 selectedPaymentData
-                                      //         //                     .partyCode,
-                                      //         //             isFromEdit: true)
-                                      //         //         .toStringAsFixed(2),
-                                      //         // 'balance2': getSelectedPartyBalance(
-                                      //         //         partyCode:
-                                      //         //             selectedPaymentData
-                                      //         //                 .accountCode,
-                                      //         //         isFromEdit: true)
-                                      //         //     .toStringAsFixed(2),
-                                      //         // 'jamaCredit':
-                                      //         //     selectedPaymentData
-                                      //         //         .jAmtRs!
-                                      //         //         .toStringAsFixed(2),
-                                      //         // 'udharDebit':
-                                      //         //     selectedPaymentData
-                                      //         //         .uAmtRs!
-                                      //         //         .toStringAsFixed(2),
-                                      //         'mstId': selectedPaymentMstID
-                                      //             .value
-                                      //             .toString(),
-                                      //         // 'remarks1':
-                                      //         //     selectedPaymentData
-                                      //         //         .remarks1!,
-                                      //         // 'bookUdhar': '4000',
-                                      //         // 'bookCredit': '6000',
-                                      //         // 'accountUdhar': '7000',
-                                      //         // 'accountCredit': '8000',
-                                      //       },
-                                      //     ),
-                                      //     label: 'Payment',
-                                      //     icon: const Icon(Icons.payment)));
-                                      // }
-                                      // },
-                                      // allowEditing: true,
-                                      // editingGestureType:
-                                      // EditingGestureType.tap,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            buildRow([
-                              buildTextField(
-                                'CREDIT TOTAL',
-                                creditTotalController,
-                                excludeFieldValidation: true,
-                                isEnabled:
-                                    false, // Disable input since it's auto-filled
-                              ),
-                              buildTextField(
-                                'DEBIT TOTAL',
-                                excludeFieldValidation: true,
-                                debitTotalController,
-                                isEnabled:
-                                    false, // Disable input since it's auto-filled
-                              ),
-                              const SizedBox(
-                                width: 50,
-                              ),
-                            ]),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            buildRow([
-                              buildTextField(
-                                'BALANCE',
-                                creditBalanceController,
-                                excludeFieldValidation: true,
-                                isEnabled:
-                                    false, // Disable input since it's auto-filled
-                              ),
-                              buildTextField(
-                                'BALANCE',
-                                excludeFieldValidation: true,
-                                debitBalanceController,
-                                isEnabled:
-                                    false, // Disable input since it's auto-filled
-                              ),
-                              const SizedBox(
-                                width: 50,
-                              ),
-                            ]),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 10,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: const BoxDecoration(
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(5),
-                                      topRight: Radius.circular(5)),
-                                  color: Colors.black87),
-                              child: const Text(
-                                'OUTSTANDING',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white),
-                              )),
-                          IconButton(
-                              onPressed: () {
-                                OutstandingPaymentDataGrid(
-                                        outstandingPaymentDataGridSource)
-                                    .exportToPdf(
-                                        context,
-                                        getPartyName(int.tryParse(
-                                            _selectedTypeParty.value)),
-                                        formatDateFromDateTime(
-                                            fromDate ?? DateTime.now()),
-                                        formatDateFromDateTime(
-                                            toDate ?? DateTime.now()));
-                              },
-                              tooltip: 'Print as PDF',
-                              icon: const Icon(
-                                Icons.print,
-                                color: Colors.black,
-                              )),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: Colors.grey),
-                            left: BorderSide(color: Colors.grey),
-                            right: BorderSide(color: Colors.grey),
-                            bottom: BorderSide(color: Colors.grey),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Obx(
-                              () => defaultController.isLoading.value
-                                  ? const LinearProgressIndicator()
-                                  : const SizedBox.shrink(),
-                            ),
-                            SizedBox(
-                              height: 150,
-                              child: Obx(
-                                () => SfDataGrid(
-                                    key: bookPartyDataGridKey,
-                                    controller: _dataGridController,
-                                    source: OutstandingPaymentDataGrid(
-                                        outstandingPaymentDataGridSource),
-                                    columns: <GridColumn>[
-                                      GridColumn(
-                                        columnName: 'Inv No',
-                                        allowEditing: false,
-                                        visible: true,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Inv No',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Inv Date',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Inv Date',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Due Days',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Due Days',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Due Date',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Due Date',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Trn Type',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Trn Type',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Dr/Cr',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Dr/Cr',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Amt Rs',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Amt Rs',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Balance AmtRs',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Balance AmtRs',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Status',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Status',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        allowEditing: false,
-                                        columnName: 'Avg Days',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Avg Days',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Late Days',
-                                        allowEditing: false,
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Late Days',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    gridLinesVisibility:
-                                        GridLinesVisibility.both,
-                                    // Both horizontal and vertical grid lines
-                                    headerGridLinesVisibility:
-                                        GridLinesVisibility.both,
-                                    // tableSummaryRows: [
-                                    //   GridTableSummaryRow(
-                                    //       title: 'Total',
-                                    //       showSummaryInRow: false,
-                                    //       titleColumnSpan: 1,
-                                    //       columns: <GridSummaryColumn>[
-                                    //         const GridSummaryColumn(
-                                    //             name: 'JamaRsSum',
-                                    //             columnName: 'Jama Rs',
-                                    //             summaryType: GridSummaryType.sum),
-                                    //         const GridSummaryColumn(
-                                    //             name: 'OutAmtRsSum',
-                                    //             columnName: 'Out AmtRs',
-                                    //             summaryType: GridSummaryType.sum),
-                                    //         const GridSummaryColumn(
-                                    //             name: 'UdharRsSum',
-                                    //             columnName: 'Udhar Rs',
-                                    //             summaryType: GridSummaryType.sum),
-                                    //         const GridSummaryColumn(
-                                    //             name: 'AmtRsSum',
-                                    //             columnName: 'Amt Rs',
-                                    //             summaryType: GridSummaryType.sum),
-                                    //       ],
-                                    //       position:
-                                    //           GridTableSummaryRowPosition.bottom)
-                                    // ],
-                                    columnWidthMode: ColumnWidthMode.auto,
-                                    navigationMode: GridNavigationMode.cell,
-                                    frozenColumnsCount: 1,
-                                    rowHeight: 25,
-                                    headerRowHeight: 35,
-                                    showSortNumbers: true,
-                                    allowFiltering: true,
-                                    selectionMode: SelectionMode.single,
-                                    // allowEditing: true,
-                                    editingGestureType: EditingGestureType.tap),
-                              ),
-                            ),
-                          ],
-                        ),
+                      Icon(badgeIcon, size: 10, color: badgeBg),
+                      const SizedBox(width: 3),
+                      Text(
+                        getPartyType(p.typeCode ?? 0),
+                        style: TextStyle(fontSize: 10, color: badgeBg, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                Text(
+                  p.partyName ?? '',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '₹ ${balance.abs().toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: balance >= 0 ? AppColors.success : AppColors.danger,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: (balance >= 0 ? AppColors.success : AppColors.danger).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    balance >= 0 ? 'Cr' : 'Dr',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: balance >= 0 ? AppColors.success : AppColors.danger,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppKeyboardShortcutHandler(
+      onSave: _applyDateFilter,
+      onCancel: _removeDateFilter,
+      onPrint: _handlePrintPdf,
+      onExit: () => tabController.removeTab(tabController.currentIndex.value),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.isMobile(context) ? 10 : 20,
+            vertical: Responsive.isMobile(context) ? 10 : 16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (widget.showHeader) ...[
+                const Header(title: 'Party Ledger'),
+                const SizedBox(height: 16),
+              ],
+
+              // Card 1: Filters & Action Buttons
+              _buildFilterCard(),
+              const SizedBox(height: 16),
+
+              // Card 2: Financial Balances Summary
+              _buildBalancesCard(),
+              const SizedBox(height: 16),
+
+              // Card 3: Ledger Transactions DataGrid
+              _buildTransactionsCard(),
+              const SizedBox(height: 16),
+
+              // Card 4: Outstanding Invoices DataGrid
+              _buildOutstandingCard(),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==================== CARD 1: FILTERS & ACTIONS ====================
+
+  Widget _buildFilterCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Ledger Account & Date Range Filter',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final partyField = Obx(
+                () => AppDropdown<String>(
+                  label: 'Account / Party *',
+                  value: _selectedTypeParty.value.isEmpty ? null : _selectedTypeParty.value,
+                  items: dropdownItemsParty,
+                  focusNode: _partyFocus,
+                  nextFocusNode: _fromDateFocus,
+                  hintText: 'Select Party',
+                  onChanged: (value) {
+                    if (value != null) {
+                      _selectedTypeParty.value = value;
+                    }
+                  },
+                ),
+              );
+
+              final fromDateField = Focus(
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                    _pickFromDate();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: AppTextField(
+                  label: 'From Date *',
+                  controller: fromDateController,
+                  focusNode: _fromDateFocus,
+                  nextFocusNode: _toDateFocus,
+                  readOnly: true,
+                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                  onTap: _pickFromDate,
+                ),
+              );
+
+              final toDateField = Focus(
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                    _pickToDate();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: AppTextField(
+                  label: 'To Date *',
+                  controller: toDateController,
+                  focusNode: _toDateFocus,
+                  readOnly: true,
+                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                  onTap: _pickToDate,
+                ),
+              );
+
+              if (constraints.maxWidth >= 750) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 5, child: partyField),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 3, child: fromDateField),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 3, child: toDateField),
+                  ],
+                );
+              } else if (constraints.maxWidth >= 500) {
+                return Column(
+                  children: [
+                    partyField,
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: fromDateField),
+                        const SizedBox(width: 12),
+                        Expanded(child: toDateField),
+                      ],
+                    ),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    partyField,
+                    const SizedBox(height: 10),
+                    fromDateField,
+                    const SizedBox(height: 10),
+                    toDateField,
+                  ],
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 14),
+
+          // Action Buttons Bar
+          Obx(
+            () => Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  AppButton(
+                    text: 'Show',
+                    icon: Icons.visibility_rounded,
+                    variant: AppButtonVariant.primary,
+                    isLoading: defaultController.isLoading.value,
+                    onPressed: _applyDateFilter,
+                  ),
+                  AppButton(
+                    text: 'Reset',
+                    icon: Icons.refresh_rounded,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: _removeDateFilter,
+                  ),
+                  AppButton(
+                    text: 'Print PDF',
+                    icon: Icons.print_outlined,
+                    variant: AppButtonVariant.outline,
+                    onPressed: creditDebitDataGridSource.isNotEmpty ? _handlePrintPdf : null,
+                  ),
+                  AppButton(
+                    text: 'Export Excel',
+                    icon: Icons.table_view_rounded,
+                    variant: AppButtonVariant.outline,
+                    onPressed: creditDebitDataGridSource.isNotEmpty ? _handleExportExcel : null,
+                  ),
+                  AppButton(
+                    text: 'Exit',
+                    icon: Icons.exit_to_app_rounded,
+                    variant: AppButtonVariant.outline,
+                    onPressed: () => tabController.removeTab(tabController.currentIndex.value),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  List<DropdownMenuItem<String>> get dropdownItemsReport {
-    return reportList.map((reportName) {
-      return DropdownMenuItem<String>(
-        value: reportName.toString(),
-        child: Text(reportName),
-      );
-    }).toList();
-  }
-
-// Convert partyMstList to MultiSelectItem list
-  List<DropdownItem<String>> get multiDropdownItemsParty {
-    return defaultController.partyMstList
-        .where((partyType) =>
-            partyType.typeCode == 1 &&
-            partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      return DropdownItem<String>(
-        value: partyType.partyCode.toString(),
-        label: partyType.partyName!,
-      );
-    }).toList();
-  }
-
-  List<DropdownItem<String>> get multiDropdownItemsBroker {
-    return defaultController.partyMstList
-        .where((partyType) =>
-            partyType.typeCode == 5 &&
-            partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      return DropdownItem<String>(
-        value: partyType.partyCode.toString(),
-        label: partyType.partyName!,
-      );
-    }).toList();
-  }
-
-// Convert partyMstList to MultiSelectItem list
-//   List<DropdownMenuItem<String>> get dropdownItemsParty {
-//     return defaultController.partyMstList
-//         .where((partyType) =>
-//             // partyType.typeCode == 1 &&
-//             partyType.companyCode ==
-//             defaultController.companyCode.value /*|| partyType.typeCode == 5*/)
-//         .map((partyType) {
-//       // Get the list of credit and debit transactions for this party
-//       var partyTransactions = defaultController.creditDebitDataList
-//           .where((cd) => cd.partyCode == partyType.partyCode)
-//           .toList();
-//
-//       double sumCredit = partyTransactions.fold(0.0, (previousValue, cd) {
-//         return previousValue + (cd.creditRs ?? 0);
-//       });
-//       double sumDebit = partyTransactions.fold(0.0, (previousValue, cd) {
-//         return previousValue + (cd.debitRs ?? 0);
-//       });
-//
-//       // Calculate the balance: sum credits, subtract debits
-//       double balance = (sumCredit - sumDebit) +
-//           ((partyType.creditOpBalRs ?? 0) - (partyType.debitOpBalRs ?? 0));
-//
-//       return DropdownMenuItem<String>(
-//         value: partyType.partyCode.toString(),
-//         child: Row(
-//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//           children: [
-//             Text(partyType.partyName!),
-//             Row(
-//               mainAxisAlignment: MainAxisAlignment.start,
-//               children: [
-//                 Text(getPartyType(partyType.typeCode!)),
-//               ],
-//             ), // Party name
-//             Row(
-//               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//               children: [
-//                 Text(balance.abs().toStringAsFixed(2)),
-//                 const SizedBox(width: 10),
-//                 Text(balance > 0 ? "Cr" : "Dr"),
-//                 // Cr or Dr based on balance// Display balance
-//               ],
-//             ),
-//           ],
-//         ),
-//       );
-//     }).toList();
-//   }
-
-  List<DropdownMenuItem<String>> get dropdownItemsParty {
-    return defaultController.partyMstList
-        .where((partyType) =>
-    partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      // Calculate transactions and balance
-      var partyTransactions = defaultController.creditDebitDataList
-          .where((cd) => cd.partyCode == partyType.partyCode)
-          .toList();
-
-      double sumCredit = partyTransactions.fold(0.0, (previousValue, cd) {
-        return previousValue + (cd.creditRs ?? 0);
+  Future<void> _pickFromDate() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: fromDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate != null) {
+      setState(() {
+        fromDate = pickedDate;
+        fromDateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
       });
-      double sumDebit = partyTransactions.fold(0.0, (previousValue, cd) {
-        return previousValue + (cd.debitRs ?? 0);
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _toDateFocus.requestFocus();
       });
+      if (toDate != null) {
+        _applyDateFilter();
+      }
+    }
+  }
 
-      double balance = (sumCredit - sumDebit) +
-          ((partyType.creditOpBalRs ?? 0) - (partyType.debitOpBalRs ?? 0));
+  Future<void> _pickToDate() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: toDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate != null) {
+      setState(() {
+        toDate = pickedDate;
+        toDateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
+      });
+      if (fromDate != null) {
+        _applyDateFilter();
+      }
+    }
+  }
 
-      // Get background color based on party type
-      Color backgroundColor = getPartyTypeColor(partyType.typeCode!);
-      IconData icon = getPartyTypeIcon(partyType.typeCode!);
-      bool showProfileIcon = !const {3, 4, 6, 7, 10}.contains(partyType.typeCode);
+  // ==================== CARD 2: FINANCIAL BALANCES ====================
 
-      return DropdownMenuItem<String>(
-        value: partyType.partyCode.toString(),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: backgroundColor.withOpacity(0.1),
-            // border: Border.all(color: backgroundColor, width: 1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBalancesCard() {
+    final crClosing = double.tryParse(creditBalanceController.text) ?? 0.0;
+    final drClosing = double.tryParse(debitBalanceController.text) ?? 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: backgroundColor,
-                  // border: Border.all(color: backgroundColor, width: 1),
-                  borderRadius: BorderRadius.circular(3),
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(icon, size: 12, color: Colors.white,),
-                    const SizedBox(width: 3),
-                    Text(
-                      getPartyType(partyType.typeCode!),
-                      style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
+                child: const Icon(Icons.analytics_rounded, color: AppColors.success, size: 18),
               ),
-              const SizedBox(height: 5),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      showProfileIcon ? const Icon(Icons.person, size: 14) : const SizedBox.shrink(),
-                     showProfileIcon ? const SizedBox(width: 3,): const SizedBox.shrink(),
-                      Text(
-                        partyType.partyName!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        "₹ ${balance.abs().toStringAsFixed(2)}",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: balance > 0 ? Colors.green : Colors.red,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        balance > 0 ? "Cr" : "Dr",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: balance > 0 ? Colors.green : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              const SizedBox(width: 8),
+              const Text(
+                'Financial Balances & Statement Summary',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
             ],
           ),
-        ),
-      );
-    }).toList();
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crOpeningCard = _buildBalanceStatCard(
+                'CR OPENING',
+                '₹ ${crOpeningBalanceController.text.isEmpty ? '0.00' : crOpeningBalanceController.text}',
+                AppColors.primary,
+                Icons.arrow_upward_rounded,
+              );
+
+              final drOpeningCard = _buildBalanceStatCard(
+                'DR OPENING',
+                '₹ ${drOpeningBalanceController.text.isEmpty ? '0.00' : drOpeningBalanceController.text}',
+                const Color(0xFF64748B),
+                Icons.arrow_downward_rounded,
+              );
+
+              final crTotalCard = _buildBalanceStatCard(
+                'TOTAL CREDIT (CR)',
+                '₹ ${creditTotalController.text.isEmpty ? '0.00' : creditTotalController.text}',
+                AppColors.success,
+                Icons.add_circle_outline_rounded,
+              );
+
+              final drTotalCard = _buildBalanceStatCard(
+                'TOTAL DEBIT (DR)',
+                '₹ ${debitTotalController.text.isEmpty ? '0.00' : debitTotalController.text}',
+                AppColors.danger,
+                Icons.remove_circle_outline_rounded,
+              );
+
+              final closingCard = _buildClosingBalanceStatCard(crClosing, drClosing);
+
+              if (constraints.maxWidth >= 950) {
+                return Row(
+                  children: [
+                    Expanded(child: crOpeningCard),
+                    const SizedBox(width: 10),
+                    Expanded(child: drOpeningCard),
+                    const SizedBox(width: 10),
+                    Expanded(child: crTotalCard),
+                    const SizedBox(width: 10),
+                    Expanded(child: drTotalCard),
+                    const SizedBox(width: 10),
+                    Expanded(child: closingCard),
+                  ],
+                );
+              } else if (constraints.maxWidth >= 600) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: crOpeningCard),
+                        const SizedBox(width: 10),
+                        Expanded(child: drOpeningCard),
+                        const SizedBox(width: 10),
+                        Expanded(child: crTotalCard),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: drTotalCard),
+                        const SizedBox(width: 10),
+                        Expanded(child: closingCard),
+                      ],
+                    ),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: crOpeningCard),
+                        const SizedBox(width: 10),
+                        Expanded(child: drOpeningCard),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: crTotalCard),
+                        const SizedBox(width: 10),
+                        Expanded(child: drTotalCard),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    closingCard,
+                  ],
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 
-  List<DropdownMenuItem<String>> get dropdownItemsBroker {
-    return defaultController.partyMstList
-        .where((partyType) =>
-            partyType.typeCode == 5 &&
-            partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      return DropdownMenuItem<String>(
-        value: partyType.partyCode.toString(),
-        child: Text(partyType.partyName!),
-      );
-    }).toList();
+  Widget _buildBalanceStatCard(String label, String amount, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            amount,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 
-  List<DropdownItem<String>> get dropdownItemsRough {
-    return defaultController.roughModel.map((partyType) {
-      return DropdownItem<String>(
-        value: partyType.roughTypeCode.toString(),
-        label: partyType.roughTypeName!,
-      );
-    }).toList();
+  Widget _buildClosingBalanceStatCard(double crClosing, double drClosing) {
+    final bool isCredit = crClosing > 0 || (crClosing == 0 && drClosing == 0);
+    final String amountStr = isCredit ? '₹ ${crClosing.toStringAsFixed(2)}' : '₹ ${drClosing.toStringAsFixed(2)}';
+    final Color color = isCredit ? AppColors.success : AppColors.danger;
+    final String badge = isCredit ? 'Cr' : 'Dr';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.account_balance_rounded, size: 14, color: color),
+                  const SizedBox(width: 5),
+                  Text(
+                    'NET CLOSING',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            amountStr,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== CARD 3: TRANSACTIONS LEDGER ====================
+
+  Widget _buildTransactionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 550;
+              final headerContent = Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.receipt_rounded, color: AppColors.primary, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Obx(
+                      () => Text(
+                        'Ledger Transactions (${creditDebitDataGridSource.length})',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+
+              final actionButtons = Obx(
+                () => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
+                      tooltip: 'Print Ledger PDF',
+                      splashRadius: 18,
+                      onPressed: creditDebitDataGridSource.isNotEmpty ? _handlePrintPdf : null,
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.table_view_rounded, size: 18, color: AppColors.success),
+                      tooltip: 'Export to Excel',
+                      splashRadius: 18,
+                      onPressed: creditDebitDataGridSource.isNotEmpty ? _handleExportExcel : null,
+                    ),
+                  ],
+                ),
+              );
+
+              return isNarrow
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        headerContent,
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: actionButtons,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(child: headerContent),
+                        actionButtons,
+                      ],
+                    );
+            },
+          ),
+          const SizedBox(height: 12),
+          Obx(
+            () => defaultController.isLoading.value
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(color: AppColors.primary),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          Obx(
+            () => creditDebitDataGridSource.isEmpty
+                ? Container(
+                    height: 140,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.menu_book_rounded, size: 38, color: AppColors.textMuted.withValues(alpha: 0.6)),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'No ledger transactions displayed.',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Select an Account and Date Range above, then click Show (Alt+S).',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  )
+                : SizedBox(
+                    height: 350,
+                    child: AppDataGrid(
+                      controller: _dataGridController,
+                      source: CreditDebitDataGrid(creditDebitDataGridSource, openingBalance.value),
+                      columnWidthMode: ColumnWidthMode.auto,
+                      navigationMode: GridNavigationMode.cell,
+                      frozenColumnsCount: 1,
+                      rowHeight: 30,
+                      headerRowHeight: 36,
+                      allowSorting: true,
+                      allowMultiColumnSorting: true,
+                      showSortNumbers: true,
+                      allowFiltering: true,
+                      allowColumnsResizing: true,
+                      selectionMode: SelectionMode.single,
+                      columns: <GridColumn>[
+                        GridColumn(
+                          columnName: 'Id',
+                          visible: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.center,
+                            child: const Text('Id', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Date',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Particulars',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Particulars', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Inv No',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Inv No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Cr Rs',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Cr Rs (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Dr Rs',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Dr Rs (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Closing Rs',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Closing Rs (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Remarks 1',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Remarks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== CARD 4: OUTSTANDING INVOICES ====================
+
+  Widget _buildOutstandingCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 550;
+              final headerContent = Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.pending_actions_rounded, color: AppColors.warning, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Obx(
+                      () => Text(
+                        'Outstanding Unpaid Invoices (${outstandingPaymentDataGridSource.where((e) => e.status == 'UNPAID').length})',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+
+              final actionButton = Obx(
+                () => IconButton(
+                  icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.warning),
+                  tooltip: 'Print Outstanding PDF',
+                  splashRadius: 18,
+                  onPressed: outstandingPaymentDataGridSource.isNotEmpty ? _handlePrintOutstandingPdf : null,
+                ),
+              );
+
+              return isNarrow
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        headerContent,
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: actionButton,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(child: headerContent),
+                        actionButton,
+                      ],
+                    );
+            },
+          ),
+          const SizedBox(height: 12),
+          Obx(
+            () => outstandingPaymentDataGridSource.isEmpty
+                ? Container(
+                    height: 100,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded, size: 32, color: AppColors.success.withValues(alpha: 0.6)),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'No outstanding unpaid invoices for this account.',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  )
+                : SizedBox(
+                    height: 280,
+                    child: AppDataGrid(
+                      controller: _outstandingDataGridController,
+                      source: OutstandingPaymentDataGrid(outstandingPaymentDataGridSource),
+                      columnWidthMode: ColumnWidthMode.auto,
+                      navigationMode: GridNavigationMode.cell,
+                      frozenColumnsCount: 1,
+                      rowHeight: 30,
+                      headerRowHeight: 36,
+                      allowSorting: true,
+                      allowMultiColumnSorting: true,
+                      showSortNumbers: true,
+                      allowFiltering: true,
+                      allowColumnsResizing: true,
+                      selectionMode: SelectionMode.single,
+                      columns: <GridColumn>[
+                        GridColumn(
+                          columnName: 'Inv No',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Inv No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Inv Date',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Inv Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Due Days',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Due Days', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Due Date',
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerLeft,
+                            child: const Text('Due Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Trn Type',
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.center,
+                            child: const Text('Trn Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Dr/Cr',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.center,
+                            child: const Text('Dr/Cr', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Amt Rs',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Amt Rs (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Balance AmtRs',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Balance (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Status',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.center,
+                            child: const Text('Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Avg Days',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Avg Days', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                        GridColumn(
+                          columnName: 'Late Days',
+                          allowEditing: false,
+                          label: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.centerRight,
+                            child: const Text('Late Days', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 }

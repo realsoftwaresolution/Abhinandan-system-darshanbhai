@@ -1,124 +1,264 @@
-// Company Selection Dialog Widget
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
+import 'package:real_web_rough_entry_system/common/components/app_button.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class CompanySelectionDialog extends StatelessWidget {
+class CompanySelectionDialog extends StatefulWidget {
   final bool isSwitchCompany;
 
   const CompanySelectionDialog({super.key, required this.isSwitchCompany});
 
-  // final List<PartyMstModel> companies = defaultController.partyMstList.where((e)=> e.typeCode == 7).toList();
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 300,
-      height: 40,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // isSwitchCompany ? const Text('Switch Company', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),) : const SizedBox.shrink(),
-          // isSwitchCompany ? const SizedBox(height: 3,): const SizedBox.shrink(),
-          Obx(() {
-            return DropdownButtonFormField<int>(
-              hint: const Text(
-                'Tap to Select Company',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              value: defaultController.companyCode.value == 0
-                  ? 3
-                  : defaultController.companyCode.value,
-              decoration: InputDecoration(
-                errorStyle: const TextStyle(
-                  height: 0,
-                  // Hides the error message
-                  fontSize: 0, // Ensures no space is taken by the error message
-                ),
-                focusedErrorBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                errorBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.blue,
-                    width: 1.0, // Thin border width
-                  ),
-                  borderRadius: BorderRadius.zero, // Squared corners
-                ),
-                enabledBorder: isSwitchCompany
-                    ? const OutlineInputBorder()
-                    : const UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.grey,
-                          width: 1.0, // Thin border width
-                        ),
-                        borderRadius: BorderRadius.zero, // Squared corners
-                      ),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 8,
-                ),
-              ),
-              items: dropdownItemsCompanies,
-              onChanged: null,
-              // onChanged: (newValue) async {
-              //         if (newValue != null) {
-              //           // Update the companyCode in the controller
-              //           defaultController.companyCode.value = newValue;
-              //
-              //           // Save the selected company code to SharedPreferences
-              //           SharedPreferences prefs =
-              //               await SharedPreferences.getInstance();
-              //           await prefs.setInt('companyCode', newValue);
-              //
-              //           // Optionally, you can also close the dialog after selection
-              //           isSwitchCompany ? Get.back() : null; // Close the dialog
-              //           // Navigate to the main screen if needed
-              //           // Get.offAllNamed('/MainScreen');
-              //         }
-              //       },
-            );
-          }),
-        ],
-      ),
-      // child: Obx(
-      //   () => DropdownButton<int>(
-      //     hint: const Text("Select a company"),
-      //     style: const TextStyle(fontSize: 14),
-      //     value: defaultController.companyCode.value == 0
-      //         ? null
-      //         : defaultController.companyCode.value,
-      //     onChanged: (value) {
-      //       defaultController.companyCode.value = value!;
-      //     },
-      //     items: dropdownItemsCompanies,
-      //   ),
-      // ),
-    );
+  State<CompanySelectionDialog> createState() => _CompanySelectionDialogState();
+}
+
+class _CompanySelectionDialogState extends State<CompanySelectionDialog> {
+  late int _selectedCompanyCode;
+  final FocusNode _proceedFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCompanyCode = defaultController.companyCode.value != 0
+        ? defaultController.companyCode.value
+        : 3;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _proceedFocus.requestFocus();
+    });
   }
 
-  List<DropdownMenuItem<int>> get dropdownItemsCompanies {
-    return defaultController.companies
-        .where((e) => e.companyCode == 3)
-        .map((company) {
-          return DropdownMenuItem<int>(
-            value: company.companyCode,
-            child: Text(company.companyName!),
-          );
-        })
-        .toSet()
-        .toList();
+  @override
+  void dispose() {
+    _proceedFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleProceed() async {
+    defaultController.companyCode.value = _selectedCompanyCode;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('companyCode', _selectedCompanyCode);
+
+    if (widget.isSwitchCompany) {
+      Get.back();
+    } else {
+      Get.offAllNamed('/MainScreen');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Center(
+        child: Container(
+          width: 440,
+          constraints: const BoxConstraints(maxWidth: 440),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderLight, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.business_rounded,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.isSwitchCompany ? 'Switch Company' : 'Select Company',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Choose the operating company branch',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (widget.isSwitchCompany)
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Get.back(),
+                        splashRadius: 18,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Company Selection Dropdown
+                Obx(() {
+                  final companies = defaultController.companies;
+                  final availableList = companies.isNotEmpty
+                      ? companies
+                      : [getCompanyDetails(3)];
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border, width: 1),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: availableList.any((e) => e.companyCode == _selectedCompanyCode)
+                            ? _selectedCompanyCode
+                            : (availableList.isNotEmpty ? availableList.first.companyCode : 3),
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        items: availableList.map((company) {
+                          return DropdownMenuItem<int>(
+                            value: company.companyCode ?? 3,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.apartment_rounded, size: 18, color: AppColors.primary),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    company.companyName ?? 'Abhinandan Diamond',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedCompanyCode = newValue;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+
+                // Company Details Card Preview
+                Builder(
+                  builder: (context) {
+                    final details = getCompanyDetails(_selectedCompanyCode);
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.borderLight, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (details.mobileno != null && details.mobileno!.isNotEmpty) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.phone_rounded, size: 14, color: AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  details.mobileno!,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          if (details.address != null && details.address!.isNotEmpty) ...[
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.location_on_rounded, size: 14, color: AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    details.address!,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Proceed Button with Enter Shortcut
+                AppButton(
+                  text: widget.isSwitchCompany ? 'Confirm Switch' : 'Proceed to ERP',
+                  icon: Icons.arrow_forward_rounded,
+                  shortcutLabel: 'Enter',
+                  height: 42,
+                  focusNode: _proceedFocus,
+                  autofocus: true,
+                  onPressed: _handleProceed,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Press Enter to continue',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

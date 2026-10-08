@@ -477,35 +477,15 @@ double getSelectedPartyBalance(
 
 void showCompanySelectionDialog({required bool isFromSwitchCompany}) {
   Get.dialog(
-    AlertDialog(
-      title: Text(
-        !isFromSwitchCompany ? "Select Company" : "Switch Company",
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      content: CompanySelectionDialog(
-        isSwitchCompany: isFromSwitchCompany,
-      ),
-      actions: [
-        !isFromSwitchCompany
-            ? OutlinedButton(
-                onPressed: () {
-                  // User has selected a company and now proceeds to the main screen
-                  Get.offAllNamed('/MainScreen');
-                },
-                child: const Text(
-                  "Proceed",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              )
-            : const SizedBox.shrink(),
-      ],
+    CompanySelectionDialog(
+      isSwitchCompany: isFromSwitchCompany,
     ),
-    barrierDismissible: !isFromSwitchCompany ? false : true,
+    barrierDismissible: isFromSwitchCompany,
   );
 }
 
 void showLoginDialog() {
-  Get.dialog(LoginDialog(), barrierDismissible: false);
+  Get.dialog(const LoginDialog(), barrierDismissible: false);
 }
 
 DateTime dateFormat(String date) {

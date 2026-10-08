@@ -10,7 +10,10 @@ class PartyDataGridSource extends DataGridSource {
   final DefaultController defaultController = Get.find<DefaultController>();
 
   PartyDataGridSource(RxList<PartyMstModel> partyList) {
-    _dataGridRows = partyList.where((e)=> e.companyCode == defaultController.companyCode.value).toList().map<DataGridRow>((party) {
+    _dataGridRows = partyList
+        .where((e) => e.companyCode == defaultController.companyCode.value)
+        .toList()
+        .map<DataGridRow>((party) {
       return DataGridRow(cells: [
         DataGridCell<int>(columnName: 'Code', value: party.partyCode),
         DataGridCell<String>(
@@ -18,11 +21,8 @@ class PartyDataGridSource extends DataGridSource {
         DataGridCell<String>(columnName: 'Name', value: party.partyName),
         DataGridCell<String>(
             columnName: 'Contact Person', value: party.contactPerson),
-        // DataGridCell<String>(columnName: 'Mobile No', value: party.mobileno),
         DataGridCell<String>(columnName: 'Address', value: party.address),
         DataGridCell<String>(columnName: 'Location', value: party.location),
-        // DataGridCell<String>(columnName: 'Email ID', value: party.emailID),
-        // DataGridCell<String>(columnName: 'Website', value: party.webSite),
         DataGridCell<dynamic>(columnName: 'CGST', value: party.cGST),
         DataGridCell<dynamic>(columnName: 'SGST', value: party.sGST),
         DataGridCell<dynamic>(columnName: 'IGST', value: party.iGST),
@@ -64,7 +64,7 @@ class PartyDataGridSource extends DataGridSource {
                   ),
                 )
               : Container(
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 5.0),
                   child: Text(
                     cell.value.toString(),

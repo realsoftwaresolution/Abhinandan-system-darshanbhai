@@ -1,21 +1,18 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:printing/printing.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/assort/assort_datagrid.dart';
 import 'package:real_web_rough_entry_system/assort/assort_model.dart';
+import 'package:real_web_rough_entry_system/common/components/app_button.dart';
+import 'package:real_web_rough_entry_system/common/components/app_data_grid.dart';
+import 'package:real_web_rough_entry_system/common/components/app_dropdown.dart';
+import 'package:real_web_rough_entry_system/common/components/app_shortcuts.dart';
+import 'package:real_web_rough_entry_system/common/components/app_text_field.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
-import 'package:real_web_rough_entry_system/purchase/invoice_generator.dart';
-import 'package:real_web_rough_entry_system/purchase/purchase_datagrid.dart';
-import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
-import 'package:real_web_rough_entry_system/responsive.dart';
-import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class AssortFormScreen extends StatefulWidget {
@@ -28,661 +25,177 @@ class AssortFormScreen extends StatefulWidget {
 }
 
 class AssortFormScreenState extends State<AssortFormScreen> {
-  final TextEditingController nameController = TextEditingController(text: ' ');
+  final TextEditingController nameController = TextEditingController();
   final TextEditingController sortIdController = TextEditingController();
+  final TextEditingController searchController = TextEditingController();
 
-  final FocusNode _groupFocusNode = FocusNode();
   final FocusNode _nameFocus = FocusNode();
+  final FocusNode _groupFocusNode = FocusNode();
   final FocusNode _sortIdFocusNode = FocusNode();
-  final FocusNode _formKeyBoardFocus = FocusNode();
-  final FocusNode _searchKeyBoardFocus = FocusNode();
+
   final DataGridController _dataGridController = DataGridController();
-  List<Map<String, String>> entries = [];
+
   final RxString _selectedTypeGroup = ''.obs;
   final RxInt selectedAssortMstID = 0.obs;
 
   bool _isEnabled = false;
   bool _isSearch = false;
   bool _isFromEdit = false;
-  final _formKey = GlobalKey<FormState>();
 
   final DefaultController defaultController = Get.find<DefaultController>();
-
-  RxList<AssortMst> assortDataGridSource = <AssortMst>[].obs;
-
-  // RxList<PurchaseDetailsModel> filteredDataGridSource =
-  //     <PurchaseDetailsModel>[].obs;
-
-  void _enableFields({bool? needFocus}) {
-    setState(() {
-      if (needFocus == null || needFocus) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          _groupFocusNode.requestFocus(); // Move focus to the first input field
-        });
-        _isEnabled = true;
-      } else {
-        _isEnabled = true;
-      }
-    });
-  }
+  final RxList<AssortMst> assortDataGridSource = <AssortMst>[].obs;
 
   @override
   void initState() {
-    // invNoController.text = defaultController.purchaseDataList.last.invoiceNo ?? '0';
-    assortDataGridSource.value = defaultController.assortMstList;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _formKeyBoardFocus.requestFocus();
-      if (_isSearch) {
-        _searchKeyBoardFocus.requestFocus();
-      }
-    });
     super.initState();
+    assortDataGridSource.value = defaultController.assortMstList;
   }
 
   @override
   void dispose() {
-    // Dispose controllers when the widget is removed
-    _groupFocusNode.dispose();
+    nameController.dispose();
+    sortIdController.dispose();
+    searchController.dispose();
     _nameFocus.dispose();
+    _groupFocusNode.dispose();
     _sortIdFocusNode.dispose();
-    _formKeyBoardFocus.dispose();
-    _searchKeyBoardFocus.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Responsive(
-      mobile: _isSearch == true
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                widget.showHeader
-                    ? const Header(title: 'Assort Search')
-                    : const SizedBox.shrink(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8.0, vertical: 8.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          buildBottomButton(
-                            text: 'Exit',
-                            onPressed: () {
-                              setState(() {
-                                _isSearch = false;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Obx(
-                      () => SfDataGrid(
-                        controller: _dataGridController,
-                        source: AssortDataGridSource(assortDataGridSource),
-                        columns: <GridColumn>[
-                          GridColumn(
-                            columnName: 'ID',
-                            visible: false,
-                            label: Container(
-                              padding: const EdgeInsets.all(8.0),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'ID',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 12),
-                              ),
-                            ),
-                          ),
-                          GridColumn(
-                            columnName: 'Name',
-                            label: Container(
-                              padding: const EdgeInsets.all(8.0),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'Name',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 12),
-                              ),
-                            ),
-                          ),
-                          GridColumn(
-                            columnName: 'Group',
-                            label: Container(
-                              padding: const EdgeInsets.all(8.0),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'Group',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 12),
-                              ),
-                            ),
-                          ),
-                        ],
-                        rowHeight: 25,
-                        headerRowHeight: 35,
-                        gridLinesVisibility: GridLinesVisibility.both,
-                        headerGridLinesVisibility: GridLinesVisibility.both,
-                        showSortNumbers: true,
-                        // allowSorting: true,
-                        // allowMultiColumnSorting: true,
-                        allowFiltering: true,
-                        selectionMode: SelectionMode.single,
-                        // onSelectionChanged: (List<DataGridRow> selectedRows) {
-                        //   // Handle row selection change if needed
-                        // },
-                        onSelectionChanged: (List<DataGridRow> addedRows,
-                            List<DataGridRow> removedRows) {
-                          setState(() {
-                            entries.length = 0;
-                            _isFromEdit = true;
-                          });
-                          if (addedRows.isNotEmpty) {
-                            final DataGridRow selectedRow = addedRows.first;
-                            List<AssortMst> assortData =
-                                defaultController.assortMstList;
-                            // Extract the selected polishSaleMstID from the selectedRow
-                            selectedAssortMstID.value = selectedRow
-                                .getCells()[0]
-                                .value; // Assuming the ID is in the first cell
-                            // Find the corresponding party data entry with the matching polishSaleMstID
-                            AssortMst assortEntry = assortData.firstWhere(
-                              (entry) =>
-                                  entry.assortMstID ==
-                                  selectedAssortMstID.value,
-                              // orElse: () => null,
-                            );
-                            nameController.text = assortEntry.name!;
-                            sortIdController.text =
-                                assortEntry.sortID.toString();
-                            _selectedTypeGroup.value =
-                                assortEntry.assortGroup.toString();
-
-                            _enableFields();
-                            setState(() {
-                              _isSearch = false;
-                            });
-                          }
-                        },
-                        columnWidthMode: ColumnWidthMode.auto,
-                        frozenColumnsCount: 2,
-                        // gridLineStrokeWidth: 1.5,
-                        // gridLineColor: Colors.grey.shade400,
-                        // backgroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : SingleChildScrollView(
-              child: Obx(
-                () => Stack(
-                  children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        widget.showHeader
-                            ? const Header(title: 'Assort')
-                            : const SizedBox.shrink(),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 5,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Form(
-                                      key: _formKey,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                              padding: const EdgeInsets.all(5),
-                                              decoration: const BoxDecoration(
-                                                border: Border(
-                                                  top: BorderSide(
-                                                      color: Colors.grey),
-                                                  left: BorderSide(
-                                                      color: Colors.grey),
-                                                  right: BorderSide(
-                                                      color: Colors.grey),
-                                                  bottom: BorderSide(
-                                                      color: Colors.grey),
-                                                ),
-                                              ),
-                                              child: Column(
-                                                children: [
-                                                  _buildRow([
-                                                    buildTextField(
-                                                        'NAME',
-                                                        excludeFieldValidation:
-                                                            false,
-                                                        nameController,
-                                                        isEnabled: _isEnabled,
-                                                        focusNode: _nameFocus,
-                                                        onEditingComplete: () {
-                                                      Future.delayed(
-                                                          const Duration(
-                                                              milliseconds:
-                                                                  100), () {
-                                                        _groupFocusNode
-                                                            .requestFocus(); // Move focus to the first input field
-                                                      });
-                                                    }, onChanged: (value) {}),
-                                                  ]),
-                                                  const SizedBox(height: 5),
-                                                  _buildRow([
-                                                    Row(
-                                                      children: [
-                                                        const Text(
-                                                          'GROUP',
-                                                          style: TextStyle(
-                                                            color: Colors.black,
-                                                            fontWeight:
-                                                                FontWeight.w900,
-                                                            fontSize:
-                                                                12, // Font size for the label
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 5),
-                                                        Expanded(
-                                                          child: Obx(() {
-                                                            return DropdownButtonFormField<
-                                                                String>(
-                                                              focusNode:
-                                                                  _groupFocusNode,
-                                                              style:
-                                                                  const TextStyle(
-                                                                      fontSize:
-                                                                          12),
-                                                              value: _selectedTypeGroup
-                                                                      .value
-                                                                      .isEmpty
-                                                                  ? null
-                                                                  : _selectedTypeGroup
-                                                                      .value,
-                                                              decoration:
-                                                                  const InputDecoration(
-                                                                errorStyle:
-                                                                    TextStyle(
-                                                                  height: 0,
-                                                                  // Hides the error message
-                                                                  fontSize:
-                                                                      0, // Ensures no space is taken by the error message
-                                                                ),
-                                                                focusedErrorBorder:
-                                                                    UnderlineInputBorder(
-                                                                  borderSide:
-                                                                      BorderSide(
-                                                                    color: Colors
-                                                                        .red,
-                                                                    width:
-                                                                        1.0, // Thin border width
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .zero, // Squared corners
-                                                                ),
-                                                                errorBorder:
-                                                                    UnderlineInputBorder(
-                                                                  borderSide:
-                                                                      BorderSide(
-                                                                    color: Colors
-                                                                        .red,
-                                                                    width:
-                                                                        1.0, // Thin border width
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .zero, // Squared corners
-                                                                ),
-                                                                focusedBorder:
-                                                                    UnderlineInputBorder(
-                                                                  borderSide:
-                                                                      BorderSide(
-                                                                    color: Colors
-                                                                        .blue,
-                                                                    width:
-                                                                        1.0, // Thin border width
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .zero, // Squared corners
-                                                                ),
-                                                                enabledBorder:
-                                                                    UnderlineInputBorder(
-                                                                  borderSide:
-                                                                      BorderSide(
-                                                                    color: Colors
-                                                                        .grey,
-                                                                    width:
-                                                                        1.0, // Thin border width
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .zero, // Squared corners
-                                                                ),
-                                                                isDense: true,
-                                                                contentPadding:
-                                                                    EdgeInsets
-                                                                        .symmetric(
-                                                                  vertical: 8,
-                                                                  horizontal: 8,
-                                                                ),
-                                                              ),
-                                                              items:
-                                                                  dropdownItemsAssortGroup,
-                                                              onChanged:
-                                                                  _isEnabled
-                                                                      ? (value) {
-                                                                          _selectedTypeGroup.value =
-                                                                              value ?? '';
-                                                                          Future.delayed(
-                                                                              const Duration(milliseconds: 100),
-                                                                              () {
-                                                                            _sortIdFocusNode.requestFocus(); // Move focus to the first input field
-                                                                          }); // Handle null case
-                                                                        }
-                                                                      : null,
-                                                            );
-                                                          }),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    buildTextField(
-                                                        excludeFieldValidation:
-                                                            false,
-                                                        'SORT ID',
-                                                        sortIdController,
-                                                        focusNode:
-                                                            _sortIdFocusNode,
-                                                        inputFormatterList: [
-                                                          FilteringTextInputFormatter
-                                                              .digitsOnly
-                                                        ],
-                                                        onEditingComplete: () {
-                                                      // Future.delayed(
-                                                      //     const Duration(
-                                                      //         milliseconds:
-                                                      //             100), () {
-                                                      //   _roughFocNode
-                                                      //       .requestFocus(); // Move focus to the first input field
-                                                      // });
-                                                    }, isEnabled: _isEnabled),
-                                                    // _buildTextField('PURID', 'AUTO', purIdController),
-                                                  ]),
-                                                ],
-                                              )),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  // Align(
-                                  //   alignment: Alignment.center,
-                                  //   child: Padding(
-                                  //     padding:
-                                  //     const EdgeInsets.symmetric(horizontal: 8.0),
-                                  //     child: buildBottomButton(
-                                  //       text: 'Add Rough',
-                                  //       width: 100,
-                                  //       onPressed: () {
-                                  //         if (_formKey.currentState!.validate()) {
-                                  //           addEntry();
-                                  //         }
-                                  //       },
-                                  //     ),
-                                  //   ),
-                                  // ),
-                                  // Padding(
-                                  //   padding: const EdgeInsets.all(8.0),
-                                  //   child: Container(
-                                  //       decoration: BoxDecoration(
-                                  //           border: Border.all(
-                                  //               color: Colors.grey)),
-                                  //       // padding: const EdgeInsets.all(8.0),
-                                  //       child: _buildRoughTable()),
-                                  // ),
-                                  // const SizedBox(height: 16),
-                                  // RecentFiles(),
-                                  // if (Responsive.isMobile(context)) const SizedBox(height: 16),
-                                  // if (Responsive.isMobile(context)) StorageDetails(),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      !_isEnabled
-                                          ? buildBottomButton(
-                                              text: 'Add',
-                                              onPressed: _enableFields,
-                                            )
-                                          : const SizedBox.shrink(),
-                                      // const SizedBox(width: 5),
-                                      _isFromEdit
-                                          ? buildBottomButton(
-                                              text: 'Save',
-                                              onPressed: () async {
-                                                defaultController
-                                                    .updateAssortData(
-                                                        id: selectedAssortMstID
-                                                            .value,
-                                                        name: nameController
-                                                            .text
-                                                            .trim(),
-                                                        sortId: sortIdController
-                                                            .text,
-                                                        group:
-                                                            _selectedTypeGroup
-                                                                .value)
-                                                    .then((v) {
-                                                  setState(() {
-                                                    _isEnabled = false;
-                                                    _isFromEdit = false;
-                                                  });
-                                                  nameController.clear();
-                                                  sortIdController.clear();
-                                                  _selectedTypeGroup.value = '';
-                                                });
-                                                if (_formKey.currentState!
-                                                    .validate()) {
-                                                } else {
-                                                  infoDialog(
-                                                      messageText:
-                                                          'Please Add Required Data');
-                                                }
-                                              },
-                                            )
-                                          : _isEnabled
-                                              ? buildBottomButton(
-                                                  text: 'Save',
-                                                  onPressed: () async {
-                                                    defaultController
-                                                        .addAssortData(
-                                                            name: nameController
-                                                                .text
-                                                                .trim(),
-                                                            sortId:
-                                                                sortIdController
-                                                                    .text,
-                                                            group:
-                                                                _selectedTypeGroup
-                                                                    .value)
-                                                        .then((v) {
-                                                      setState(() {
-                                                        _isEnabled = false;
-                                                      });
-                                                      nameController.clear();
-                                                      sortIdController.clear();
-                                                      _selectedTypeGroup.value =
-                                                          '';
-                                                    });
-                                                    if (_formKey.currentState!
-                                                        .validate()) {
-                                                    } else {
-                                                      infoDialog(
-                                                          messageText:
-                                                              'Please Add Required Data');
-                                                    }
-                                                  })
-                                              : const SizedBox.shrink(),
-                                      // const SizedBox(width: 5),
-                                      _isFromEdit
-                                          ? buildBottomButton(
-                                              text: 'Delete',
-                                              onPressed: () {
-                                                defaultController
-                                                    .deleteAssortData(
-                                                  id: selectedAssortMstID.value,
-                                                )
-                                                    .then((onValue) {
-                                                  sortIdController.clear();
-
-                                                  nameController.clear();
-                                                  _selectedTypeGroup.value = '';
-
-                                                  setState(() {
-                                                    _isFromEdit = false;
-                                                    _isEnabled = false;
-                                                  });
-                                                });
-                                              },
-                                            )
-                                          : const SizedBox.shrink(),
-                                      // const SizedBox(width: 5),
-                                      _isEnabled
-                                          ? buildBottomButton(
-                                              text: 'Cancel',
-                                              onPressed: () {
-                                                nameController.clear();
-
-                                                sortIdController.clear();
-
-                                                _selectedTypeGroup.value = '';
-
-                                                setState(() {
-                                                  _isFromEdit = false;
-                                                  _isEnabled = false;
-                                                });
-                                              },
-                                            )
-                                          : const SizedBox.shrink(),
-                                      // const SizedBox(width: 5),
-                                      buildBottomButton(
-                                        text: 'Exit',
-                                        onPressed: () {
-                                          // menuController.selectedIndex.value = 0;
-                                          tabController.removeTab(
-                                              tabController.currentIndex.value);
-                                        },
-                                      ),
-                                      // const SizedBox(width: 5),
-                                      buildBottomButton(
-                                        text: 'Search',
-                                        onPressed: () {
-                                          setState(() {
-                                            _isSearch = true;
-                                          });
-                                        },
-                                      ),
-                                      // const SizedBox(width: 5),
-                                    ],
-                                  )
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    defaultController.isLoading.value ||
-                            defaultController.isDeleteLoading.value
-                        ? Container(
-                            color: Colors.black54,
-                            child: Center(
-                              child: Container(
-                                width: 150,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CupertinoActivityIndicator(),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'Loading...',
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ],
-                ),
-              ),
-            ),
-      desktop: const Text('Desktop View'),
-    );
+  void _enableFields({bool needFocus = true}) {
+    setState(() {
+      _isEnabled = true;
+      _isFromEdit = false;
+      nameController.clear();
+      sortIdController.clear();
+      _selectedTypeGroup.value = '';
+    });
+    if (needFocus) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _nameFocus.requestFocus();
+      });
+    }
   }
 
-  Widget _buildRow(List<Widget> children) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: children
-          .map(
-            (child) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: child,
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
+  Future<void> _saveAssort() async {
+    if (!_isEnabled) return;
+    if (nameController.text.trim().isEmpty) {
+      infoDialog(messageText: 'Please enter Assort Name');
+      _nameFocus.requestFocus();
+      return;
+    }
+    if (_selectedTypeGroup.value.isEmpty) {
+      infoDialog(messageText: 'Please select Assort Group');
+      _groupFocusNode.requestFocus();
+      return;
+    }
 
-  List<DropdownMenuItem<String>> get dropdownItems {
-    return defaultController.roughModel.map((partyType) {
-      return DropdownMenuItem<String>(
-        value: partyType.roughTypeCode.toString(),
-        child: Text(
-          partyType.roughTypeName!,
-          style: TextStyle(color: Colors.black),
-        ),
+    if (_isFromEdit) {
+      await defaultController.updateAssortData(
+        id: selectedAssortMstID.value,
+        name: nameController.text.trim(),
+        sortId: sortIdController.text.trim(),
+        group: _selectedTypeGroup.value,
       );
-    }).toList();
+    } else {
+      await defaultController.addAssortData(
+        name: nameController.text.trim(),
+        sortId: sortIdController.text.trim(),
+        group: _selectedTypeGroup.value,
+      );
+    }
+
+    setState(() {
+      _isEnabled = false;
+      _isFromEdit = false;
+      nameController.clear();
+      sortIdController.clear();
+      _selectedTypeGroup.value = '';
+      assortDataGridSource.value = defaultController.assortMstList;
+    });
+  }
+
+  Future<void> _deleteAssort() async {
+    if (!_isFromEdit || selectedAssortMstID.value == 0) return;
+    await defaultController.deleteAssortData(id: selectedAssortMstID.value);
+    setState(() {
+      _isEnabled = false;
+      _isFromEdit = false;
+      nameController.clear();
+      sortIdController.clear();
+      _selectedTypeGroup.value = '';
+      assortDataGridSource.value = defaultController.assortMstList;
+    });
+  }
+
+  void _cancel() {
+    setState(() {
+      _isEnabled = false;
+      _isFromEdit = false;
+      nameController.clear();
+      sortIdController.clear();
+      _selectedTypeGroup.value = '';
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearch = !_isSearch;
+      if (_isSearch) {
+        assortDataGridSource.value = defaultController.assortMstList;
+        searchController.clear();
+      }
+    });
+  }
+
+  void _filterSearch(String query) {
+    if (query.trim().isEmpty) {
+      assortDataGridSource.value = defaultController.assortMstList;
+    } else {
+      final q = query.toLowerCase();
+      assortDataGridSource.value = defaultController.assortMstList.where((a) {
+        final name = (a.name ?? '').toLowerCase();
+        final group = (a.assortGroup ?? '').toLowerCase();
+        return name.contains(q) || group.contains(q);
+      }).toList();
+    }
+  }
+
+  void _selectAssortFromRow(DataGridRow row) {
+    final id = row.getCells().first.value as int?;
+    if (id == null) return;
+
+    final entry = defaultController.assortMstList.firstWhere(
+      (e) => e.assortMstID == id,
+      orElse: () => AssortMst(),
+    );
+
+    if (entry.assortMstID != null) {
+      selectedAssortMstID.value = entry.assortMstID!;
+      nameController.text = entry.name ?? '';
+      sortIdController.text = entry.sortID?.toString() ?? '';
+      _selectedTypeGroup.value = entry.assortGroup ?? '';
+      setState(() {
+        _isFromEdit = true;
+        _isEnabled = true;
+        _isSearch = false;
+      });
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _nameFocus.requestFocus();
+      });
+    }
+  }
+
+  void _exitScreen() {
+    tabController.removeTab(tabController.currentIndex.value);
   }
 
   List<DropdownMenuItem<String>> get dropdownItemsAssortGroup {
     return defaultController.assortGroupMstList
-        //     .where((partyType) =>
-        // partyType.typeCode == 1 &&
-        //     partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
+        .map((group) {
           return DropdownMenuItem<String>(
-            value: partyType.name.toString(),
-            child: Text(
-              partyType.name!,
-              style: const TextStyle(color: Colors.black),
-            ),
+            value: group.name ?? '',
+            child: Text(group.name ?? ''),
           );
         })
         .toList()
@@ -690,16 +203,420 @@ class AssortFormScreenState extends State<AssortFormScreen> {
         .toList();
   }
 
-  List<DropdownMenuItem<String>> get dropdownItemsBroker {
-    return defaultController.partyMstList
-        .where((partyType) =>
-            partyType.typeCode == 5 &&
-            partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      return DropdownMenuItem<String>(
-        value: partyType.partyCode.toString(),
-        child: Text(partyType.partyName!),
-      );
-    }).toList();
+  @override
+  Widget build(BuildContext context) {
+    return AppKeyboardShortcutHandler(
+      onAdd: _enableFields,
+      onSave: _saveAssort,
+      onDelete: _isFromEdit ? _deleteAssort : null,
+      onCancel: _cancel,
+      onSearch: _toggleSearch,
+      onExit: _exitScreen,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            if (widget.showHeader) Header(title: _isSearch ? 'Assort Directory Search' : 'Assort Master'),
+            Expanded(
+              child: _isSearch ? _buildSearchView() : _buildFormView(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildFormCard(),
+              const SizedBox(height: 12),
+              _buildActionBar(),
+              const SizedBox(height: 12),
+              _buildQuickDirectoryCard(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.category_rounded, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'Assort Master Details',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              if (_isFromEdit)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.warning),
+                  ),
+                  child: const Text(
+                    'EDIT MODE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const Divider(height: 24, color: AppColors.borderLight),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: AppTextField(
+                  label: 'Assort Name *',
+                  controller: nameController,
+                  focusNode: _nameFocus,
+                  enabled: _isEnabled,
+                  hintText: 'e.g. 4-8, +11, MAKABLE',
+                  onFieldSubmitted: (_) => _groupFocusNode.requestFocus(),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 3,
+                child: Obx(
+                  () => AppDropdown<String>(
+                    key: ValueKey(_selectedTypeGroup.value),
+                    label: 'Assort Group *',
+                    value: _selectedTypeGroup.value.isEmpty ? null : _selectedTypeGroup.value,
+                    focusNode: _groupFocusNode,
+                    isEnabled: _isEnabled,
+                    hintText: 'Select Group...',
+                    items: dropdownItemsAssortGroup,
+                    onChanged: (val) {
+                      _selectedTypeGroup.value = val ?? '';
+                      _sortIdFocusNode.requestFocus();
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 2,
+                child: AppTextField(
+                  label: 'Sort ID',
+                  controller: sortIdController,
+                  focusNode: _sortIdFocusNode,
+                  enabled: _isEnabled,
+                  hintText: 'Order index',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onFieldSubmitted: (_) => _saveAssort(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          if (!_isEnabled)
+            AppButton(
+              text: 'Add',
+              icon: Icons.add_rounded,
+              variant: AppButtonVariant.primary,
+              onPressed: _enableFields,
+            ),
+          if (_isEnabled) ...[
+            AppButton(
+              text: _isFromEdit ? 'Update' : 'Save',
+              icon: Icons.save_rounded,
+              variant: AppButtonVariant.primary,
+              onPressed: _saveAssort,
+            ),
+            const SizedBox(width: 8),
+            if (_isFromEdit) ...[
+              AppButton(
+                text: 'Delete',
+                icon: Icons.delete_outline_rounded,
+                variant: AppButtonVariant.danger,
+                onPressed: _deleteAssort,
+              ),
+              const SizedBox(width: 8),
+            ],
+            AppButton(
+              text: 'Cancel',
+              icon: Icons.clear_rounded,
+              variant: AppButtonVariant.secondary,
+              onPressed: _cancel,
+            ),
+            const SizedBox(width: 8),
+          ],
+          AppButton(
+            text: 'Search',
+            icon: Icons.search_rounded,
+            variant: AppButtonVariant.outline,
+            onPressed: _toggleSearch,
+          ),
+          const SizedBox(width: 8),
+          AppButton(
+            text: 'Exit',
+            icon: Icons.close_rounded,
+            variant: AppButtonVariant.danger,
+            onPressed: _exitScreen,
+          ),
+          const Spacer(),
+          Obx(() {
+            final isLoading = defaultController.isLoading.value || defaultController.isDeleteLoading.value;
+            if (isLoading) {
+              return const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CupertinoActivityIndicator(radius: 8),
+                  SizedBox(width: 8),
+                  Text('Processing...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickDirectoryCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.list_alt_rounded, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text(
+                  'Existing Assort Items',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Obx(
+                  () => Text(
+                    'Total: ${defaultController.assortMstList.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.borderLight),
+          SizedBox(
+            height: 300,
+            child: Obx(
+              () => AppDataGrid(
+                controller: _dataGridController,
+                source: AssortDataGridSource(assortDataGridSource),
+                columnWidthMode: ColumnWidthMode.fill,
+                rowHeight: 28,
+                headerRowHeight: 34,
+                allowSorting: true,
+                allowMultiColumnSorting: true,
+                showSortNumbers: true,
+                allowFiltering: true,
+                allowColumnsResizing: true,
+                selectionMode: SelectionMode.single,
+                onSelectionChanged: (addedRows, _) {
+                  if (addedRows.isNotEmpty) {
+                    _selectAssortFromRow(addedRows.first);
+                  }
+                },
+                columns: <GridColumn>[
+                  GridColumn(
+                    columnName: 'ID',
+                    visible: false,
+                    label: _gridHeader('ID'),
+                  ),
+                  GridColumn(
+                    columnName: 'Name',
+                    label: _gridHeader('Assort Name', alignment: Alignment.centerLeft),
+                  ),
+                  GridColumn(
+                    columnName: 'Group',
+                    label: _gridHeader('Group', alignment: Alignment.centerLeft),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchView() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    label: 'Search Assort Directory',
+                    controller: searchController,
+                    hintText: 'Type to filter by name or group...',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 16, color: AppColors.textMuted),
+                    onChanged: _filterSearch,
+                    suffixIcon: searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () {
+                              searchController.clear();
+                              _filterSearch('');
+                            },
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                AppButton(
+                  text: 'Back to Form',
+                  icon: Icons.arrow_back_rounded,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: _toggleSearch,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.cardBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Obx(
+                  () => AppDataGrid(
+                    controller: _dataGridController,
+                    source: AssortDataGridSource(assortDataGridSource),
+                    columnWidthMode: ColumnWidthMode.fill,
+                    rowHeight: 30,
+                    headerRowHeight: 36,
+                    allowSorting: true,
+                    allowMultiColumnSorting: true,
+                    showSortNumbers: true,
+                    allowFiltering: true,
+                    allowColumnsResizing: true,
+                    selectionMode: SelectionMode.single,
+                    onSelectionChanged: (addedRows, _) {
+                      if (addedRows.isNotEmpty) {
+                        _selectAssortFromRow(addedRows.first);
+                      }
+                    },
+                    columns: <GridColumn>[
+                      GridColumn(
+                        columnName: 'ID',
+                        visible: false,
+                        label: _gridHeader('ID'),
+                      ),
+                      GridColumn(
+                        columnName: 'Name',
+                        label: _gridHeader('Assort Name', alignment: Alignment.centerLeft),
+                      ),
+                      GridColumn(
+                        columnName: 'Group',
+                        label: _gridHeader('Group', alignment: Alignment.centerLeft),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gridHeader(String label, {Alignment alignment = Alignment.center}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      alignment: alignment,
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    );
   }
 }

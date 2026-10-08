@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:real_web_rough_entry_system/assort/assort_model.dart';
-import 'package:real_web_rough_entry_system/assort/rough_assort_det_mst_model.dart';
 import 'package:real_web_rough_entry_system/assort/rough_assort_mst_model.dart';
-import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class RoughAssortDataGridSource extends DataGridSource {
@@ -18,16 +14,18 @@ class RoughAssortDataGridSource extends DataGridSource {
         // .where((e) => e.companyCode == defaultController.companyCode.value)
         .toList()
         .map<DataGridRow>((assort) {
+      double totalRate = defaultController.roughAssortMstDetList
+          .where((e) => e.roughAssortMstID == assort.roughAssortMstID)
+          .toList()
+          .fold(0.0, (preV, e) => preV + e.ammount);
       return DataGridRow(cells: [
         DataGridCell<int>(columnName: 'ID', value: assort.roughAssortMstID),
-        DataGridCell<String>(
-            columnName: 'Invoice No', value: assort.invoiceNo),
+        DataGridCell<String>(columnName: 'Invoice No', value: assort.invoiceNo),
         DataGridCell<dynamic>(
-            columnName: 'Assort Wt',
-            value: (assort.assortWt!)),
-        DataGridCell<dynamic>(
-            columnName: 'Pending Wt',
-            value: (assort.pendingWt!)),
+            columnName: 'Assort Wt', value: (assort.assortWt!)),
+        DataGridCell<double>(
+            columnName: 'Amount',
+            value: double.parse(totalRate.toStringAsFixed(2))),
         // DataGridCell<String>(
         //     columnName: 'Rec Date', value: purchase.recdate),
         // DataGridCell<String>(
@@ -73,7 +71,7 @@ class RoughAssortDataGridSource extends DataGridSource {
 
     return Container(
       alignment: /*isFirstColumn ? Alignment.centerLeft : */
-      Alignment.centerLeft,
+          Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 5.0),
       child: Text(
         /*isFirstColumn ? 'Total' :*/

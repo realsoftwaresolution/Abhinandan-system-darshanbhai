@@ -11,10 +11,14 @@ class PurchaseDataGridSource extends DataGridSource {
   final DefaultController defaultController = Get.find<DefaultController>();
 
   PurchaseDataGridSource(RxList<PurchaseDetailsModel> partyList) {
-    _dataGridRows = partyList
+    // First, sort the list by invoiceDate
+    List<PurchaseDetailsModel> sortedPartyList = partyList
         .where((e) => e.companyCode == defaultController.companyCode.value)
-        .toList()
-        .map<DataGridRow>((purchase) {
+        .toList();
+    sortedPartyList.sort((a, b) => b.invoiceDate!.compareTo(a.invoiceDate!)); // Sorting by invoiceDate
+
+    // Now, map the sorted list to DataGridRow
+    _dataGridRows = sortedPartyList.map<DataGridRow>((purchase) {
       return DataGridRow(cells: [
         DataGridCell<int>(columnName: 'ID', value: purchase.roughPurMstID),
         DataGridCell<String>(
@@ -22,27 +26,15 @@ class PurchaseDataGridSource extends DataGridSource {
         DataGridCell<String>(
             columnName: 'Invoice Date',
             value: formatDateWithTime(purchase.invoiceDate!)),
-        // DataGridCell<String>(
-        //     columnName: 'Rec Date', value: purchase.recdate),
         DataGridCell<String>(
             columnName: 'Party', value: getPartyName(purchase.partyCode)),
         DataGridCell<String>(
             columnName: 'Broker', value: getPartyName(purchase.brokerCode)),
-        // DataGridCell<double>(columnName: 'Rs /\$', value: purchase.addFixRs),
-        // DataGridCell<double>(columnName: 'Exchange', value: purchase.exchange),
         DataGridCell<dynamic>(columnName: 'Tot Wt', value: purchase.tWeight),
         DataGridCell<dynamic>(
             columnName: 'Tot Amt Rs', value: purchase.totAmtRs),
-        // DataGridCell<double>(columnName: 'Tot Amt (\$)', value: purchase.totAmtDollar),
-        // DataGridCell<String>(columnName: 'Bill Type', value: purchase.bIllType),
-        // DataGridCell<double>(columnName: 'Lin Fix Rs', value: purchase.linFixRs),
-        // DataGridCell<double>(columnName: 'Tot Exp Fix Rs', value: purchase.totExpFixRs),
-        // DataGridCell<double>(columnName: 'Add Fix Rs', value: purchase.addFixRs),
-        // DataGridCell<double>(columnName: 'Less Fix Rs', value: purchase.lessFixRs),
-        // DataGridCell<double>(columnName: 'Final Net Amt Dollar', value: purchase.finalNetAmtDollar),
-        // DataGridCell<double>(columnName: 'Final Net Amt Rs', value: purchase.finalNetAmtRs),
       ]);
-    }).toList();
+    }).toList(); // Convert to List<DataGridRow>
   }
 
   void updateDataSource(List<PurchaseDetailsModel> newData) {

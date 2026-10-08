@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/purchase/outstanding_purchase_details.dart';
-import 'package:syncfusion_flutter_core/core.dart';
-
-import '../common/widgets.dart';
+import 'package:real_web_rough_entry_system/tab-view-dashboard/dashboard_payment_card.dart';
 
 class HorizontalListWithArrows extends StatefulWidget {
   final List<OutstandingPurchaseSaleDetails> payments;
@@ -23,6 +23,13 @@ class _HorizontalListWithArrowsState extends State<HorizontalListWithArrows> {
   void initState() {
     super.initState();
     _scrollController.addListener(_updateArrowVisibility);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateArrowVisibility());
+  }
+
+  @override
+  void didUpdateWidget(covariant HorizontalListWithArrows oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateArrowVisibility());
   }
 
   @override
@@ -33,52 +40,66 @@ class _HorizontalListWithArrowsState extends State<HorizontalListWithArrows> {
   }
 
   void _updateArrowVisibility() {
-    setState(() {
-      final maxScroll = _scrollController.position.maxScrollExtent;
-      final currentScroll = _scrollController.offset;
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
 
-      showLeftArrow = currentScroll > 0;
-      showRightArrow = currentScroll < maxScroll;
-    });
+    final canScrollLeft = currentScroll > 5;
+    final canScrollRight = currentScroll < maxScroll - 5;
+
+    if (showLeftArrow != canScrollLeft || showRightArrow != canScrollRight) {
+      setState(() {
+        showLeftArrow = canScrollLeft;
+        showRightArrow = canScrollRight;
+      });
+    }
   }
 
   void _scrollLeft() {
     _scrollController.animateTo(
-      _scrollController.offset - 300, // Scroll by 200 pixels to the left
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      (_scrollController.offset - 340).clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
     );
   }
 
   void _scrollRight() {
     _scrollController.animateTo(
-      _scrollController.offset + 300, // Scroll by 200 pixels to the right
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      (_scrollController.offset + 340).clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
     );
   }
 
-  // @override
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.payments.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Stack(
       children: [
         ListView.separated(
           scrollDirection: Axis.horizontal,
           controller: _scrollController,
-          // Enable horizontal scrolling
           itemCount: widget.payments.length,
-          // padding: const EdgeInsets.all(8.0),
-          separatorBuilder: (context, index) => const SizedBox(width: 10),
-          // Horizontal separator with 5 pixels width
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          separatorBuilder: (context, index) => const SizedBox(width: 12),
           itemBuilder: (context, index) {
             final payment = widget.payments[index];
-            final isHighlighted =
-                isSameDate(DateTime.parse(payment.dueDate!), DateTime.now());
+            final dueDateTime = payment.dueDate != null ? DateTime.tryParse(payment.dueDate!) : null;
+            final isHighlighted = dueDateTime != null && _isSameDate(dueDateTime, DateTime.now());
             final isSale = payment.trnType == 'Sale';
-            final isOverdue =
-                DateTime.parse(payment.dueDate!).isBefore(DateTime.now());
-            return GestureDetector(
+            final isOverdue = dueDateTime != null &&
+                dueDateTime.isBefore(DateTime.now()) &&
+                !isHighlighted;
+
+            return DashboardPaymentCard(
+              payment: payment,
               onTap: () => isSale
                   ? showSaleInvoiceDetails(
                       context,
@@ -87,7 +108,8 @@ class _HorizontalListWithArrowsState extends State<HorizontalListWithArrows> {
                       defaultController.saleDetailsList,
                       isHighlighted,
                       isSale,
-                      isOverdue)
+                      isOverdue,
+                    )
                   : showPurchaseInvoiceDetails(
                       context,
                       payment,
@@ -95,195 +117,63 @@ class _HorizontalListWithArrowsState extends State<HorizontalListWithArrows> {
                       defaultController.roughDetailsModel,
                       isHighlighted,
                       isSale,
-                      isOverdue),
-              child: Container(
-                width: 300,
-                // Set the width for each list item (card)
-                // margin: const EdgeInsets.symmetric(horizontal: 8.0),
-                decoration: BoxDecoration(
-                  color: isHighlighted
-                      ? isSale
-                          ? Colors.purple[50]
-                          : Colors.yellow[50]
-                      : isOverdue
-                          ? Colors.red[50]
-                          : Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isHighlighted
-                        ? isSale
-                            ? Colors.purpleAccent
-                            : Colors.orangeAccent
-                        : isOverdue
-                            ? Colors.transparent
-                            : Colors.grey[300]!,
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: [
-                        Icon(
-                          isHighlighted
-                              ? Icons.warning_amber_rounded
-                              : isOverdue
-                                  ? Icons.error_outline_rounded
-                                  : Icons.receipt_long_rounded,
-                          color: isHighlighted
-                              ? isSale
-                                  ? Colors.purpleAccent
-                                  : Colors.orangeAccent
-                              : isOverdue
-                                  ? Colors.redAccent
-                                  : Colors.grey[600],
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            payment.invNo!,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.grey[800],
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '₹${payment.bAmtRs!.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: isHighlighted || isOverdue
-                                ? Colors.redAccent
-                                : Colors.grey[800],
-                          ),
-                        ),
-                      ],
+                      isOverdue,
                     ),
-                    const SizedBox(
-                      height: 5,
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.person, size: 16, color: Colors.blue[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          payment.partyName!.toUpperCase(),
-                          style:
-                              TextStyle(color: Colors.grey[600], fontSize: 12),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(5),
-                                topRight: Radius.circular(5),
-                                bottomLeft: Radius.circular(5),
-                                bottomRight: Radius.circular(5),
-                              ),
-                              color: isHighlighted
-                                  ? isSale
-                                      ? Colors.purple[600]
-                                      : Colors.orange[600]
-                                  : isOverdue
-                                      ? Colors.white70
-                                      : Colors.grey[100]),
-                          child: Row(
-                            children: [
-                              Icon(isSale ? Icons.sell : Icons.shopping_bag,
-                                  size: 18,
-                                  color: isHighlighted
-                                      ? Colors.white
-                                      : isSale
-                                          ? Colors.purple[600]
-                                          : Colors.orange[600]),
-                              const SizedBox(width: 4),
-                              Text(
-                                payment.trnType ?? "N/A",
-                                style: TextStyle(
-                                    color: isHighlighted
-                                        ? Colors.white
-                                        : Colors.grey[600],
-                                    fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today_outlined,
-                                size: 14, color: Colors.green[600]),
-                            const SizedBox(width: 4),
-                            Text(
-                              getDueStatusText(payment.dueDate!),
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             );
           },
         ),
-        if (showRightArrow)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              shape: const CircleBorder(),
-              elevation: 4, // Set the elevation for the shadow effect
-              child: CircleAvatar(
-                radius: 10,
-                backgroundColor: Colors.white,
-                // Optional: Set the background color
-                child: GestureDetector(
-                  onTap: _scrollRight,
-                  child: const Icon(
-                    Icons.keyboard_arrow_right,
-                    size: 15,
-                    color: Colors.blue,
-                  ),
-                ),
+
+        // Left Navigation Arrow
+        if (showLeftArrow)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _buildArrowButton(
+                icon: Icons.chevron_left_rounded,
+                onTap: _scrollLeft,
               ),
             ),
           ),
-        if (showLeftArrow)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Material(
-              shape: const CircleBorder(),
-              elevation: 4, // Set the elevation for the shadow effect
-              child: CircleAvatar(
-                radius: 10,
-                backgroundColor: Colors.white,
-                // Optional: Set the background color
-                child: GestureDetector(
-                  onTap: _scrollLeft,
-                  child: const Icon(
-                    Icons.keyboard_arrow_left,
-                    size: 15,
-                    color: Colors.blue,
-                  ),
-                ),
+
+        // Right Navigation Arrow
+        if (showRightArrow)
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _buildArrowButton(
+                icon: Icons.chevron_right_rounded,
+                onTap: _scrollRight,
               ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildArrowButton({required IconData icon, required VoidCallback onTap}) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 4,
+      shadowColor: Colors.black38,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.borderLight, width: 1),
+          ),
+          child: Icon(icon, size: 20, color: AppColors.primary),
+        ),
+      ),
     );
   }
 }

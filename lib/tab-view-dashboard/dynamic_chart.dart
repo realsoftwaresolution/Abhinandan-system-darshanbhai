@@ -716,8 +716,8 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    Colors.blue.withOpacity(0.3),
-                    Colors.lightBlueAccent.withOpacity(0.1),
+                    Colors.blue.withValues(alpha: 0.3),
+                    Colors.lightBlueAccent.withValues(alpha: 0.1),
                   ],
                 ),
               ),
@@ -751,7 +751,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           minX: 1,
           maxX: 12,
@@ -784,8 +784,8 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    Colors.orange.withOpacity(0.3),
-                    Colors.redAccent.withOpacity(0.1),
+                    Colors.orange.withValues(alpha: 0.3),
+                    Colors.redAccent.withValues(alpha: 0.1),
                   ],
                 ),
               ),
@@ -819,7 +819,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           minX: 1,
           maxX: 12,

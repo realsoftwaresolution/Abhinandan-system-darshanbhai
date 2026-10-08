@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:multi_dropdown/multi_dropdown.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
+import 'package:real_web_rough_entry_system/common/components/app_button.dart';
+import 'package:real_web_rough_entry_system/common/components/app_data_grid.dart';
+import 'package:real_web_rough_entry_system/common/components/app_dropdown.dart';
+import 'package:real_web_rough_entry_system/common/components/app_shortcuts.dart';
+import 'package:real_web_rough_entry_system/common/components/app_text_field.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/header.dart';
 import 'package:real_web_rough_entry_system/report/memo_pending_report_datagrid.dart';
@@ -22,8 +27,8 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   DateTime? fromDate;
   DateTime? toDate;
-  final fromDateController = TextEditingController();
-  final toDateController = TextEditingController();
+  final TextEditingController fromDateController = TextEditingController();
+  final TextEditingController toDateController = TextEditingController();
 
   final RxString _selectedTypeReport = ''.obs;
   final RxList<String> _selectedTypeParties = <String>[].obs;
@@ -32,1517 +37,791 @@ class _ReportScreenState extends State<ReportScreen> {
 
   final DataGridController _dataGridController = DataGridController();
 
-  late MemoPendingReportDataGridSource dataGridSource;
-  late OutstandingPurchaseReportDataGridSource
-      outstandingPurchaseDataGridSource;
+  late MemoPendingReportDataGridSource memoPendingDataGridSource;
+  late OutstandingPurchaseReportDataGridSource outstandingPurchaseDataGridSource;
   late OutstandingSaleReportDataGridSource outstandingSaleDataGridSource;
+  late StockReportDataGrid stockDataGridSource;
 
   @override
   void initState() {
-    dataGridSource = MemoPendingReportDataGridSource();
-    outstandingPurchaseDataGridSource =
-        OutstandingPurchaseReportDataGridSource();
-    outstandingSaleDataGridSource = OutstandingSaleReportDataGridSource();
     super.initState();
+    memoPendingDataGridSource = MemoPendingReportDataGridSource();
+    outstandingPurchaseDataGridSource = OutstandingPurchaseReportDataGridSource();
+    outstandingSaleDataGridSource = OutstandingSaleReportDataGridSource();
+    stockDataGridSource = StockReportDataGrid();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        widget.showHeader
-            ? const Header(title: 'Report')
-            : const SizedBox.shrink(),
-        Row(
-          children: [
-            Expanded(
-              flex: 5,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // OutlinedButton(
-                  //     onPressed: () {}, child: const Text('Party\nLedger')),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: KeyboardListener(
-                      focusNode: FocusNode(),
-                      autofocus: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                              ),
-                              child: Column(
-                                children: [
-                                  buildRow([
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'REPORT',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize:
-                                                12, // Font size for the label
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Obx(() {
-                                            return DropdownButtonFormField<
-                                                String>(
-                                              // focusNode:
-                                              // _partyFocNode,
-                                              style:
-                                                  const TextStyle(fontSize: 12),
-                                              value: _selectedTypeReport
-                                                      .value.isEmpty
-                                                  ? null
-                                                  : _selectedTypeReport.value,
-                                              decoration: const InputDecoration(
-                                                errorStyle: TextStyle(
-                                                  height: 0,
-                                                  // Hides the error message
-                                                  fontSize:
-                                                      0, // Ensures no space is taken by the error message
-                                                ),
-                                                focusedErrorBorder:
-                                                    UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Colors.red,
-                                                    width:
-                                                        1.0, // Thin border width
-                                                  ),
-                                                  borderRadius: BorderRadius
-                                                      .zero, // Squared corners
-                                                ),
-                                                errorBorder:
-                                                    UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Colors.red,
-                                                    width:
-                                                        1.0, // Thin border width
-                                                  ),
-                                                  borderRadius: BorderRadius
-                                                      .zero, // Squared corners
-                                                ),
-                                                focusedBorder:
-                                                    UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Colors.blue,
-                                                    width:
-                                                        1.0, // Thin border width
-                                                  ),
-                                                  borderRadius: BorderRadius
-                                                      .zero, // Squared corners
-                                                ),
-                                                enabledBorder:
-                                                    UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Colors.grey,
-                                                    width:
-                                                        1.0, // Thin border width
-                                                  ),
-                                                  borderRadius: BorderRadius
-                                                      .zero, // Squared corners
-                                                ),
-                                                isDense: true,
-                                                contentPadding:
-                                                    EdgeInsets.symmetric(
-                                                  vertical: 8,
-                                                  horizontal: 8,
-                                                ),
-                                              ),
-                                              items: dropdownItemsReport,
-                                              onChanged: /*_isEnabled
-                                                    ?*/
-                                                  (value) {
-                                                _selectedTypeReport.value =
-                                                    value ?? '';
-                                                Future.delayed(
-                                                    const Duration(
-                                                        milliseconds: 100), () {
-                                                  // _invoiceFocus
-                                                  //     .requestFocus(); // Move focus to the first input field
-                                                }); // Handle null case
-                                              } /*: null*/,
-                                            );
-                                          }),
-                                        ),
-                                      ],
-                                    ),
-                                    buildTextField(
-                                      excludeFieldValidation: false,
-                                      'From Date',
-                                      fromDateController,
-                                      readOnly: true,
-                                      onTap: () async {
-                                        DateTime? pickedDate =
-                                            await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(2000),
-                                          lastDate: DateTime(2100),
-                                        );
-                                        if (pickedDate != null) {
-                                          dataGridSource
-                                              .setFromDate(pickedDate);
-                                          outstandingPurchaseDataGridSource
-                                              .setFromDate(pickedDate);
-                                          outstandingSaleDataGridSource
-                                              .setFromDate(pickedDate);
-                                          setState(() {
-                                            fromDate = pickedDate;
-                                            fromDateController.text =
-                                                DateFormat('dd-MM-yyyy')
-                                                    .format(fromDate!);
-                                            if (toDateController
-                                                .text.isNotEmpty) {
-                                              // _applyDateFilter();
-                                            }
-                                          });
-                                        }
-                                      },
-                                    ),
-                                    buildTextField(
-                                      excludeFieldValidation: false,
-                                      'To Date',
-                                      toDateController,
-                                      readOnly: true,
-                                      onTap: () async {
-                                        DateTime? pickedDate =
-                                            await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(2000),
-                                          lastDate: DateTime(2100),
-                                        );
-                                        if (pickedDate != null) {
-                                          dataGridSource.setToDate(pickedDate);
-                                          outstandingPurchaseDataGridSource
-                                              .setToDate(pickedDate);
-                                          outstandingSaleDataGridSource
-                                              .setToDate(pickedDate);
+  void dispose() {
+    fromDateController.dispose();
+    toDateController.dispose();
+    super.dispose();
+  }
 
-                                          setState(() {
-                                            toDate = pickedDate;
-                                            toDateController.text =
-                                                DateFormat('dd-MM-yyyy')
-                                                    .format(toDate!);
-                                            if (fromDateController
-                                                .text.isNotEmpty) {
-                                              // _applyDateFilter();
-                                            }
-                                          });
-                                        }
-                                      },
-                                    ),
+  void _applyFilters() {
+    final partiesInt = _selectedTypeParties.map((p) => int.tryParse(p) ?? 0).toList();
+    final brokersInt = _selectedTypeBrokers.map((b) => int.tryParse(b) ?? 0).toList();
+    final roughsInt = _selectedTypeRoughs.map((r) => int.tryParse(r) ?? 0).toList();
 
-                                    // _buildTextField('PURID', 'AUTO', purIdController),
-                                  ]),
-                                  const SizedBox(height: 10),
-                                  buildRow([
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'PARTY',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize:
-                                                12, // Font size for the label
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Obx(() {
-                                            return Container(
-                                              decoration: const BoxDecoration(
-                                                border: Border(
-                                                  bottom: BorderSide(
-                                                    color: Colors.grey,
-                                                    // Underline color
-                                                    width:
-                                                        1.0, // Underline thickness
-                                                  ),
-                                                ),
-                                              ),
-                                              child: MultiDropdown(
-                                                items: multiDropdownItemsParty,
-                                                fieldDecoration:
-                                                    const FieldDecoration(
-                                                  // Adjust the padding to reduce height
-                                                  padding: EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
-                                                  hintText: '',
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  // No background color
-                                                  border: InputBorder.none,
-                                                  // Remove default border
-                                                  borderRadius: 0,
-                                                  // No rounded corners
-                                                  showClearIcon: true,
-                                                  // Optional: Show clear icon if needed
-                                                  hintStyle:
-                                                      TextStyle(fontSize: 14),
-                                                  // Smaller hint text size
-                                                  labelStyle: TextStyle(
-                                                      fontSize:
-                                                          14), // Smaller label text size
-                                                ),
-                                                dropdownDecoration:
-                                                    DropdownDecoration(
-                                                  maxHeight: 200.0,
-                                                  // Reduce dropdown height
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          4.0),
-                                                ),
-                                                dropdownItemDecoration:
-                                                    DropdownItemDecoration(
-                                                  // padding: EdgeInsets.symmetric(vertical: 6), // Reduce padding between items
-                                                  selectedBackgroundColor:
-                                                      Colors.blue
-                                                          .withOpacity(0.2),
-                                                ),
-                                                chipDecoration: ChipDecoration(
-                                                  backgroundColor: Colors.black
-                                                      .withOpacity(0.1),
-                                                  labelStyle: const TextStyle(
-                                                      color: Colors.black,
-                                                      fontSize: 10),
-                                                ),
-                                                searchEnabled: true,
-                                                enabled: true,
-                                                onSelectionChange: (value) {
-                                                  _selectedTypeParties.value =
-                                                      value.cast<String>();
-                                                  List<int>
-                                                      selectedPartiesAsInt =
-                                                      _selectedTypeParties
-                                                          .map((party) =>
-                                                              int.parse(party))
-                                                          .toList();
-                                                  dataGridSource
-                                                      .setSelectedParties(
-                                                          selectedPartiesAsInt);
-                                                  outstandingPurchaseDataGridSource
-                                                      .setSelectedParties(
-                                                          selectedPartiesAsInt);
-                                                  outstandingSaleDataGridSource
-                                                      .setSelectedParties(
-                                                      selectedPartiesAsInt);
-                                                  // print('Selected Values: $value');
-                                                },
-                                                closeOnBackButton: true,
-                                                focusNode: FocusNode(),
-                                              ),
-                                            );
-                                          }),
-                                        )
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'BROKER',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize:
-                                                12, // Font size for the label
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Obx(() {
-                                            return Container(
-                                              decoration: const BoxDecoration(
-                                                border: Border(
-                                                  bottom: BorderSide(
-                                                    color: Colors.grey,
-                                                    // Underline color
-                                                    width:
-                                                        1.0, // Underline thickness
-                                                  ),
-                                                ),
-                                              ),
-                                              child: MultiDropdown(
-                                                items: multiDropdownItemsBroker,
-                                                fieldDecoration:
-                                                    const FieldDecoration(
-                                                  // Adjust the padding to reduce height
-                                                  padding: EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
-                                                  hintText: '',
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  // No background color
-                                                  border: InputBorder.none,
-                                                  // Remove default border
-                                                  borderRadius: 0,
-                                                  // No rounded corners
-                                                  showClearIcon: true,
-                                                  // Optional: Show clear icon if needed
-                                                  hintStyle:
-                                                      TextStyle(fontSize: 14),
-                                                  // Smaller hint text size
-                                                  labelStyle: TextStyle(
-                                                      fontSize:
-                                                          14), // Smaller label text size
-                                                ),
-                                                dropdownDecoration:
-                                                    DropdownDecoration(
-                                                  maxHeight: 200.0,
-                                                  // Reduce dropdown height
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          4.0),
-                                                ),
-                                                dropdownItemDecoration:
-                                                    DropdownItemDecoration(
-                                                  // padding: EdgeInsets.symmetric(vertical: 6), // Reduce padding between items
-                                                  selectedBackgroundColor:
-                                                      Colors.blue
-                                                          .withOpacity(0.2),
-                                                ),
-                                                chipDecoration: ChipDecoration(
-                                                  backgroundColor: Colors.black
-                                                      .withOpacity(0.1),
-                                                  labelStyle: const TextStyle(
-                                                      color: Colors.black,
-                                                      fontSize: 10),
-                                                ),
-                                                searchEnabled: true,
-                                                enabled: true,
-                                                onSelectionChange: (value) {
-                                                  _selectedTypeBrokers.value =
-                                                      value.cast<String>();
-                                                  List<int>
-                                                      selectedBrokersAsInt =
-                                                      _selectedTypeBrokers
-                                                          .map((party) =>
-                                                              int.parse(party))
-                                                          .toList();
-                                                  dataGridSource
-                                                      .setSelectedBrokers(
-                                                          selectedBrokersAsInt);
-                                                  outstandingPurchaseDataGridSource
-                                                      .setSelectedBrokers(
-                                                          selectedBrokersAsInt);
-                                                  outstandingSaleDataGridSource
-                                                      .setSelectedBrokers(
-                                                      selectedBrokersAsInt);
-                                                  // print('Selected Values: $value');
-                                                },
-                                                closeOnBackButton: true,
-                                                focusNode: FocusNode(),
-                                              ),
-                                            );
-                                          }),
-                                        )
-                                        // Expanded(
-                                        //   child: Obx(() {
-                                        //     return DropdownButtonFormField<
-                                        //         String>(
-                                        //       // focusNode: _brokerFocus,
-                                        //       style:
-                                        //           const TextStyle(fontSize: 12),
-                                        //       value: _selectedTypeBroker
-                                        //               .value.isEmpty
-                                        //           ? null
-                                        //           : _selectedTypeBroker.value,
-                                        //       decoration: const InputDecoration(
-                                        //         errorStyle: TextStyle(
-                                        //           height: 0,
-                                        //           // Hides the error message
-                                        //           fontSize:
-                                        //               0, // Ensures no space is taken by the error message
-                                        //         ),
-                                        //         focusedErrorBorder:
-                                        //             UnderlineInputBorder(
-                                        //           borderSide: BorderSide(
-                                        //             color: Colors.red,
-                                        //             width:
-                                        //                 1.0, // Thin border width
-                                        //           ),
-                                        //           borderRadius: BorderRadius
-                                        //               .zero, // Squared corners
-                                        //         ),
-                                        //         errorBorder:
-                                        //             UnderlineInputBorder(
-                                        //           borderSide: BorderSide(
-                                        //             color: Colors.red,
-                                        //             width:
-                                        //                 1.0, // Thin border width
-                                        //           ),
-                                        //           borderRadius: BorderRadius
-                                        //               .zero, // Squared corners
-                                        //         ),
-                                        //         focusedBorder:
-                                        //             UnderlineInputBorder(
-                                        //           borderSide: BorderSide(
-                                        //             color: Colors.blue,
-                                        //             width:
-                                        //                 1.0, // Thin border width
-                                        //           ),
-                                        //           borderRadius: BorderRadius
-                                        //               .zero, // Squared corners
-                                        //         ),
-                                        //         enabledBorder:
-                                        //             UnderlineInputBorder(
-                                        //           borderSide: BorderSide(
-                                        //             color: Colors.grey,
-                                        //             width:
-                                        //                 1.0, // Thin border width
-                                        //           ),
-                                        //           borderRadius: BorderRadius
-                                        //               .zero, // Squared corners
-                                        //         ),
-                                        //         isDense: true,
-                                        //         contentPadding:
-                                        //             EdgeInsets.symmetric(
-                                        //           vertical: 8,
-                                        //           horizontal: 8,
-                                        //         ),
-                                        //       ),
-                                        //       items: dropdownItemsBroker,
-                                        //       onChanged: /*_isEnabled
-                                        //           ?*/
-                                        //           (value) {
-                                        //         _selectedTypeBroker.value =
-                                        //             value ?? '';
-                                        //        dataGridSource
-                                        //             .setSelectedBroker(
-                                        //                 int.parse(
-                                        //                     _selectedTypeBroker
-                                        //                         .value));
-                                        //         Future.delayed(
-                                        //             const Duration(
-                                        //                 milliseconds: 100), () {
-                                        //           // _dueDaysFocus
-                                        //           //     .requestFocus(); // Move focus to the first input field
-                                        //         }); // Handle null case
-                                        //       } /*: null*/,
-                                        //     );
-                                        //   }),
-                                        // ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'ROUGH',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize:
-                                                12, // Font size for the label
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Obx(() {
-                                            return Container(
-                                              decoration: const BoxDecoration(
-                                                border: Border(
-                                                  bottom: BorderSide(
-                                                    color: Colors.grey,
-                                                    // Underline color
-                                                    width:
-                                                        1.0, // Underline thickness
-                                                  ),
-                                                ),
-                                              ),
-                                              child: MultiDropdown(
-                                                items: dropdownItemsRough,
-                                                fieldDecoration:
-                                                    const FieldDecoration(
-                                                  // Adjust the padding to reduce height
-                                                  padding: EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
-                                                  hintText: '',
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  // No background color
-                                                  border: InputBorder.none,
-                                                  // Remove default border
-                                                  borderRadius: 0,
-                                                  // No rounded corners
-                                                  showClearIcon: true,
-                                                  // Optional: Show clear icon if needed
-                                                  hintStyle:
-                                                      TextStyle(fontSize: 14),
-                                                  // Smaller hint text size
-                                                  labelStyle: TextStyle(
-                                                      fontSize:
-                                                          14), // Smaller label text size
-                                                ),
-                                                dropdownDecoration:
-                                                    DropdownDecoration(
-                                                  maxHeight: 200.0,
-                                                  // Reduce dropdown height
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          4.0),
-                                                ),
-                                                dropdownItemDecoration:
-                                                    DropdownItemDecoration(
-                                                  // padding: EdgeInsets.symmetric(vertical: 6), // Reduce padding between items
-                                                  selectedBackgroundColor:
-                                                      Colors.blue
-                                                          .withOpacity(0.2),
-                                                ),
-                                                chipDecoration: ChipDecoration(
-                                                  backgroundColor: Colors.black
-                                                      .withOpacity(0.1),
-                                                  labelStyle: const TextStyle(
-                                                      color: Colors.black,
-                                                      fontSize: 10),
-                                                ),
-                                                searchEnabled: true,
-                                                enabled: true,
-                                                onSelectionChange: (value) {
-                                                  _selectedTypeRoughs.value =
-                                                      value.cast<String>();
-                                                  List<int>
-                                                      selectedRoughsAsInt =
-                                                      _selectedTypeRoughs
-                                                          .map((rough) =>
-                                                              int.parse(rough))
-                                                          .toList();
-                                                  dataGridSource
-                                                      .setSelectedRoughs(
-                                                          selectedRoughsAsInt);
-                                                  outstandingPurchaseDataGridSource
-                                                      .setSelectedRoughs(
-                                                          selectedRoughsAsInt);
-                                                  outstandingSaleDataGridSource
-                                                      .setSelectedRoughs(
-                                                      selectedRoughsAsInt);
-                                                  // print('Selected Values: $value');
-                                                },
-                                                closeOnBackButton: true,
-                                                focusNode: FocusNode(),
-                                              ),
-                                            );
-                                          }),
-                                        )
-                                      ],
-                                    ),
-                                  ]),
-                                ],
-                              )),
-                          // const SizedBox(height: 10),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () {},
-                        // onPressed: _enableFields,
-                        // onPressed: !_isEnabled ? _enableFields : null,
-                        child: const Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'S', // Underlined "A"
-                                style: TextStyle(
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'how', // Normal "dd"
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: () {
-                          dataGridSource.clearFilter();
-                          outstandingPurchaseDataGridSource.clearFilter();
-                          outstandingSaleDataGridSource.clearFilter();
-                          fromDateController.clear();
-                          toDateController.clear();
-                          _selectedTypeParties.value = [];
-                          _selectedTypeBrokers.value = [];
-                          _selectedTypeRoughs.value = [];
+    memoPendingDataGridSource.setFromDate(fromDate);
+    memoPendingDataGridSource.setToDate(toDate);
+    memoPendingDataGridSource.setSelectedParties(partiesInt.isNotEmpty ? partiesInt : null);
+    memoPendingDataGridSource.setSelectedBrokers(brokersInt.isNotEmpty ? brokersInt : null);
+    if (roughsInt.isNotEmpty) {
+      memoPendingDataGridSource.setSelectedRoughs(roughsInt);
+    }
 
-                          // menuController.selectedIndex.value = 0;
-                        },
-                        child: const Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'R', // Underlined "A"
-                                style: TextStyle(
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'eset', // Normal "dd"
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: () {
-                          // menuController.selectedIndex.value = 0;
-                          tabController
-                              .removeTab(tabController.currentIndex.value);
-                        },
-                        child: const Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'E', // Underlined "A"
-                                style: TextStyle(
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'xit', // Normal "dd"
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                ],
-              ),
-            ),
-          ],
-        ),
-        Expanded(
-          child: Obx(() => _selectedTypeReport.isEmpty
-              ? const Center(child: Text('Please Select Report Type'))
-              : _selectedTypeReport.value == 'STOCK'
-                  ? Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Obx(
-                        () => SfDataGrid(
-                          controller: _dataGridController,
-                          source: StockReportDataGrid(),
-                          columns: <GridColumn>[
-                            GridColumn(
-                              columnName: 'Rough',
-                              label: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'Rough',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            // GridColumn(
-                            //   columnName: 'Invoice No',
-                            //   label: Container(
-                            //     padding: const EdgeInsets.all(8.0),
-                            //     alignment: Alignment.center,
-                            //     child: const Text(
-                            //       'Invoice No',
-                            //       style: TextStyle(fontWeight: FontWeight.bold),
-                            //     ),
-                            //   ),
-                            // ),
-                            GridColumn(
-                              columnName: 'Pur Wt',
-                              label: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'Pur Wt',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            // GridColumn(
-                            //   columnName: 'Rec Date',
-                            //   label: Container(
-                            //     padding: const EdgeInsets.all(8.0),
-                            //     alignment: Alignment.center,
-                            //     child: const Text(
-                            //       'Rec Date',
-                            //       style: TextStyle(fontWeight: FontWeight.bold),
-                            //     ),
-                            //   ),
-                            // ),
-                            GridColumn(
-                              columnName: 'Sell Wt',
-                              label: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'Sell Wt',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            GridColumn(
-                              columnName: 'Memo Wt',
-                              label: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'Memo Wt',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            // GridColumn(
-                            //   columnName: 'Rs /\$',
-                            //   label: Container(
-                            //     padding: const EdgeInsets.all(8.0),
-                            //     alignment: Alignment.center,
-                            //     child: const Text(
-                            //       'Rs /\$',
-                            //       style: TextStyle(fontWeight: FontWeight.bold),
-                            //     ),
-                            //   ),
-                            // ),
-                            // GridColumn(
-                            //   columnName: 'Exchange',
-                            //   label: Container(
-                            //     padding: const EdgeInsets.all(8.0),
-                            //     alignment: Alignment.center,
-                            //     child: const Text(
-                            //       'Exchange',
-                            //       style: TextStyle(fontWeight: FontWeight.bold),
-                            //     ),
-                            //   ),
-                            // ),
-                            GridColumn(
-                              columnName: 'Loss Wt',
-                              label: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'Loss Wt',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            GridColumn(
-                              columnName: 'Stock Wt',
-                              label: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'Stock Wt',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                          ],
-                          tableSummaryRows: [
-                            GridTableSummaryRow(
-                                title: 'Total',
-                                showSummaryInRow: false,
-                                titleColumnSpan: 1,
-                                columns: <GridSummaryColumn>[
-                                  const GridSummaryColumn(
-                                      name: 'Pur Wt',
-                                      columnName: 'Pur Wt',
-                                      summaryType: GridSummaryType.sum),
-                                  const GridSummaryColumn(
-                                      name: 'Sell Wt',
-                                      columnName: 'Sell Wt',
-                                      summaryType: GridSummaryType.sum),
-                                  const GridSummaryColumn(
-                                      name: 'Memo Wt',
-                                      columnName: 'Memo Wt',
-                                      summaryType: GridSummaryType.sum),
-                                  const GridSummaryColumn(
-                                      name: 'Loss Wt',
-                                      columnName: 'Loss Wt',
-                                      summaryType: GridSummaryType.sum),
-                                  const GridSummaryColumn(
-                                      name: 'Stock Wt',
-                                      columnName: 'Stock Wt',
-                                      summaryType: GridSummaryType.sum),
-                                ],
-                                position: GridTableSummaryRowPosition.bottom)
-                          ],
-                          rowHeight: 25,
-                          headerRowHeight: 35,
-                          gridLinesVisibility: GridLinesVisibility.both,
-                          headerGridLinesVisibility: GridLinesVisibility.both,
-                          showSortNumbers: true,
-                          // allowSorting: true,
-                          // allowMultiColumnSorting: true,
-                          allowFiltering: true,
-                          selectionMode: SelectionMode.singleDeselect,
-                          columnWidthMode: ColumnWidthMode.auto,
-                          frozenColumnsCount: 1,
-                          // gridLineStrokeWidth: 1.5,
-                          // gridLineColor: Colors.grey.shade400,
-                          // backgroundColor: Colors.white,
-                        ),
-                      ),
-                    )
-                  : _selectedTypeReport.value == 'MEMO PENDING'
-                      ? Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: SfDataGrid(
-                            controller: _dataGridController,
-                            source: dataGridSource,
-                            columns: <GridColumn>[
-                              GridColumn(
-                                columnName: 'Id',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Id',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Date',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Date',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Rough',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Rough',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Iss Wt',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Iss Wt',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Rate',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Rate',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Amount',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Amount',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Party',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Party',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              GridColumn(
-                                columnName: 'Broker',
-                                label: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    'Broker',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            rowHeight: 25,
-                            headerRowHeight: 35,
-                            gridLinesVisibility: GridLinesVisibility.both,
-                            headerGridLinesVisibility: GridLinesVisibility.both,
-                            showSortNumbers: true,
-                            // allowSorting: true,
-                            // allowMultiColumnSorting: true,
-                            allowFiltering: true,
-                            selectionMode: SelectionMode.singleDeselect,
-                            columnWidthMode: ColumnWidthMode.auto,
-                            frozenColumnsCount: 1,
-                            // gridLineStrokeWidth: 1.5,
-                            // gridLineColor: Colors.grey.shade400,
-                            // backgroundColor: Colors.white,
-                          ),
-                        )
-                      : _selectedTypeReport.value == 'PURCHASE OUTSTANDING'
-                          ? Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Container(
-                                          padding: const EdgeInsets.all(5),
-                                          decoration: const BoxDecoration(
-                                              borderRadius: BorderRadius.only(
-                                                  topLeft: Radius.circular(5),
-                                                  topRight: Radius.circular(5)),
-                                              color: Colors.black87),
-                                          child: Obx(
-                                            () => Text(
-                                              _selectedTypeReport.value,
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Colors.white),
-                                            ),
-                                          )),
-                                      IconButton(
-                                          onPressed: () {
-                                            final call =
-                                                OutstandingPurchaseReportDataGridSource();
-                                            call.exportToPdf();
-                                          },
-                                          tooltip: 'Print as PDF',
-                                          icon: const Icon(
-                                            Icons.print,
-                                            color: Colors.black,
-                                          )),
-                                    ],
-                                  ),
-                                  SfDataGrid(
-                                    controller: _dataGridController,
-                                    source: outstandingPurchaseDataGridSource,
-                                    columns: <GridColumn>[
-                                      GridColumn(
-                                        columnName: 'Inv No.',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Inv No.',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Inv Date',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Inv Date',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Due Days',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Due Days',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Due Date',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Due Date',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Party',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Party',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      // GridColumn(
-                                      //   columnName: 'Broker',
-                                      //   label: Container(
-                                      //     padding: const EdgeInsets.all(8.0),
-                                      //     alignment: Alignment.center,
-                                      //     child: const Text(
-                                      //       'Broker',
-                                      //       style:
-                                      //           TextStyle(fontWeight: FontWeight.bold),
-                                      //     ),
-                                      //   ),
-                                      // ),
-                                      // GridColumn(
-                                      //   columnName: 'Ct',
-                                      //   label: Container(
-                                      //     padding: const EdgeInsets.all(8.0),
-                                      //     alignment: Alignment.center,
-                                      //     child: const Text(
-                                      //       'Ct',
-                                      //       style:
-                                      //           TextStyle(fontWeight: FontWeight.bold),
-                                      //     ),
-                                      //   ),
-                                      // ),
-                                      GridColumn(
-                                        columnName: 'Inv Amt Rs',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Inv Amt Rs',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Out Rs',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Out Rs',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                      GridColumn(
-                                        columnName: 'Tot Out Rs',
-                                        label: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'Tot Out Rs',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    tableSummaryRows: [
-                                      GridTableSummaryRow(
-                                          title: 'Total',
-                                          showSummaryInRow: false,
-                                          titleColumnSpan: 1,
-                                          columns: <GridSummaryColumn>[
-                                            const GridSummaryColumn(
-                                                name: 'Inv Amt Rs',
-                                                columnName: 'Inv Amt Rs',
-                                                summaryType:
-                                                    GridSummaryType.sum),
-                                            const GridSummaryColumn(
-                                                name: 'Out Rs',
-                                                columnName: 'Out Rs',
-                                                summaryType:
-                                                    GridSummaryType.sum),
-                                            const GridSummaryColumn(
-                                                name: 'Tot Out Rs',
-                                                columnName: 'Tot Out Rs',
-                                                summaryType:
-                                                    GridSummaryType.sum),
-                                          ],
-                                          position: GridTableSummaryRowPosition
-                                              .bottom)
-                                    ],
-                                    rowHeight: 25,
-                                    headerRowHeight: 35,
-                                    gridLinesVisibility:
-                                        GridLinesVisibility.both,
-                                    headerGridLinesVisibility:
-                                        GridLinesVisibility.both,
-                                    showSortNumbers: true,
-                                    // allowSorting: true,
-                                    // allowMultiColumnSorting: true,
-                                    allowFiltering: true,
-                                    selectionMode: SelectionMode.singleDeselect,
-                                    columnWidthMode: ColumnWidthMode.auto,
-                                    frozenColumnsCount: 1,
-                                    // gridLineStrokeWidth: 1.5,
-                                    // gridLineColor: Colors.grey.shade400,
-                                    // backgroundColor: Colors.white,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : _selectedTypeReport.value == 'SALE OUTSTANDING'
-                              ? Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                              padding: const EdgeInsets.all(5),
-                                              decoration: const BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.only(
-                                                          topLeft: Radius
-                                                              .circular(5),
-                                                          topRight:
-                                                              Radius.circular(
-                                                                  5)),
-                                                  color: Colors.black87),
-                                              child: Obx(
-                                                () => Text(
-                                                  _selectedTypeReport.value,
-                                                  style: const TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: Colors.white),
-                                                ),
-                                              )),
-                                          IconButton(
-                                              onPressed: () {
-                                                OutstandingSaleReportDataGridSource()
-                                                    .exportToPdf(context);
-                                              },
-                                              tooltip: 'Print as PDF',
-                                              icon: const Icon(
-                                                Icons.print,
-                                                color: Colors.black,
-                                              )),
-                                        ],
-                                      ),
-                                      SfDataGrid(
-                                        controller: _dataGridController,
-                                        source: outstandingSaleDataGridSource,
-                                        columns: <GridColumn>[
-                                          GridColumn(
-                                            columnName: 'Inv No.',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Inv No.',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          GridColumn(
-                                            columnName: 'Inv Date',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Inv Date',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          GridColumn(
-                                            columnName: 'Due Days',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Due Days',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          GridColumn(
-                                            columnName: 'Due Date',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Due Date',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          GridColumn(
-                                            columnName: 'Party',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Party',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          // GridColumn(
-                                          //   columnName: 'Broker',
-                                          //   label: Container(
-                                          //     padding: const EdgeInsets.all(8.0),
-                                          //     alignment: Alignment.center,
-                                          //     child: const Text(
-                                          //       'Broker',
-                                          //       style:
-                                          //           TextStyle(fontWeight: FontWeight.bold),
-                                          //     ),
-                                          //   ),
-                                          // ),
-                                          // GridColumn(
-                                          //   columnName: 'Ct',
-                                          //   label: Container(
-                                          //     padding: const EdgeInsets.all(8.0),
-                                          //     alignment: Alignment.center,
-                                          //     child: const Text(
-                                          //       'Ct',
-                                          //       style:
-                                          //           TextStyle(fontWeight: FontWeight.bold),
-                                          //     ),
-                                          //   ),
-                                          // ),
-                                          GridColumn(
-                                            columnName: 'Inv Amt Rs',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Inv Amt Rs',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          GridColumn(
-                                            columnName: 'Out Rs',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Out Rs',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                          GridColumn(
-                                            columnName: 'Tot Out Rs',
-                                            label: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              alignment: Alignment.center,
-                                              child: const Text(
-                                                'Tot Out Rs',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        tableSummaryRows: [
-                                          GridTableSummaryRow(
-                                              title: 'Total',
-                                              showSummaryInRow: false,
-                                              titleColumnSpan: 1,
-                                              columns: <GridSummaryColumn>[
-                                                const GridSummaryColumn(
-                                                    name: 'Inv Amt Rs',
-                                                    columnName: 'Inv Amt Rs',
-                                                    summaryType:
-                                                        GridSummaryType.sum),
-                                                const GridSummaryColumn(
-                                                    name: 'Out Rs',
-                                                    columnName: 'Out Rs',
-                                                    summaryType:
-                                                        GridSummaryType.sum),
-                                                const GridSummaryColumn(
-                                                    name: 'Tot Out Rs',
-                                                    columnName: 'Tot Out Rs',
-                                                    summaryType:
-                                                        GridSummaryType.sum),
-                                              ],
-                                              position:
-                                                  GridTableSummaryRowPosition
-                                                      .bottom)
-                                        ],
-                                        rowHeight: 25,
-                                        headerRowHeight: 35,
-                                        gridLinesVisibility:
-                                            GridLinesVisibility.both,
-                                        headerGridLinesVisibility:
-                                            GridLinesVisibility.both,
-                                        showSortNumbers: true,
-                                        // allowSorting: true,
-                                        // allowMultiColumnSorting: true,
-                                        allowFiltering: true,
-                                        selectionMode:
-                                            SelectionMode.singleDeselect,
-                                        columnWidthMode: ColumnWidthMode.auto,
-                                        frozenColumnsCount: 1,
+    outstandingPurchaseDataGridSource.setFromDate(fromDate);
+    outstandingPurchaseDataGridSource.setToDate(toDate);
+    outstandingPurchaseDataGridSource.setSelectedParties(partiesInt.isNotEmpty ? partiesInt : null);
+    outstandingPurchaseDataGridSource.setSelectedBrokers(brokersInt.isNotEmpty ? brokersInt : null);
+    if (roughsInt.isNotEmpty) {
+      outstandingPurchaseDataGridSource.setSelectedRoughs(roughsInt);
+    }
 
-                                        // gridLineStrokeWidth: 1.5,
-                                        // gridLineColor: Colors.grey.shade400,
-                                        // backgroundColor: Colors.white,
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : _selectedTypeReport.value ==
-                                      'TOTAL PURCHASE OUTSTANDING'
-                                  ? const Center(
-                                      child: Text('TOTAL PURCHASE OUTSTANDING'))
-                                  : const Center(
-                                      child: Text('TOTAL SALE OUTSTANDING'))),
-        ),
-      ],
+    outstandingSaleDataGridSource.setFromDate(fromDate);
+    outstandingSaleDataGridSource.setToDate(toDate);
+    outstandingSaleDataGridSource.setSelectedParties(partiesInt.isNotEmpty ? partiesInt : null);
+    outstandingSaleDataGridSource.setSelectedBrokers(brokersInt.isNotEmpty ? brokersInt : null);
+    if (roughsInt.isNotEmpty) {
+      outstandingSaleDataGridSource.setSelectedRoughs(roughsInt);
+    }
+
+    stockDataGridSource = StockReportDataGrid();
+    setState(() {});
+  }
+
+  void _resetFilters() {
+    memoPendingDataGridSource.clearFilter();
+    outstandingPurchaseDataGridSource.clearFilter();
+    outstandingSaleDataGridSource.clearFilter();
+    stockDataGridSource = StockReportDataGrid();
+
+    fromDate = null;
+    toDate = null;
+    fromDateController.clear();
+    toDateController.clear();
+
+    _selectedTypeParties.clear();
+    _selectedTypeBrokers.clear();
+    _selectedTypeRoughs.clear();
+
+    setState(() {});
+  }
+
+  void _printPdf() {
+    if (_selectedTypeReport.value == 'PURCHASE OUTSTANDING') {
+      outstandingPurchaseDataGridSource.exportToPdf();
+    } else if (_selectedTypeReport.value == 'SALE OUTSTANDING') {
+      outstandingSaleDataGridSource.exportToPdf(context);
+    } else {
+      infoDialog(messageText: 'PDF Print is available for Purchase Outstanding and Sale Outstanding reports.');
+    }
+  }
+
+  void _exitScreen() {
+    tabController.removeTab(tabController.currentIndex.value);
+  }
+
+  Future<void> _pickFromDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: fromDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
     );
+    if (picked != null) {
+      setState(() {
+        fromDate = picked;
+        fromDateController.text = DateFormat('dd-MM-yyyy').format(picked);
+      });
+      _applyFilters();
+    }
   }
 
-  List<DropdownMenuItem<String>> get dropdownItemsReport {
-    return reportList.map((reportName) {
-      return DropdownMenuItem<String>(
-        value: reportName.toString(),
-        child: Text(reportName),
-      );
-    }).toList();
+  Future<void> _pickToDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: toDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        toDate = picked;
+        toDateController.text = DateFormat('dd-MM-yyyy').format(picked);
+      });
+      _applyFilters();
+    }
   }
 
-  // Convert partyMstList to MultiSelectItem list
-  List<DropdownItem<String>> get multiDropdownItemsParty {
-    // int typeCode;
-    // if(_selectedTypeReport.value == 'SALE OUTSTANDING' || _selectedTypeReport.value == 'MEMO PENDING'){
-    //   typeCode = 2;
-    // } else {
-    //   typeCode = 1;
-    // }
-    // print(typeCode);
+  int get _recordCount {
+    switch (_selectedTypeReport.value) {
+      case 'STOCK':
+        return stockDataGridSource.rows.length;
+      case 'MEMO PENDING':
+        return memoPendingDataGridSource.rows.length;
+      case 'PURCHASE OUTSTANDING':
+        return outstandingPurchaseDataGridSource.rows.length;
+      case 'SALE OUTSTANDING':
+        return outstandingSaleDataGridSource.rows.length;
+      default:
+        return 0;
+    }
+  }
+
+  List<AppDropdownItem<String>> get multiDropdownItemsParty {
     return defaultController.partyMstList
         .where((partyType) =>
             (partyType.typeCode == 1 || partyType.typeCode == 2) &&
             partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
-      return DropdownItem<String>(
+      return AppDropdownItem<String>(
         value: partyType.partyCode.toString(),
-        label: partyType.partyName!,
+        label: partyType.partyName ?? '',
       );
     }).toList();
   }
 
-  List<DropdownItem<String>> get multiDropdownItemsBroker {
+  List<AppDropdownItem<String>> get multiDropdownItemsBroker {
     return defaultController.partyMstList
         .where((partyType) =>
             partyType.typeCode == 5 &&
             partyType.companyCode == defaultController.companyCode.value)
         .map((partyType) {
-      return DropdownItem<String>(
+      return AppDropdownItem<String>(
         value: partyType.partyCode.toString(),
-        label: partyType.partyName!,
+        label: partyType.partyName ?? '',
       );
     }).toList();
   }
 
-  // Convert partyMstList to MultiSelectItem list
-  List<DropdownMenuItem<String>> get dropdownItemsParty {
-    return defaultController.partyMstList
-        .where((partyType) =>
-            partyType.typeCode == 1 &&
-            partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      return DropdownMenuItem<String>(
-        value: partyType.partyCode.toString(),
-        child: Text(partyType.partyName!),
+  List<AppDropdownItem<String>> get dropdownItemsRough {
+    return defaultController.roughModel.map((rough) {
+      return AppDropdownItem<String>(
+        value: rough.roughTypeCode.toString(),
+        label: rough.roughTypeName ?? '',
       );
     }).toList();
   }
 
-  List<DropdownMenuItem<String>> get dropdownItemsBroker {
-    return defaultController.partyMstList
-        .where((partyType) =>
-            partyType.typeCode == 5 &&
-            partyType.companyCode == defaultController.companyCode.value)
-        .map((partyType) {
-      return DropdownMenuItem<String>(
-        value: partyType.partyCode.toString(),
-        child: Text(partyType.partyName!),
-      );
-    }).toList();
+  @override
+  Widget build(BuildContext context) {
+    return AppKeyboardShortcutHandler(
+      onSave: _applyFilters,
+      onCancel: _resetFilters,
+      onPrint: _printPdf,
+      onExit: _exitScreen,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            if (widget.showHeader) const Header(title: 'Reports & Inquiries'),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildFiltersCard(),
+                    const SizedBox(height: 8),
+                    _buildActionBar(),
+                    const SizedBox(height: 8),
+                    Expanded(child: _buildDataGridCard()),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  List<DropdownItem<String>> get dropdownItemsRough {
-    return defaultController.roughModel.map((partyType) {
-      return DropdownItem<String>(
-        value: partyType.roughTypeCode.toString(),
-        label: partyType.roughTypeName!,
+  Widget _buildFiltersCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.filter_alt_rounded, size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'Report Selection & Filter Parameters',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Obx(() => _selectedTypeReport.value.isNotEmpty
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _selectedTypeReport.value,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink()),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final reportTypeField = Obx(
+                () => AppDropdown<String>(
+                  key: ValueKey(_selectedTypeReport.value),
+                  label: 'Report Type *',
+                  value: _selectedTypeReport.value.isEmpty ? null : _selectedTypeReport.value,
+                  hintText: 'Select Report...',
+                  prefixIcon: const Icon(Icons.analytics_outlined, size: 16, color: AppColors.primary),
+                  items: reportList.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  onChanged: (val) {
+                    _selectedTypeReport.value = val ?? '';
+                    _applyFilters();
+                  },
+                ),
+              );
+
+              final fromDateField = AppTextField(
+                label: 'From Date',
+                controller: fromDateController,
+                readOnly: true,
+                onTap: _pickFromDate,
+                prefixIcon: const Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.textMuted),
+                suffixIcon: fromDate != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 15),
+                        onPressed: () {
+                          setState(() {
+                            fromDate = null;
+                            fromDateController.clear();
+                          });
+                          _applyFilters();
+                        },
+                      )
+                    : null,
+              );
+
+              final toDateField = AppTextField(
+                label: 'To Date',
+                controller: toDateController,
+                readOnly: true,
+                onTap: _pickToDate,
+                prefixIcon: const Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.textMuted),
+                suffixIcon: toDate != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 15),
+                        onPressed: () {
+                          setState(() {
+                            toDate = null;
+                            toDateController.clear();
+                          });
+                          _applyFilters();
+                        },
+                      )
+                    : null,
+              );
+
+              final partyFilterField = Obx(
+                () => AppDropdown<String>(
+                  label: 'Party Filter',
+                  isMultiSelect: true,
+                  selectedValues: _selectedTypeParties.toList(),
+                  dropdownItems: multiDropdownItemsParty,
+                  hintText: 'All Parties...',
+                  onMultiChanged: (values) {
+                    _selectedTypeParties.assignAll(values);
+                    final selectedInt = _selectedTypeParties.map((p) => int.parse(p)).toList();
+                    memoPendingDataGridSource.setSelectedParties(selectedInt.isNotEmpty ? selectedInt : null);
+                    outstandingPurchaseDataGridSource.setSelectedParties(selectedInt.isNotEmpty ? selectedInt : null);
+                    outstandingSaleDataGridSource.setSelectedParties(selectedInt.isNotEmpty ? selectedInt : null);
+                    setState(() {});
+                  },
+                ),
+              );
+
+              final brokerFilterField = Obx(
+                () => AppDropdown<String>(
+                  label: 'Broker Filter',
+                  isMultiSelect: true,
+                  selectedValues: _selectedTypeBrokers.toList(),
+                  dropdownItems: multiDropdownItemsBroker,
+                  hintText: 'All Brokers...',
+                  onMultiChanged: (values) {
+                    _selectedTypeBrokers.assignAll(values);
+                    final selectedInt = _selectedTypeBrokers.map((b) => int.parse(b)).toList();
+                    memoPendingDataGridSource.setSelectedBrokers(selectedInt.isNotEmpty ? selectedInt : null);
+                    outstandingPurchaseDataGridSource.setSelectedBrokers(selectedInt.isNotEmpty ? selectedInt : null);
+                    outstandingSaleDataGridSource.setSelectedBrokers(selectedInt.isNotEmpty ? selectedInt : null);
+                    setState(() {});
+                  },
+                ),
+              );
+
+              final roughFilterField = Obx(
+                () => AppDropdown<String>(
+                  label: 'Rough Type Filter',
+                  isMultiSelect: true,
+                  selectedValues: _selectedTypeRoughs.toList(),
+                  dropdownItems: dropdownItemsRough,
+                  hintText: 'All Rough Types...',
+                  onMultiChanged: (values) {
+                    _selectedTypeRoughs.assignAll(values);
+                    final selectedInt = _selectedTypeRoughs.map((r) => int.parse(r)).toList();
+                    memoPendingDataGridSource.setSelectedRoughs(selectedInt);
+                    outstandingPurchaseDataGridSource.setSelectedRoughs(selectedInt);
+                    outstandingSaleDataGridSource.setSelectedRoughs(selectedInt);
+                    setState(() {});
+                  },
+                ),
+              );
+
+              if (constraints.maxWidth >= 1000) {
+                return Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(flex: 3, child: reportTypeField),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 2, child: fromDateField),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 2, child: toDateField),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: partyFilterField),
+                        const SizedBox(width: 12),
+                        Expanded(child: brokerFilterField),
+                        const SizedBox(width: 12),
+                        Expanded(child: roughFilterField),
+                      ],
+                    ),
+                  ],
+                );
+              } else if (constraints.maxWidth >= 650) {
+                return Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(flex: 3, child: reportTypeField),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 2, child: fromDateField),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 2, child: toDateField),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: partyFilterField),
+                        const SizedBox(width: 12),
+                        Expanded(child: brokerFilterField),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    roughFilterField,
+                  ],
+                );
+              } else {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    reportTypeField,
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: fromDateField),
+                        const SizedBox(width: 10),
+                        Expanded(child: toDateField),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    partyFilterField,
+                    const SizedBox(height: 10),
+                    brokerFilterField,
+                    const SizedBox(height: 10),
+                    roughFilterField,
+                  ],
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar() {
+    return Obx(() {
+      final isPdfSupported = _selectedTypeReport.value == 'PURCHASE OUTSTANDING' ||
+          _selectedTypeReport.value == 'SALE OUTSTANDING';
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 750;
+
+            final buttons = Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                AppButton(
+                  text: 'Show Report',
+                  icon: Icons.search_rounded,
+                  variant: AppButtonVariant.primary,
+                  onPressed: _applyFilters,
+                ),
+                AppButton(
+                  text: 'Reset Filters',
+                  icon: Icons.refresh_rounded,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: _resetFilters,
+                ),
+                if (isPdfSupported)
+                  AppButton(
+                    text: 'Print PDF',
+                    icon: Icons.print_rounded,
+                    variant: AppButtonVariant.outline,
+                    onPressed: _printPdf,
+                  ),
+                AppButton(
+                  text: 'Exit',
+                  icon: Icons.close_rounded,
+                  variant: AppButtonVariant.danger,
+                  onPressed: _exitScreen,
+                ),
+              ],
+            );
+
+            final recordBadge = _selectedTypeReport.value.isNotEmpty
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.tableRowAlt,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.format_list_bulleted_rounded, size: 14, color: AppColors.textMuted),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Total Records: $_recordCount',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink();
+
+            if (isCompact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  buttons,
+                  if (_selectedTypeReport.value.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Align(alignment: Alignment.centerLeft, child: recordBadge),
+                  ],
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                buttons,
+                const Spacer(),
+                recordBadge,
+              ],
+            );
+          },
+        ),
       );
-    }).toList();
+    });
+  }
+
+  Widget _buildDataGridCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Obx(() {
+          if (_selectedTypeReport.value.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.analytics_outlined, size: 54, color: AppColors.textMuted.withValues(alpha: 0.5)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No Report Selected',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Please select a report type from the dropdown above to view data.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          switch (_selectedTypeReport.value) {
+            case 'STOCK':
+              return _buildStockDataGrid();
+            case 'MEMO PENDING':
+              return _buildMemoPendingDataGrid();
+            case 'PURCHASE OUTSTANDING':
+              return _buildPurchaseOutstandingDataGrid();
+            case 'SALE OUTSTANDING':
+              return _buildSaleOutstandingDataGrid();
+            default:
+              return Center(
+                child: Text(
+                  _selectedTypeReport.value,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              );
+          }
+        }),
+      ),
+    );
+  }
+
+  Widget _gridHeader(String label, {Alignment alignment = Alignment.center}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      alignment: alignment,
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockDataGrid() {
+    return AppDataGrid(
+      controller: _dataGridController,
+      source: stockDataGridSource,
+      columnWidthMode: ColumnWidthMode.fill,
+      rowHeight: 28,
+      headerRowHeight: 36,
+      allowSorting: true,
+      allowMultiColumnSorting: true,
+      showSortNumbers: true,
+      allowFiltering: true,
+      allowColumnsResizing: true,
+      selectionMode: SelectionMode.singleDeselect,
+      columns: <GridColumn>[
+        GridColumn(
+          columnName: 'Rough',
+          label: _gridHeader('Rough', alignment: Alignment.centerLeft),
+        ),
+        GridColumn(
+          columnName: 'Pur Wt',
+          label: _gridHeader('Pur Wt', alignment: Alignment.centerRight),
+        ),
+        GridColumn(
+          columnName: 'Sell Wt',
+          label: _gridHeader('Sell Wt', alignment: Alignment.centerRight),
+        ),
+        GridColumn(
+          columnName: 'Memo Wt',
+          label: _gridHeader('Memo Wt', alignment: Alignment.centerRight),
+        ),
+        GridColumn(
+          columnName: 'Loss Wt',
+          label: _gridHeader('Loss Wt', alignment: Alignment.centerRight),
+        ),
+        GridColumn(
+          columnName: 'Stock Wt',
+          label: _gridHeader('Stock Wt', alignment: Alignment.centerRight),
+        ),
+      ],
+      tableSummaryRows: [
+        GridTableSummaryRow(
+          title: 'Total',
+          showSummaryInRow: false,
+          titleColumnSpan: 1,
+          columns: const <GridSummaryColumn>[
+            GridSummaryColumn(name: 'Pur Wt', columnName: 'Pur Wt', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Sell Wt', columnName: 'Sell Wt', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Memo Wt', columnName: 'Memo Wt', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Loss Wt', columnName: 'Loss Wt', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Stock Wt', columnName: 'Stock Wt', summaryType: GridSummaryType.sum),
+          ],
+          position: GridTableSummaryRowPosition.bottom,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMemoPendingDataGrid() {
+    return AppDataGrid(
+      controller: _dataGridController,
+      source: memoPendingDataGridSource,
+      columnWidthMode: ColumnWidthMode.fill,
+      rowHeight: 28,
+      headerRowHeight: 36,
+      allowSorting: true,
+      allowMultiColumnSorting: true,
+      showSortNumbers: true,
+      allowFiltering: true,
+      allowColumnsResizing: true,
+      selectionMode: SelectionMode.singleDeselect,
+      columns: <GridColumn>[
+        GridColumn(columnName: 'Id', label: _gridHeader('ID', alignment: Alignment.center)),
+        GridColumn(columnName: 'Date', label: _gridHeader('Date', alignment: Alignment.center)),
+        GridColumn(columnName: 'Rough', label: _gridHeader('Rough', alignment: Alignment.centerLeft)),
+        GridColumn(columnName: 'Iss Wt', label: _gridHeader('Iss Wt', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Rate', label: _gridHeader('Rate', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Amount', label: _gridHeader('Amount', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Party', label: _gridHeader('Party', alignment: Alignment.centerLeft)),
+        GridColumn(columnName: 'Broker', label: _gridHeader('Broker', alignment: Alignment.centerLeft)),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseOutstandingDataGrid() {
+    return AppDataGrid(
+      controller: _dataGridController,
+      source: outstandingPurchaseDataGridSource,
+      columnWidthMode: ColumnWidthMode.fill,
+      rowHeight: 28,
+      headerRowHeight: 36,
+      allowSorting: true,
+      allowMultiColumnSorting: true,
+      showSortNumbers: true,
+      allowFiltering: true,
+      allowColumnsResizing: true,
+      selectionMode: SelectionMode.singleDeselect,
+      columns: <GridColumn>[
+        GridColumn(columnName: 'Inv No.', label: _gridHeader('Inv No.', alignment: Alignment.center)),
+        GridColumn(columnName: 'Inv Date', label: _gridHeader('Inv Date', alignment: Alignment.center)),
+        GridColumn(columnName: 'Due Days', label: _gridHeader('Due Days', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Due Date', label: _gridHeader('Due Date', alignment: Alignment.center)),
+        GridColumn(columnName: 'Party', label: _gridHeader('Party', alignment: Alignment.centerLeft)),
+        GridColumn(columnName: 'Inv Amt Rs', label: _gridHeader('Inv Amt (₹)', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Out Rs', label: _gridHeader('Out Amt (₹)', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Tot Out Rs', label: _gridHeader('Total Out (₹)', alignment: Alignment.centerRight)),
+      ],
+      tableSummaryRows: [
+        GridTableSummaryRow(
+          title: 'Total',
+          showSummaryInRow: false,
+          titleColumnSpan: 1,
+          columns: const <GridSummaryColumn>[
+            GridSummaryColumn(name: 'Inv Amt Rs', columnName: 'Inv Amt Rs', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Out Rs', columnName: 'Out Rs', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Tot Out Rs', columnName: 'Tot Out Rs', summaryType: GridSummaryType.sum),
+          ],
+          position: GridTableSummaryRowPosition.bottom,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSaleOutstandingDataGrid() {
+    return AppDataGrid(
+      controller: _dataGridController,
+      source: outstandingSaleDataGridSource,
+      columnWidthMode: ColumnWidthMode.fill,
+      rowHeight: 28,
+      headerRowHeight: 36,
+      allowSorting: true,
+      allowMultiColumnSorting: true,
+      showSortNumbers: true,
+      allowFiltering: true,
+      allowColumnsResizing: true,
+      selectionMode: SelectionMode.singleDeselect,
+      columns: <GridColumn>[
+        GridColumn(columnName: 'Inv No.', label: _gridHeader('Inv No.', alignment: Alignment.center)),
+        GridColumn(columnName: 'Inv Date', label: _gridHeader('Inv Date', alignment: Alignment.center)),
+        GridColumn(columnName: 'Due Days', label: _gridHeader('Due Days', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Due Date', label: _gridHeader('Due Date', alignment: Alignment.center)),
+        GridColumn(columnName: 'Party', label: _gridHeader('Party', alignment: Alignment.centerLeft)),
+        GridColumn(columnName: 'Inv Amt Rs', label: _gridHeader('Inv Amt (₹)', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Out Rs', label: _gridHeader('Out Amt (₹)', alignment: Alignment.centerRight)),
+        GridColumn(columnName: 'Tot Out Rs', label: _gridHeader('Total Out (₹)', alignment: Alignment.centerRight)),
+      ],
+      tableSummaryRows: [
+        GridTableSummaryRow(
+          title: 'Total',
+          showSummaryInRow: false,
+          titleColumnSpan: 1,
+          columns: const <GridSummaryColumn>[
+            GridSummaryColumn(name: 'Inv Amt Rs', columnName: 'Inv Amt Rs', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Out Rs', columnName: 'Out Rs', summaryType: GridSummaryType.sum),
+            GridSummaryColumn(name: 'Tot Out Rs', columnName: 'Tot Out Rs', summaryType: GridSummaryType.sum),
+          ],
+          position: GridTableSummaryRowPosition.bottom,
+        ),
+      ],
+    );
   }
 }
