@@ -207,32 +207,34 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onSave: _applyFilters,
-      onCancel: _resetFilters,
-      onPrint: _printPdf,
-      onExit: _exitScreen,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) const Header(title: 'Reports & Inquiries'),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildFiltersCard(),
-                    const SizedBox(height: 8),
-                    _buildActionBar(),
-                    const SizedBox(height: 8),
-                    Expanded(child: _buildDataGridCard()),
-                  ],
+    return Obx(
+      () => AppKeyboardShortcutHandler(
+        onSave: _applyFilters,
+        onCancel: _resetFilters,
+        onPrint: _printPdf,
+        onExit: _exitScreen,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) const Header(title: 'Reports & Inquiries'),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildFiltersCard(),
+                      const SizedBox(height: 8),
+                      _buildActionBar(),
+                      const SizedBox(height: 8),
+                      Expanded(child: _buildDataGridCard()),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -258,9 +260,9 @@ class _ReportScreenState extends State<ReportScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.filter_alt_rounded, size: 16, color: AppColors.primary),
+              Icon(Icons.filter_alt_rounded, size: 16, color: AppColors.primary),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Report Selection & Filter Parameters',
                 style: TextStyle(
                   fontSize: 13,
@@ -281,7 +283,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.surface,
+                          color: Colors.white,
                         ),
                       ),
                     )
@@ -297,7 +299,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   label: 'Report Type *',
                   value: _selectedTypeReport.value.isEmpty ? null : _selectedTypeReport.value,
                   hintText: 'Select Report...',
-                  prefixIcon: const Icon(Icons.analytics_outlined, size: 16, color: AppColors.primary),
+                  prefixIcon: Icon(Icons.analytics_outlined, size: 16, color: AppColors.primary),
                   items: reportList.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                   onChanged: (val) {
                     _selectedTypeReport.value = val ?? '';
@@ -311,7 +313,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 controller: fromDateController,
                 readOnly: true,
                 onTap: _pickFromDate,
-                prefixIcon: const Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.textMuted),
+                prefixIcon: Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.textMuted),
                 suffixIcon: fromDate != null
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 15),
@@ -331,7 +333,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 controller: toDateController,
                 readOnly: true,
                 onTap: _pickToDate,
-                prefixIcon: const Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.textMuted),
+                prefixIcon: Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.textMuted),
                 suffixIcon: toDate != null
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 15),
@@ -541,11 +543,11 @@ class _ReportScreenState extends State<ReportScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.format_list_bulleted_rounded, size: 14, color: AppColors.textMuted),
+                        Icon(Icons.format_list_bulleted_rounded, size: 14, color: AppColors.textMuted),
                         const SizedBox(width: 6),
                         Text(
                           'Total Records: $_recordCount',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -606,7 +608,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 children: [
                   Icon(Icons.analytics_outlined, size: 54, color: AppColors.textMuted.withValues(alpha: 0.5)),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'No Report Selected',
                     style: TextStyle(
                       fontSize: 16,
@@ -615,7 +617,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Please select a report type from the dropdown above to view data.',
                     style: TextStyle(
                       fontSize: 13,
@@ -655,7 +657,7 @@ class _ReportScreenState extends State<ReportScreen> {
       alignment: alignment,
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 12,
           color: AppColors.textPrimary,

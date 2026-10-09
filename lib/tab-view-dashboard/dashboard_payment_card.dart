@@ -76,7 +76,7 @@ class _DashboardPaymentCardState extends State<DashboardPaymentCard> {
           width: 310,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardBg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _isHovered ? statusColor.withValues(alpha: 0.5) : AppColors.borderLight,
@@ -84,7 +84,7 @@ class _DashboardPaymentCardState extends State<DashboardPaymentCard> {
             ),
             boxShadow: [
               BoxShadow(
-                color: _isHovered ? statusColor.withValues(alpha: 0.1) : const Color(0x05000000),
+                color: _isHovered ? statusColor.withValues(alpha: 0.1) : Colors.black.withValues(alpha: AppColors.isDark ? 0.2 : 0.03),
                 blurRadius: _isHovered ? 8 : 3,
                 offset: const Offset(0, 2),
               ),
@@ -130,7 +130,7 @@ class _DashboardPaymentCardState extends State<DashboardPaymentCard> {
                   Expanded(
                     child: Text(
                       invNo,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -171,7 +171,7 @@ class _DashboardPaymentCardState extends State<DashboardPaymentCard> {
                     backgroundColor: AppColors.background,
                     child: Text(
                       partyName.isNotEmpty ? partyName[0].toUpperCase() : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textSecondary,
@@ -182,7 +182,7 @@ class _DashboardPaymentCardState extends State<DashboardPaymentCard> {
                   Expanded(
                     child: Text(
                       partyName.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
                         color: AppColors.textSecondary,
@@ -204,7 +204,7 @@ class _DashboardPaymentCardState extends State<DashboardPaymentCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         'Outstanding',
                         style: TextStyle(fontSize: 10, color: AppColors.textMuted),
                       ),

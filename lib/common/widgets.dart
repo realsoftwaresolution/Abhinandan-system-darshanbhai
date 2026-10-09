@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/common/company_select_dialog.dart';
 import 'package:real_web_rough_entry_system/common/login_dialog.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
+import 'package:real_web_rough_entry_system/controllers/theme_controller.dart';
 import 'package:real_web_rough_entry_system/main/company_mst_model.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/party/party_type_model.dart';
@@ -25,6 +27,7 @@ final DefaultController defaultController = Get.find<DefaultController>();
 final TabControllerX tabController = Get.find<TabControllerX>();
 
 Future infoDialog({required String messageText}) {
+  if (Get.overlayContext == null) return Future.value();
   return Get.defaultDialog(
     title: 'Alert',
     content: KeyboardListener(
@@ -48,6 +51,7 @@ Future infoDialog({required String messageText}) {
 }
 
 Future successDialog({required String messageText}) {
+  if (Get.overlayContext == null) return Future.value();
   return Get.defaultDialog(
     title: 'Success',
     content: KeyboardListener(
@@ -71,6 +75,7 @@ Future successDialog({required String messageText}) {
 }
 
 Future errorDialog({required String messageText}) {
+  if (Get.overlayContext == null) return Future.value();
   return Get.defaultDialog(
     title: 'Error',
     content: KeyboardListener(
@@ -107,8 +112,8 @@ Widget buildTextField(String label, TextEditingController? controller,
     children: [
       Text(
         label,
-        style: const TextStyle(
-          color: Colors.black,
+        style: TextStyle(
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.w900,
           fontSize: 12, // Font size for the label
         ),
@@ -174,10 +179,10 @@ Widget buildTextField(String label, TextEditingController? controller,
                 horizontal: 8,
               ), // Remove top padding, minimal horizontal padding
             ),
-            cursorColor: Colors.black,
+            cursorColor: AppColors.primary,
             // Black cursor color
-            style: const TextStyle(
-              color: Colors.black,
+            style: TextStyle(
+              color: AppColors.textPrimary,
               fontSize: 12, // Consistent font size with label
             ),
             onChanged: onChanged,
@@ -261,10 +266,10 @@ Widget buildTextField2(String label, TextEditingController? controller,
         horizontal: 8,
       ), // Remove top padding, minimal horizontal padding
     ),
-    cursorColor: Colors.black,
+    cursorColor: AppColors.primary,
     // Black cursor color
-    style: const TextStyle(
-      color: Colors.black,
+    style: TextStyle(
+      color: AppColors.textPrimary,
       fontSize: 12, // Consistent font size with label
     ),
     onChanged: onChanged,
@@ -296,9 +301,9 @@ Widget buildBottomButton(
       ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 12,
-            color: Colors.black,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold), // Same font size as TextFormField
       ),
     ),
@@ -329,8 +334,13 @@ String getPartyType(int? typeCode) {
 String getCompanyName(int? cmpCode) {
   final partyType = defaultController.companies.firstWhere(
       (pt) => pt.companyCode == cmpCode,
-      orElse: () => CompanyMst(companyName: 'Unknown'));
-  return partyType.companyName ?? 'Unknown';
+      orElse: () => CompanyMst(
+        companyCode: cmpCode ?? 3,
+        companyName: 'Abhinandan Diamond',
+        address: '204 Shraddhajyot Building, Mahidharpura, Surat',
+        mobileno: '8926555111',
+      ));
+  return partyType.companyName ?? 'Abhinandan Diamond';
 }
 
 dynamic getTotalWeight(String? invNo) {
@@ -343,7 +353,13 @@ dynamic getTotalWeight(String? invNo) {
 CompanyMst getCompanyDetails(int? cmpCode) {
   final partyType = defaultController.companies.firstWhere(
       (pt) => pt.companyCode == cmpCode,
-      orElse: () => CompanyMst());
+      orElse: () => CompanyMst(
+        companyCode: cmpCode ?? 3,
+        companyName: 'Abhinandan Diamond',
+        address: '204 Shraddhajyot Building, Mahidharpura, Surat',
+        mobileno: '8926555111',
+        emailID: 'contact@abhinandandiamond.com',
+      ));
   return partyType;
 }
 
@@ -481,11 +497,16 @@ void showCompanySelectionDialog({required bool isFromSwitchCompany}) {
       isSwitchCompany: isFromSwitchCompany,
     ),
     barrierDismissible: isFromSwitchCompany,
+    barrierColor: Colors.transparent,
   );
 }
 
 void showLoginDialog() {
-  Get.dialog(const LoginDialog(), barrierDismissible: false);
+  Get.dialog(
+    const LoginDialog(),
+    barrierDismissible: false,
+    barrierColor: Colors.transparent,
+  );
 }
 
 DateTime dateFormat(String date) {
@@ -1572,7 +1593,46 @@ void showSettingsDialog(BuildContext context) {
                   color: Colors.blueAccent, // Title color
                 ),
               ),
-              const SizedBox(height: 20), // Spacing between title and options
+              const SizedBox(height: 20),
+              // Spacing between title and options
+
+              // Theme & Appearance (Light / Dark)
+              Obx(() {
+                final isDark = ThemeController.isInitialized
+                    ? ThemeController.to.isDarkMode.value
+                    : false;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: (isDark ? const Color(0xFFFBBF24) : AppColors.primary).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isDark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+                      color: isDark ? const Color(0xFFFBBF24) : AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Dark Mode',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: Text(
+                    isDark ? 'Dark theme enabled' : 'Light theme enabled',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  trailing: Switch(
+                    value: isDark,
+                    onChanged: (val) {
+                      ThemeController.to.setDarkMode(val);
+                    },
+                  ),
+                );
+              }),
+              const Divider(),
 
               // Toggle Dashboard
               ListTile(

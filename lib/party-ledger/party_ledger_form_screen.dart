@@ -283,7 +283,7 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                 const SizedBox(width: 8),
                 Text(
                   p.partyName ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
                 ),
               ],
             ),
@@ -324,42 +324,44 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onSave: _applyDateFilter,
-      onCancel: _removeDateFilter,
-      onPrint: _handlePrintPdf,
-      onExit: () => tabController.removeTab(tabController.currentIndex.value),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: Responsive.isMobile(context) ? 10 : 20,
-            vertical: Responsive.isMobile(context) ? 10 : 16,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.showHeader) ...[
-                const Header(title: 'Party Ledger'),
+    return Obx(
+      () => AppKeyboardShortcutHandler(
+        onSave: _applyDateFilter,
+        onCancel: _removeDateFilter,
+        onPrint: _handlePrintPdf,
+        onExit: () => tabController.removeTab(tabController.currentIndex.value),
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.isMobile(context) ? 10 : 20,
+              vertical: Responsive.isMobile(context) ? 10 : 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.showHeader) ...[
+                  const Header(title: 'Party Ledger'),
+                  const SizedBox(height: 16),
+                ],
+
+                // Card 1: Filters & Action Buttons
+                _buildFilterCard(),
                 const SizedBox(height: 16),
+
+                // Card 2: Financial Balances Summary
+                _buildBalancesCard(),
+                const SizedBox(height: 16),
+
+                // Card 3: Ledger Transactions DataGrid
+                _buildTransactionsCard(),
+                const SizedBox(height: 16),
+
+                // Card 4: Outstanding Invoices DataGrid
+                _buildOutstandingCard(),
+                const SizedBox(height: 24),
               ],
-
-              // Card 1: Filters & Action Buttons
-              _buildFilterCard(),
-              const SizedBox(height: 16),
-
-              // Card 2: Financial Balances Summary
-              _buildBalancesCard(),
-              const SizedBox(height: 16),
-
-              // Card 3: Ledger Transactions DataGrid
-              _buildTransactionsCard(),
-              const SizedBox(height: 16),
-
-              // Card 4: Outstanding Invoices DataGrid
-              _buildOutstandingCard(),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
@@ -390,10 +392,10 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary, size: 18),
+                child: Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary, size: 18),
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Ledger Account & Date Range Filter',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
@@ -432,7 +434,7 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                   focusNode: _fromDateFocus,
                   nextFocusNode: _toDateFocus,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
                   onTap: _pickFromDate,
                 ),
               );
@@ -450,7 +452,7 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                   controller: toDateController,
                   focusNode: _toDateFocus,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
                   onTap: _pickToDate,
                 ),
               );
@@ -611,10 +613,10 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.analytics_rounded, color: AppColors.success, size: 18),
+                child: Icon(Icons.analytics_rounded, color: AppColors.success, size: 18),
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Financial Balances & Statement Summary',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
@@ -831,14 +833,14 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Icon(Icons.receipt_rounded, color: AppColors.primary, size: 18),
+                    child: Icon(Icons.receipt_rounded, color: AppColors.primary, size: 18),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Obx(
                       () => Text(
                         'Ledger Transactions (${creditDebitDataGridSource.length})',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -851,14 +853,14 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
+                      icon: Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
                       tooltip: 'Print Ledger PDF',
                       splashRadius: 18,
                       onPressed: creditDebitDataGridSource.isNotEmpty ? _handlePrintPdf : null,
                     ),
                     const SizedBox(width: 4),
                     IconButton(
-                      icon: const Icon(Icons.table_view_rounded, size: 18, color: AppColors.success),
+                      icon: Icon(Icons.table_view_rounded, size: 18, color: AppColors.success),
                       tooltip: 'Export to Excel',
                       splashRadius: 18,
                       onPressed: creditDebitDataGridSource.isNotEmpty ? _handleExportExcel : null,
@@ -880,6 +882,7 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                       ],
                     )
                   : Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(child: headerContent),
@@ -891,8 +894,8 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
           const SizedBox(height: 12),
           Obx(
             () => defaultController.isLoading.value
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     child: LinearProgressIndicator(color: AppColors.primary),
                   )
                 : const SizedBox.shrink(),
@@ -907,12 +910,12 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                       children: [
                         Icon(Icons.menu_book_rounded, size: 38, color: AppColors.textMuted.withValues(alpha: 0.6)),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'No ledger transactions displayed.',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 2),
-                        const Text(
+                        Text(
                           'Select an Account and Date Range above, then click Show (Alt+S).',
                           style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                         ),
@@ -1044,14 +1047,14 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                       color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Icon(Icons.pending_actions_rounded, color: AppColors.warning, size: 18),
+                    child: Icon(Icons.pending_actions_rounded, color: AppColors.warning, size: 18),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Obx(
                       () => Text(
                         'Outstanding Unpaid Invoices (${outstandingPaymentDataGridSource.where((e) => e.status == 'UNPAID').length})',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1061,7 +1064,7 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
 
               final actionButton = Obx(
                 () => IconButton(
-                  icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.warning),
+                  icon: Icon(Icons.print_outlined, size: 18, color: AppColors.warning),
                   tooltip: 'Print Outstanding PDF',
                   splashRadius: 18,
                   onPressed: outstandingPaymentDataGridSource.isNotEmpty ? _handlePrintOutstandingPdf : null,
@@ -1100,7 +1103,7 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
                       children: [
                         Icon(Icons.check_circle_outline_rounded, size: 32, color: AppColors.success.withValues(alpha: 0.6)),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'No outstanding unpaid invoices for this account.',
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                         ),

@@ -46,48 +46,46 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Obx(() {
-        if (defaultController.isLoadingDashboardData.value &&
-            defaultController.outstandingPurchaseSaleDetailsList.isEmpty) {
-          return _buildLoadingState();
-        }
+    return Obx(
+      () => Scaffold(
+        backgroundColor: AppColors.background,
+        body: defaultController.isLoadingDashboardData.value &&
+                defaultController.outstandingPurchaseSaleDetailsList.isEmpty
+            ? _buildLoadingState()
+            : RefreshIndicator(
+                onRefresh: () async {
+                  await defaultController.getOutstandingPurchaseSaleDetails();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top Header Bar
+                      _buildDashboardHeader(),
+                      const SizedBox(height: 16),
 
-        return RefreshIndicator(
-          onRefresh: () async {
-            await defaultController.getOutstandingPurchaseSaleDetails();
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top Header Bar
-                _buildDashboardHeader(),
-                const SizedBox(height: 16),
+                      // Top KPI Summary Cards Row
+                      _buildKpiSummarySection(),
+                      const SizedBox(height: 20),
 
-                // Top KPI Summary Cards Row
-                _buildKpiSummarySection(),
-                const SizedBox(height: 20),
+                      // Today's Payments (Smart banner or priority cards)
+                      _buildTodayPaymentSection(),
+                      const SizedBox(height: 24),
 
-                // Today's Payments (Smart banner or priority cards)
-                _buildTodayPaymentSection(),
-                const SizedBox(height: 24),
+                      // Overdue Payments Section
+                      _buildOverduePaymentSection(),
+                      const SizedBox(height: 24),
 
-                // Overdue Payments Section
-                _buildOverduePaymentSection(),
-                const SizedBox(height: 24),
-
-                // Upcoming Payments Section
-                _buildUpcomingPaymentSection(),
-                const SizedBox(height: 32),
-              ],
-            ),
-          ),
-        );
-      }),
+                      // Upcoming Payments Section
+                      _buildUpcomingPaymentSection(),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+      ),
     );
   }
 
@@ -102,7 +100,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
             defaultController.getOutstandingPurchaseSaleDetails();
           },
           icon: defaultController.isLoadingDashboardData.value
-              ? const SizedBox(
+              ? SizedBox(
                   width: 14,
                   height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
@@ -111,8 +109,8 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
           label: const Text('Refresh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.borderLight),
-            backgroundColor: Colors.white,
+            side: BorderSide(color: AppColors.borderLight),
+            backgroundColor: AppColors.cardBg,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -127,7 +125,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Financial Dashboard',
                         style: TextStyle(
                           fontSize: 18,
@@ -144,7 +142,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                 ],
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Real-time overview of outstandings & liquid balances.',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
@@ -155,34 +153,39 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Financial Dashboard',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Financial Dashboard',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    _buildLiveBadge(),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Real-time overview of outstandings, liquid balances, and payment schedules.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                      const SizedBox(width: 10),
+                      _buildLiveBadge(),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Real-time overview of outstandings, liquid balances, and payment schedules.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 12),
             refreshButton,
           ],
         );
@@ -207,13 +210,13 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
           Container(
             width: 6,
             height: 6,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.success,
             ),
           ),
           const SizedBox(width: 5),
-          const Text(
+          Text(
             'Live',
             style: TextStyle(
               fontSize: 11,
@@ -383,7 +386,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.borderLight),
         ),
@@ -396,7 +399,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                 color: AppColors.success.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.check_rounded,
                 color: AppColors.success,
                 size: 18,
@@ -407,7 +410,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "No Payments Due Today",
                     style: TextStyle(
                       fontSize: 13,
@@ -417,7 +420,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                   ),
                   Text(
                     "All bills and collections are up to date for ${DateFormat('dd MMMM yyyy').format(today)}.",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11.5,
                       color: AppColors.textSecondary,
                     ),
@@ -432,7 +435,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: AppColors.borderLight),
               ),
-              child: const Text(
+              child: Text(
                 '0 Due Today',
                 style: TextStyle(
                   fontSize: 11,
@@ -527,7 +530,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderLight),
       ),
@@ -601,8 +604,8 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                   style: const TextStyle(fontSize: 12),
                   decoration: InputDecoration(
                     hintText: 'Search invoice / party...',
-                    hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 15, color: AppColors.textMuted),
+                    hintStyle: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search_rounded, size: 15, color: AppColors.textMuted),
                     suffixIcon: _overdueSearchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 14),
@@ -617,15 +620,15 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.borderLight),
+                      borderSide: BorderSide(color: AppColors.borderLight),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.borderLight),
+                      borderSide: BorderSide(color: AppColors.borderLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                      borderSide: BorderSide(color: AppColors.primary, width: 1.2),
                     ),
                   ),
                 ),
@@ -649,12 +652,15 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
 
               return Row(
                 children: [
-                  Wrap(
-                    spacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: filterChips,
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: filterChips,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   searchInput,
                 ],
               );
@@ -740,7 +746,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderLight),
       ),
@@ -814,8 +820,8 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                   style: const TextStyle(fontSize: 12),
                   decoration: InputDecoration(
                     hintText: 'Search invoice / party...',
-                    hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 15, color: AppColors.textMuted),
+                    hintStyle: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search_rounded, size: 15, color: AppColors.textMuted),
                     suffixIcon: _upcomingSearchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 14),
@@ -830,15 +836,15 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.borderLight),
+                      borderSide: BorderSide(color: AppColors.borderLight),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.borderLight),
+                      borderSide: BorderSide(color: AppColors.borderLight),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                      borderSide: BorderSide(color: AppColors.primary, width: 1.2),
                     ),
                   ),
                 ),
@@ -862,12 +868,15 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
 
               return Row(
                 children: [
-                  Wrap(
-                    spacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: filterChips,
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: filterChips,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   searchInput,
                 ],
               );
@@ -918,7 +927,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
             const SizedBox(width: 6),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -1063,7 +1072,7 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               color: AppColors.textMuted,
               fontWeight: FontWeight.w500,
@@ -1182,12 +1191,12 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Shimmer.fromColors(
-                    baseColor: Colors.grey[200]!,
-                    highlightColor: Colors.grey[50]!,
+                    baseColor: AppColors.isDark ? const Color(0xFF1E293B) : Colors.grey[200]!,
+                    highlightColor: AppColors.isDark ? const Color(0xFF334155) : Colors.grey[50]!,
                     child: Container(
                       height: 90,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.cardBg,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -1198,24 +1207,24 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
           ),
           const SizedBox(height: 24),
           Shimmer.fromColors(
-            baseColor: Colors.grey[200]!,
-            highlightColor: Colors.grey[50]!,
+            baseColor: AppColors.isDark ? const Color(0xFF1E293B) : Colors.grey[200]!,
+            highlightColor: AppColors.isDark ? const Color(0xFF334155) : Colors.grey[50]!,
             child: Container(
               height: 180,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.cardBg,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
           const SizedBox(height: 24),
           Shimmer.fromColors(
-            baseColor: Colors.grey[200]!,
-            highlightColor: Colors.grey[50]!,
+            baseColor: AppColors.isDark ? const Color(0xFF1E293B) : Colors.grey[200]!,
+            highlightColor: AppColors.isDark ? const Color(0xFF334155) : Colors.grey[50]!,
             child: Container(
               height: 180,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.cardBg,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -1322,7 +1331,7 @@ class _DashboardDataGridSource extends DataGridSource {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               invNo,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primary,
@@ -1339,7 +1348,7 @@ class _DashboardDataGridSource extends DataGridSource {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
             partyName,
-            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -1350,7 +1359,7 @@ class _DashboardDataGridSource extends DataGridSource {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
             dueDate,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ),
 

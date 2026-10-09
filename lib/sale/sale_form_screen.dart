@@ -351,7 +351,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
     return defaultController.roughModel.map((item) {
       return DropdownMenuItem<String>(
         value: item.roughTypeCode.toString(),
-        child: Text(item.roughTypeName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+        child: Text(item.roughTypeName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
       );
     }).toList();
   }
@@ -362,7 +362,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
         .map((p) {
           return DropdownMenuItem<String>(
             value: p.partyCode.toString(),
-            child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
           );
         })
         .toSet()
@@ -375,7 +375,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
         .map((p) {
           return DropdownMenuItem<String>(
             value: p.partyCode.toString(),
-            child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
           );
         })
         .toSet()
@@ -384,30 +384,33 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: !_isEnabled ? () => _enableFields() : null,
-      onSave: _isEnabled ? _handleSave : null,
-      onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
-      onCancel: _isEnabled ? _handleCancel : null,
-      onExit: () => tabController.closeCurrentTab(),
-      onSearch: () {
-        setState(() {
-          _isSearch = !_isSearch;
-        });
-      },
-      onPrint: _isFromEdit ? _handlePrint : null,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) Header(title: _isSearch ? 'Sale Search' : 'Sale Entry'),
-            Expanded(
-              child: _isSearch ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? () => _enableFields() : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: _isEnabled ? _handleCancel : null,
+        onExit: () => tabController.closeCurrentTab(),
+        onSearch: () {
+          setState(() {
+            _isSearch = !_isSearch;
+          });
+        },
+        onPrint: _isFromEdit ? _handlePrint : null,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) Header(title: _isSearch ? 'Sale Search' : 'Sale Entry'),
+              Expanded(
+                child: _isSearch ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==================== SEARCH / DATAGRID VIEW ====================
@@ -416,8 +419,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
             border: Border(bottom: BorderSide(color: AppColors.borderLight)),
           ),
           child: LayoutBuilder(
@@ -515,6 +518,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
               }
 
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(child: dateFields[0]),
                   const SizedBox(width: 12),
@@ -683,10 +687,10 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.point_of_sale_rounded, size: 18, color: AppColors.primary),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           'Sale Invoice Header',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -862,15 +866,15 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                         final isCompact = constraints.maxWidth < 650;
                         return Row(
                           children: [
-                            const Icon(Icons.diamond_outlined, size: 18, color: AppColors.primary),
+                            Icon(Icons.diamond_outlined, size: 18, color: AppColors.primary),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Add Polish / Rough Details',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                             ),
                             if (!isCompact) ...[
                               const Spacer(),
-                              const Text(
+                              Text(
                                 'Keyboard: Enter on Rate automatically adds item to table',
                                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                               ),
@@ -1050,9 +1054,9 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
+                        Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Items List',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                         ),
@@ -1065,7 +1069,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                           ),
                           child: Text(
                             '${entries.length} items',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                           ),
                         ),
                       ],
@@ -1077,11 +1081,11 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                         alignment: Alignment.center,
                         child: Column(
                           children: [
-                            Icon(Icons.inbox_outlined, size: 40, color: Colors.grey.shade400),
+                            Icon(Icons.inbox_outlined, size: 40, color: AppColors.textMuted),
                             const SizedBox(height: 8),
                             Text(
                               'No rough items added yet. Fill fields above and press Enter.',
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                             ),
                           ],
                         ),
@@ -1128,8 +1132,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
         children: [
           // Table Header
           TableRow(
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9),
+            decoration: BoxDecoration(
+              color: AppColors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
               border: Border(bottom: BorderSide(color: AppColors.borderLight)),
             ),
             children: [
@@ -1147,8 +1151,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
           for (int i = 0; i < entries.length; i++)
             TableRow(
               decoration: BoxDecoration(
-                color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
-                border: const Border(bottom: BorderSide(color: AppColors.borderLight, width: 0.5)),
+                color: i.isEven ? AppColors.surface : AppColors.tableRowAlt,
+                border: Border(bottom: BorderSide(color: AppColors.borderLight, width: 0.5)),
               ),
               children: [
                 _dataCell('${i + 1}', alignment: Alignment.center),
@@ -1165,7 +1169,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
                     children: [
                       // Edit button
                       IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                        icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
                         tooltip: 'Edit Item',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -1188,7 +1192,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
                       // Delete button
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                        icon: Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
                         tooltip: 'Delete Item',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -1216,8 +1220,8 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
           // Total Summary Row
           TableRow(
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
               border: Border(top: BorderSide(color: AppColors.borderLight, width: 1.5)),
             ),
             children: [
@@ -1243,7 +1247,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
         textAlign: textAlign,
       ),
     );

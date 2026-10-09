@@ -357,10 +357,10 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                 shadowColor: Colors.black.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(8),
                 clipBehavior: Clip.antiAlias,
-                color: Colors.white,
+                color: AppColors.cardBg,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.cardBg,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppColors.border),
                   ),
@@ -484,20 +484,20 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         if (widget.showSearch)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
+            decoration: BoxDecoration(
+              color: AppColors.background,
               border: Border(bottom: BorderSide(color: AppColors.borderLight, width: 1)),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: widget.searchHint,
-                hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                prefixIcon: const Icon(Icons.search_rounded, size: 16, color: AppColors.textSecondary),
+                hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                prefixIcon: Icon(Icons.search_rounded, size: 16, color: AppColors.textSecondary),
                 prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? InkWell(
@@ -505,16 +505,16 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                           _searchController.clear();
                           _onSearchChanged('', setOverlayState);
                         },
-                        child: const Icon(Icons.close_rounded, size: 14, color: AppColors.textSecondary),
+                        child: Icon(Icons.close_rounded, size: 14, color: AppColors.textSecondary),
                       )
                     : null,
                 suffixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.border)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.border)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                fillColor: AppColors.isDark ? AppColors.inputBg : const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : AppColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : AppColors.border)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
               ),
               onChanged: (text) => _onSearchChanged(text, setOverlayState),
             ),
@@ -523,9 +523,9 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         // 2. Scrollable Item List
         Expanded(
           child: _filteredItems.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: Text('No matches found', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ),
                 )
@@ -600,7 +600,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                               ),
                             ],
                             if (!widget.isMultiSelect && isSelected)
-                              const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                              Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
                             if (item.trailing != null) item.trailing!,
                           ],
                         ),
@@ -614,17 +614,17 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         if (widget.isMultiSelect)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
+            decoration: BoxDecoration(
+              color: AppColors.background,
               border: Border(top: BorderSide(color: AppColors.borderLight, width: 1)),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   '${_selectedMulti.length} selected',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                 ),
                 Row(
                   children: [
@@ -646,7 +646,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                             setState(() {});
                           }
                         },
-                        child: const Text('Clear', style: TextStyle(fontSize: 11, color: AppColors.danger)),
+                        child: Text('Clear', style: TextStyle(fontSize: 11, color: AppColors.danger)),
                       ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -695,7 +695,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
             widget.hintText ?? 'Select...',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           );
         }
       }
@@ -706,7 +706,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           widget.hintText ?? 'Select...',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
         );
       } else {
         final labels = allItems.where((it) => selectedList.contains(it.value)).map((it) => it.label).toList();
@@ -740,7 +740,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               ),
               child: Text(
                 '${labels.length}',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
               ),
             ),
           ],
@@ -775,22 +775,24 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
             isDense: true,
             contentPadding: widget.contentPadding ?? const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             filled: true,
-            fillColor: widget.isEnabled ? Colors.white : const Color(0xFFF1F5F9),
+            fillColor: widget.isEnabled
+                ? (AppColors.isDark ? AppColors.inputBg : Colors.white)
+                : (AppColors.isDark ? AppColors.inputBgDisabled : const Color(0xFFF1F5F9)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: AppColors.border, width: 1),
+              borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : AppColors.border, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: AppColors.border, width: 1),
+              borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : AppColors.border, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: AppColors.border, width: 1),
+              borderSide: BorderSide(color: AppColors.isDark ? const Color(0xFF1E293B) : AppColors.border, width: 1),
             ),
             prefixIcon: widget.prefixIcon,
             prefixIconConstraints: widget.prefixIcon != null ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
@@ -813,10 +815,10 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         children: [
           Text(
             widget.label!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: AppColors.isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 5),

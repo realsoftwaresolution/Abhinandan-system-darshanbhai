@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/common/components/diamond_logo.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,13 +43,15 @@ class SplashScreenState extends State<SplashScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          gradient: RadialGradient(
+            center: Alignment(0.0, -0.2),
+            radius: 1.2,
             colors: [
-              Color(0xFF0F172A), // Slate 900
-              Color(0xFF1E3A8A), // Blue 900
+              Color(0xFF0F1E3D), // Deep rich blue glow
+              Color(0xFF080F21), // Midnight navy
+              Color(0xFF040816), // Darkest outer vignette
             ],
+            stops: [0.0, 0.55, 1.0],
           ),
         ),
         child: Center(
@@ -61,7 +63,7 @@ class SplashScreenState extends State<SplashScreen> {
                 height: 90,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
+                  color: Colors.white.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.2),
@@ -69,14 +71,14 @@ class SplashScreenState extends State<SplashScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 25,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-                child: SvgPicture.asset(
-                  "assets/images/logo-white.svg",
+                child: Center(
+                  child: DiamondLogo.lightOnDark(size: 52),
                 ),
               ),
               const SizedBox(height: 24),

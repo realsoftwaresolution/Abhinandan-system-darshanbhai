@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/common/input_formatters.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
@@ -63,10 +64,10 @@ class BookPartyCreditDebitDataGrid extends DataGridSource {
 
     return DataGridRowAdapter(
       color: isSummaryRow
-          ? Colors.grey
+          ? (AppColors.isDark ? const Color(0xFF334155) : Colors.grey[300])
           : rowIndex % 2 == 0
-              ? Colors.grey[200] // Light color for even rows
-              : null, // White for odd rows
+              ? AppColors.tableRowAlt
+              : AppColors.surface,
       cells: row.getCells().map<Widget>((dataGridCell) {
         return Container(
           alignment: Alignment.centerLeft,
@@ -75,7 +76,9 @@ class BookPartyCreditDebitDataGrid extends DataGridSource {
             dataGridCell.value.toString(),
             style: TextStyle(
               fontSize: 12,
-              color: isSummaryRow ? Colors.white : Colors.black,
+              color: isSummaryRow
+                  ? (AppColors.isDark ? Colors.white : Colors.black87)
+                  : AppColors.textPrimary,
               fontWeight: isSummaryRow
                   ? FontWeight.bold
                   : FontWeight.normal, // Bold for summary row
@@ -313,9 +316,9 @@ class BookPartyCreditDebitDataGrid extends DataGridSource {
       child: Text(
         /*isFirstColumn ? 'Total' :*/
         summaryValue, // 'Total' in the first column
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Colors.black,
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),

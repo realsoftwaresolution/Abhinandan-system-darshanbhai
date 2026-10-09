@@ -5,14 +5,12 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:real_web_rough_entry_system/app_theme.dart';
-import 'package:real_web_rough_entry_system/assort/assort_form_screen.dart';
 import 'package:real_web_rough_entry_system/assort/rough_assort_form_screen.dart';
+import 'package:real_web_rough_entry_system/common/components/app_sidebar.dart';
+import 'package:real_web_rough_entry_system/common/components/theme_studio_dialog.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
-import 'package:real_web_rough_entry_system/header.dart';
-import 'package:real_web_rough_entry_system/memo%20issue/memoiss_form_screen.dart';
-import 'package:real_web_rough_entry_system/memo%20receive/memorec_form_screen.dart';
+import 'package:real_web_rough_entry_system/controllers/theme_controller.dart';
 import 'package:real_web_rough_entry_system/party-ledger/party_ledger_form_screen.dart';
-import 'package:real_web_rough_entry_system/party/party_form_screen.dart';
 import 'package:real_web_rough_entry_system/payment/payment_form_screen.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/report/report_screen.dart';
@@ -59,6 +57,12 @@ class DashboardWithDynamicTabs extends StatelessWidget {
       const SingleActivator(LogicalKeyboardKey.pageUp, control: true): () {
         tabController.previousTab();
       },
+      const SingleActivator(LogicalKeyboardKey.keyB, control: true): () {
+        tabController.toggleSidebar();
+      },
+      const SingleActivator(LogicalKeyboardKey.keyB, alt: true): () {
+        tabController.toggleSidebar();
+      },
     };
 
     return CallbackShortcuts(
@@ -66,177 +70,44 @@ class DashboardWithDynamicTabs extends StatelessWidget {
       child: Focus(
         autofocus: true,
         child: Obx(
-          () => Scaffold(
-            resizeToAvoidBottomInset: false,
-            backgroundColor: AppColors.background,
-            drawer: Responsive.isMobile(context) ? _buildMobileDrawer(context) : null,
-            appBar: AppBar(
-              elevation: 0.5,
-              titleSpacing: Responsive.isMobile(context) ? 4 : 16,
-              leading: Responsive.isMobile(context)
-                  ? Builder(
-                      builder: (scaffoldContext) => IconButton(
-                        icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
-                        tooltip: 'Open Menu',
-                        onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
-                      ),
-                    )
-                  : null,
-              title: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: SvgPicture.asset(
-                      "assets/images/logo.svg",
-                      colorFilter: const ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-                    ),
+          () => AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            color: AppColors.background,
+            child: Scaffold(
+              resizeToAvoidBottomInset: false,
+              backgroundColor: Colors.transparent,
+              drawer: Responsive.isMobile(context) ? _buildMobileDrawer(context) : null,
+              body: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Fixed Luxury Sidebar on Desktop & Tablet
+              if (!Responsive.isMobile(context))
+                Obx(
+                  () => AppSidebar(
+                    isCollapsed: tabController.isSidebarCollapsed.value,
+                    onToggleCollapse: () => tabController.toggleSidebar(),
+                    isDrawer: false,
                   ),
-                  const SizedBox(width: 10),
-                  Obx(
-                    () => Text(
-                      getCompanyName(defaultController.companyCode.value),
-                      style: TextStyle(
-                        fontSize: Responsive.isMobile(context) ? 14 : 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.white,
-              actions: [
-                if (!Responsive.isMobile(context)) ...[
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.people_alt_outlined,
-                    activeIcon: Icons.people_alt_rounded,
-                    label: 'Party',
-                    tooltip: 'Party Master',
-                    onTap: () => _openTab('Party', Icons.people_alt_rounded, const PartyFormScreen(showHeader: false)),
-                  ),
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.shopping_bag_outlined,
-                    activeIcon: Icons.shopping_bag_rounded,
-                    label: 'Purchase',
-                    tooltip: 'Purchase Entry',
-                    onTap: () => _openTab('Purchase', Icons.shopping_bag_rounded, const PurchaseFormScreen(showHeader: false)),
-                  ),
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.sell_outlined,
-                    activeIcon: Icons.sell_rounded,
-                    label: 'Sale',
-                    tooltip: 'Sale Entry',
-                    onTap: () => _openTab('Sale', Icons.sell_rounded, const SaleFormScreen(showHeader: false)),
-                  ),
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.checklist_outlined,
-                    activeIcon: Icons.checklist_rounded,
-                    label: 'Memo Issue',
-                    tooltip: 'Memo Issue',
-                    onTap: () => _openTab('Memo Issue', Icons.checklist_rounded, const MemoIssFormScreen(showHeader: false)),
-                  ),
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.checklist_rtl_outlined,
-                    activeIcon: Icons.checklist_rtl_rounded,
-                    label: 'Memo Rec',
-                    tooltip: 'Memo Receive',
-                    onTap: () => _openTab('Memo Receive', Icons.checklist_rtl_rounded, const MemoRecFormScreen(showHeader: false)),
-                  ),
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.payment_outlined,
-                    activeIcon: Icons.payment_rounded,
-                    label: 'Payment',
-                    tooltip: 'Payment Voucher',
-                    onTap: () => _openTab('Payment', Icons.payment_rounded, const PaymentFormScreen(showHeader: false)),
-                  ),
-                  _buildNavButton(
-                    context: context,
-                    icon: Icons.receipt_long_outlined,
-                    activeIcon: Icons.receipt_long_rounded,
-                    label: 'Reports',
-                    tooltip: 'Reports & Ledger',
-                    isActive: tabController.isReportForm.value,
-                    onTap: () {
-                      tabController.isReportForm.value = !tabController.isReportForm.value;
-                    },
-                  ),
-                ],
-                if (Responsive.isDesktop(context)) ...[
-                  const SizedBox(width: 8),
-                  const SizedBox(width: 160, child: SearchField()),
-                ],
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.person_rounded, size: 20, color: AppColors.primary),
-                  ),
-                  tooltip: 'Account Menu',
-                  onPressed: () => _showAccountMenu(context),
                 ),
-                const SizedBox(width: 8),
-              ],
-              bottom: tabController.isReportForm.value
-                  ? PreferredSize(
-                      preferredSize: const Size.fromHeight(48),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF1F5F9),
-                          border: Border(top: BorderSide(color: AppColors.borderLight)),
-                        ),
-                        child: Row(
-                          children: [
-                            _buildSubNavButton(
-                              icon: Icons.receipt_long_rounded,
-                              label: 'Reports',
-                              onTap: () => _openTab('Reports', Icons.receipt_long_rounded, const ReportScreen(showHeader: false)),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildSubNavButton(
-                              icon: Icons.account_balance_rounded,
-                              label: 'Party Ledger',
-                              onTap: () => _openTab('Party Ledger', Icons.account_balance_rounded, const PartyLedgerFormScreen(showHeader: false)),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildSubNavButton(
-                              icon: Icons.sort_rounded,
-                              label: 'Assort Master',
-                              onTap: () => _openTab('Assort Master', Icons.sort_rounded, const AssortFormScreen(showHeader: false)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Modern Tab Bar Strip
+
+              // 2. Main Workspace
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Modern Clean Top Bar
+                    _buildTopAppBar(context),
+
+                    // Modern Tab Bar Strip
                 Obx(() {
                   if (tabController.tabList.isEmpty) return const SizedBox.shrink();
 
-                  return Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF1F5F9),
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
                       border: Border(bottom: BorderSide(color: AppColors.borderLight, width: 1)),
                     ),
                     padding: const EdgeInsets.only(left: 8, right: 8, top: 4),
@@ -272,7 +143,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: AppColors.surface,
                                       borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                                       boxShadow: [
                                         BoxShadow(
@@ -302,11 +173,13 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                                         tabController.currentIndex.value = i;
                                       },
                                       borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                                      child: Container(
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 250),
+                                        curve: Curves.easeInOut,
                                         margin: const EdgeInsets.only(right: 4),
                                         clipBehavior: Clip.antiAlias,
                                         decoration: BoxDecoration(
-                                          color: isSelected ? Colors.white : Colors.transparent,
+                                          color: isSelected ? AppColors.surface : Colors.transparent,
                                           borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                                           border: isSelected
                                               ? Border.all(color: AppColors.borderLight, width: 1)
@@ -381,6 +254,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                   child: Obx(() {
                     if (tabController.tabList.isNotEmpty) {
                       return IndexedStack(
+                        key: const ValueKey('tab_stack'),
                         index: tabController.currentIndex.value,
                         children: tabController.tabList.map((tab) => tab.view).toList(),
                       );
@@ -405,11 +279,11 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                             ),
                             child: SvgPicture.asset(
                               "assets/images/logo.svg",
-                              colorFilter: const ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
                             ),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Abhinandan Diamond ERP',
                             style: TextStyle(
                               color: AppColors.textPrimary,
@@ -418,7 +292,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
+                          Text(
                             'Select a module from the top navigation bar to begin data entry.',
                             style: TextStyle(
                               color: AppColors.textSecondary,
@@ -466,357 +340,279 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                     );
                   }),
                 ),
+
+                // Modern Sleek Status Bar
+                _buildStatusBar(context),
               ],
             ),
-
-            // Modern Sleek Status Bar
-            bottomNavigationBar: Container(
-              height: 28,
-              decoration: const BoxDecoration(
-                color: Color(0xFF0F172A),
-                border: Border(top: BorderSide(color: Color(0xFF334155), width: 0.5)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.person_outline_rounded, color: Color(0xFF94A3B8), size: 14),
-                      const SizedBox(width: 4),
-                      FutureBuilder<String?>(
-                        future: getUsername(),
-                        builder: (context, snapshot) {
-                          return Text(
-                            snapshot.data ?? 'Admin',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  if (!Responsive.isMobile(context)) ...[
-                    const SizedBox(width: 16),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.cloud_done_outlined, color: Color(0xFF38BDF8), size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          defaultController.baseUrl.split('//').last.split('/').first,
-                          style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const Text(
-                      'Shortcuts: Ctrl+W: Close Tab | Ctrl+Tab: Switch Tab | Alt+A: Add | Alt+S: Save',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 10),
-                    ),
-                    const SizedBox(width: 16),
-                  ] else ...[
-                    const Spacer(),
-                  ],
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.calendar_today_outlined, color: Color(0xFF94A3B8), size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        DateFormat('dd-MM-yyyy').format(DateTime.now()),
-                        style: const TextStyle(color: Colors.white, fontSize: 11),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.access_time_rounded, color: Color(0xFF94A3B8), size: 12),
-                      const SizedBox(width: 4),
-                      StreamBuilder(
-                        stream: Stream.periodic(const Duration(seconds: 1)),
-                        builder: (context, snapshot) {
-                          return Text(
-                            DateFormat('hh:mm:ss a').format(DateTime.now()),
-                            style: const TextStyle(color: Colors.white, fontSize: 11),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ),
-        ),
+        ],
       ),
-    );
+    ),
+  ),
+),
+),
+);
   }
 
-  Widget _buildNavButton({
-    required BuildContext context,
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-    required String tooltip,
-    required VoidCallback onTap,
-    bool isActive = false,
-  }) {
-    final isTablet = Responsive.isTablet(context);
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: isTablet ? 7 : 10, vertical: 6),
-          margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(isActive ? activeIcon : icon, size: 18, color: isActive ? AppColors.primary : AppColors.textPrimary),
-              if (!isTablet) ...[
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                    color: isActive ? AppColors.primary : AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-              decoration: const BoxDecoration(
-                color: Color(0xFF0F172A), // Slate 900
-                border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: SvgPicture.asset(
-                      "assets/images/logo.svg",
-                      colorFilter: const ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Obx(
-                          () => Text(
-                            getCompanyName(defaultController.companyCode.value),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Abhinandan Diamond ERP',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Modules Navigation List
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                children: [
-                  _buildDrawerItem(
-                    icon: Icons.dashboard_rounded,
-                    title: 'Dashboard',
-                    subtitle: 'Financial overview & KPIs',
-                    onTap: () {
-                      Navigator.pop(context);
-                      tabController.tabList.clear();
-                      tabController.isReportForm.value = false;
-                      defaultController.enabledAdvancedDashboard.value = true;
-                    },
-                  ),
-                  const Divider(height: 16, color: AppColors.borderLight),
-                  _buildDrawerItem(
-                    icon: Icons.people_alt_rounded,
-                    title: 'Party Master',
-                    subtitle: 'Manage client & vendor accounts',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Party', Icons.people_alt_rounded, const PartyFormScreen(showHeader: false));
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.shopping_bag_rounded,
-                    title: 'Purchase Entry',
-                    subtitle: 'Rough diamond purchases',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Purchase', Icons.shopping_bag_rounded, const PurchaseFormScreen(showHeader: false));
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.sell_rounded,
-                    title: 'Sale Entry',
-                    subtitle: 'Customer invoice & sales',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Sale', Icons.sell_rounded, const SaleFormScreen(showHeader: false));
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.checklist_rounded,
-                    title: 'Memo Issue',
-                    subtitle: 'Issue parcels on approval/memo',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Memo Issue', Icons.checklist_rounded, const MemoIssFormScreen(showHeader: false));
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.checklist_rtl_rounded,
-                    title: 'Memo Receive',
-                    subtitle: 'Receive parcels on memo',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Memo Receive', Icons.checklist_rtl_rounded, const MemoRecFormScreen(showHeader: false));
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.payment_rounded,
-                    title: 'Payment Voucher',
-                    subtitle: 'Bank & cash payments/receipts',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Payment', Icons.payment_rounded, const PaymentFormScreen(showHeader: false));
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Reports & Inquiries',
-                    subtitle: 'Stock, ledger & outstanding reports',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openTab('Reports', Icons.receipt_long_rounded, const ReportScreen(showHeader: false));
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            // Drawer Bottom Options
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                border: Border(top: BorderSide(color: AppColors.borderLight)),
-              ),
-              child: ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                leading: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.business_rounded, size: 18, color: AppColors.primary),
-                ),
-                title: const Text('Switch Company', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.textMuted),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showProfileOptionsDialog(context);
-                },
-              ),
+  Widget _buildTopAppBar(BuildContext context) {
+    return Obx(() {
+      final isDark = ThemeController.isInitialized ? ThemeController.to.isDarkMode.value : false;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        height: 52,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border(bottom: BorderSide(color: AppColors.borderLight, width: 1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          // Mobile Hamburger Button OR Desktop/Tablet Sidebar Toggle
+          if (Responsive.isMobile(context))
+            Builder(
+              builder: (scaffoldContext) => IconButton(
+                icon: Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+                tooltip: 'Open Menu',
+                onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
+              ),
+            )
+          else
+            Obx(
+              () => Tooltip(
+                message: tabController.isSidebarCollapsed.value
+                    ? 'Expand Sidebar (Ctrl+B)'
+                    : 'Collapse Sidebar (Ctrl+B)',
+                child: InkWell(
+                  onTap: () => tabController.toggleSidebar(),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      tabController.isSidebarCollapsed.value
+                          ? Icons.menu_rounded
+                          : Icons.menu_open_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(width: 12),
+
+          // Active Module / Tab Breadcrumb Badge
+          Obx(() {
+            final activeLabel = tabController.activeTabLabel;
+            final isHome = tabController.tabList.isEmpty;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isHome ? Icons.dashboard_rounded : Icons.diamond_outlined,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        activeLabel,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!Responsive.isDesktop(context)) ...[
+                  const SizedBox(width: 10),
+                  Obx(
+                    () => Text(
+                      '•  ${getCompanyName(defaultController.companyCode.value)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            );
+          }),
+
+          const Spacer(),
+          // Quick Light / Dark Mode Toggle Button
+          Obx(() {
+            final isDark = ThemeController.isInitialized
+                ? ThemeController.to.isDarkMode.value
+                : false;
+            return Tooltip(
+              message: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+              child: InkWell(
+                onTap: () => ThemeController.to.toggleDarkMode(),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(7),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFFFBBF24).withValues(alpha: 0.12)
+                        : AppColors.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+                    size: 18,
+                    color: isDark ? const Color(0xFFFBBF24) : AppColors.primary,
+                  ),
+                ),
+              ),
+            );
+          }),
+
+          // User Profile / Account Menu
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.person_rounded, size: 20, color: AppColors.primary),
+            ),
+            tooltip: 'Account & System Menu',
+            onPressed: () => _showAccountMenu(context),
+          ),
+        ],
       ),
     );
+    });
   }
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      dense: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      leading: Container(
-        padding: const EdgeInsets.all(8),
+  Widget _buildStatusBar(BuildContext context) {
+    return Obx(() {
+      final isDark = ThemeController.isInitialized ? ThemeController.to.isDarkMode.value : false;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        height: 28,
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
+          color: isDark ? const Color(0xFF0B1120) : const Color(0xFF0F172A),
+          border: Border(top: BorderSide(color: isDark ? const Color(0xFF1E293B) : const Color(0xFF334155), width: 0.5)),
         ),
-        child: Icon(icon, size: 18, color: AppColors.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.person_outline_rounded, color: Color(0xFF94A3B8), size: 14),
+              const SizedBox(width: 4),
+              FutureBuilder<String?>(
+                future: getUsername(),
+                builder: (context, snapshot) {
+                  return Text(
+                    snapshot.data ?? 'Admin',
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                  );
+                },
+              ),
+            ],
+          ),
+          if (!Responsive.isMobile(context)) ...[
+            const SizedBox(width: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_done_outlined, color: Color(0xFF38BDF8), size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  defaultController.baseUrl.split('//').last.split('/').first,
+                  style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 11),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Shortcuts: Ctrl+B: Toggle Sidebar | Ctrl+W: Close Tab | Ctrl+Tab: Switch Tab',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+          ] else ...[
+            const Spacer(),
+          ],
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.calendar_today_outlined, color: Color(0xFF94A3B8), size: 12),
+              const SizedBox(width: 4),
+              Text(
+                DateFormat('dd-MM-yyyy').format(DateTime.now()),
+                style: const TextStyle(color: Colors.white, fontSize: 11),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.access_time_rounded, color: Color(0xFF94A3B8), size: 12),
+              const SizedBox(width: 4),
+              StreamBuilder(
+                stream: Stream.periodic(const Duration(seconds: 1)),
+                builder: (context, snapshot) {
+                  return Text(
+                    DateFormat('hh:mm:ss a').format(DateTime.now()),
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+    );
+    });
+  }
+
+  Widget _buildMobileDrawer(BuildContext context) {
+    return const Drawer(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: AppSidebar(
+        isCollapsed: false,
+        onToggleCollapse: _noopCollapse,
+        isDrawer: true,
       ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-      ),
-      onTap: onTap,
     );
   }
 
-  Widget _buildSubNavButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        side: const BorderSide(color: AppColors.borderLight),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      ),
-      icon: Icon(icon, size: 15, color: AppColors.primary),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-      onPressed: onTap,
-    );
-  }
+  static void _noopCollapse() {}
 
   Widget _buildQuickActionButton({
     required IconData icon,
@@ -826,8 +622,8 @@ class DashboardWithDynamicTabs extends StatelessWidget {
     return ActionChip(
       avatar: Icon(icon, size: 16, color: AppColors.primary),
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-      backgroundColor: Colors.white,
-      side: const BorderSide(color: AppColors.borderLight),
+      backgroundColor: AppColors.cardBg,
+      side: BorderSide(color: AppColors.borderLight),
       onPressed: onTap,
     );
   }
@@ -842,12 +638,12 @@ class DashboardWithDynamicTabs extends StatelessWidget {
             width: 400,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.borderLight),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: Colors.black.withValues(alpha: AppColors.isDark ? 0.4 : 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -865,7 +661,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 22),
+                      child: Icon(Icons.business_rounded, color: AppColors.primary, size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -874,12 +670,12 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                         children: [
                           Text(
                             getCompanyName(defaultController.companyCode.value),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             getCompanyDetails(defaultController.companyCode.value).mobileno ?? '',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -890,13 +686,13 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppColors.borderLight),
                   ),
                   child: Text(
                     getCompanyDetails(defaultController.companyCode.value).address ?? 'No Address',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -904,6 +700,10 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: BorderSide(color: AppColors.borderLight),
+                      ),
                       onPressed: () => Get.back(),
                       child: const Text('Close'),
                     ),
@@ -938,11 +738,18 @@ class DashboardWithDynamicTabs extends StatelessWidget {
   }
 
   void _showAccountMenu(BuildContext context) async {
+    final isDark = ThemeController.isInitialized
+        ? ThemeController.to.isDarkMode.value
+        : false;
+
     await showMenu(
       context: context,
-      color: Colors.white,
+      color: AppColors.cardBg,
       elevation: 6,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: AppColors.borderLight),
+      ),
       position: const RelativeRect.fromLTRB(10, 50, 0, 0),
       items: <PopupMenuEntry>[
         PopupMenuItem(
@@ -952,11 +759,11 @@ class DashboardWithDynamicTabs extends StatelessWidget {
             children: [
               Text(
                 getCompanyName(defaultController.companyCode.value),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
               ),
               Text(
                 getCompanyDetails(defaultController.companyCode.value).mobileno ?? '',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -994,6 +801,21 @@ class DashboardWithDynamicTabs extends StatelessWidget {
           child: const ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.palette_outlined, size: 20),
+            title: Text('Theme & Appearance', style: TextStyle(fontSize: 13)),
+          ),
+          onTap: () {
+            Future.delayed(Duration.zero, () {
+              if (context.mounted) {
+                showThemeStudioDialog(context);
+              }
+            });
+          },
+        ),
+        PopupMenuItem(
+          child: const ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.settings_outlined, size: 20),
             title: Text('Settings', style: TextStyle(fontSize: 13)),
           ),
@@ -1007,7 +829,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          child: const ListTile(
+          child: ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.logout_rounded, color: AppColors.danger, size: 20),

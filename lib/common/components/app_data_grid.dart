@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:real_web_rough_entry_system/common/components/app_data_grid_filter_dialog.dart';
 
 /// Standard Enterprise [AppDataGrid] component for all system screens.
 ///
@@ -39,6 +40,10 @@ class AppDataGrid extends StatefulWidget {
 
   // Filtering
   final bool allowFiltering;
+  final bool showActiveFilterBar;
+  final Color? activeFilterIconColor;
+  final Color? filterIconColor;
+  final Color? activeFilterBadgeColor;
 
   // Resizing
   final bool allowColumnsResizing;
@@ -99,6 +104,10 @@ class AppDataGrid extends StatefulWidget {
     this.showSortIcon = false,
     this.sortingGestureType = SortingGestureType.doubleTap,
     this.allowFiltering = true,
+    this.showActiveFilterBar = true,
+    this.activeFilterIconColor,
+    this.filterIconColor,
+    this.activeFilterBadgeColor,
     this.allowColumnsResizing = true,
     this.columnResizeMode = ColumnResizeMode.onResize,
     this.onColumnResizeStart,
@@ -167,7 +176,7 @@ class AppDataGrid extends StatefulWidget {
             Text(
               labelText,
               style: headerStyle ??
-                  const TextStyle(
+                  TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                     color: AppColors.textPrimary,
@@ -262,16 +271,16 @@ class _AppDataGridState extends State<AppDataGrid> {
 
     // 2. Explicit fixed width passed by caller (e.g. width: 140)
     if (!col.width.isNaN && col.width > 0) {
-      return col;
+      return _cloneColumn(col, col.width);
     }
 
     // 3. Explicit ColumnWidthMode.fill specified on column
     if (col.columnWidthMode == ColumnWidthMode.fill) {
-      return col;
+      return _cloneColumn(col, double.nan);
     }
 
     if (!widget.autoFitColumns) {
-      return col;
+      return _cloneColumn(col, col.width);
     }
 
     // 4. Auto-fit based on max value length + header text
@@ -340,11 +349,11 @@ class _AppDataGridState extends State<AppDataGrid> {
     return _cloneColumn(col, optimalWidth.ceilToDouble());
   }
 
-  /// Clones a [GridColumn] with the specified width.
+  /// Clones a [GridColumn] with the specified width and enterprise header filter trigger.
   GridColumn _cloneColumn(GridColumn col, double width) {
     return GridColumn(
       columnName: col.columnName,
-      label: col.label,
+      label: _buildHeaderLabel(col),
       columnWidthMode: col.columnWidthMode,
       visible: col.visible,
       allowSorting: col.allowSorting,
@@ -355,23 +364,287 @@ class _AppDataGridState extends State<AppDataGrid> {
       maximumWidth: col.maximumWidth,
       width: width,
       allowEditing: col.allowEditing,
-      allowFiltering: col.allowFiltering,
+      allowFiltering: false, // We render the custom filter icon inside _buildHeaderLabel
       filterPopupMenuOptions: col.filterPopupMenuOptions,
       filterIconPadding: const EdgeInsets.all(0.0),
     );
   }
 
+  Widget _buildHeaderLabel(GridColumn col) {
+    final bool isFilterable = widget.allowFiltering && col.allowFiltering;
+    if (!isFilterable) {
+      return col.label;
+    }
+
+    final bool isFiltered = widget.source.filterConditions.containsKey(col.columnName);
+
+    return _HeaderFilterCell(
+      column: col,
+      columnLabel: _extractHeaderText(col),
+      isFiltered: isFiltered,
+      onFilterTap: () => _openColumnFilter(col),
+      activeFilterIconColor: widget.activeFilterIconColor,
+      filterIconColor: widget.filterIconColor,
+      activeFilterBadgeColor: widget.activeFilterBadgeColor,
+      child: col.label,
+    );
+  }
+
+  void _openColumnFilter(GridColumn col) {
+    final label = _extractHeaderText(col);
+    AppDataGridFilterDialog.show(
+      context: context,
+      column: col,
+      columnLabel: label,
+      source: widget.source,
+      onApplyRangeFilter: ({num? from, num? to}) {
+        _applyRangeFilter(col.columnName, from: from, to: to);
+      },
+      onApplyCheckboxFilter: (selectedValues) {
+        _applyCheckboxFilter(col.columnName, selectedValues);
+      },
+      onClearFilter: () {
+        _clearFilter(col.columnName);
+      },
+      onSort: (direction) {
+        _sortColumn(col.columnName, direction);
+      },
+      onClearSort: () {
+        _clearSort();
+      },
+    );
+  }
+
+  void _applyRangeFilter(String columnName, {num? from, num? to}) {
+    widget.source.clearFilters(columnName: columnName);
+    if (from != null) {
+      widget.source.addFilter(
+        columnName,
+        FilterCondition(
+          type: FilterType.greaterThanOrEqual,
+          value: from,
+          filterOperator: FilterOperator.and,
+        ),
+      );
+    }
+    if (to != null) {
+      widget.source.addFilter(
+        columnName,
+        FilterCondition(
+          type: FilterType.lessThanOrEqual,
+          value: to,
+          filterOperator: FilterOperator.and,
+        ),
+      );
+    }
+    setState(() {});
+  }
+
+  void _applyCheckboxFilter(String columnName, List<Object?> selectedValues) {
+    widget.source.clearFilters(columnName: columnName);
+    if (selectedValues.isEmpty) {
+      widget.source.addFilter(
+        columnName,
+        const FilterCondition(
+          type: FilterType.equals,
+          value: '__EMPTY_NO_MATCH__',
+          filterOperator: FilterOperator.or,
+        ),
+      );
+    } else {
+      for (final val in selectedValues) {
+        widget.source.addFilter(
+          columnName,
+          FilterCondition(
+            type: FilterType.equals,
+            value: val,
+            filterOperator: FilterOperator.or,
+          ),
+        );
+      }
+    }
+    setState(() {});
+  }
+
+  void _clearFilter(String columnName) {
+    widget.source.clearFilters(columnName: columnName);
+    setState(() {});
+  }
+
+  void _sortColumn(String columnName, DataGridSortDirection direction) {
+    widget.source.sortedColumns.clear();
+    widget.source.sortedColumns.add(
+      SortColumnDetails(name: columnName, sortDirection: direction),
+    );
+    widget.source.sort();
+    setState(() {});
+  }
+
+  void _clearSort() {
+    widget.source.sortedColumns.clear();
+    widget.source.sort();
+    setState(() {});
+  }
+
+  Widget _buildActiveFiltersBar() {
+    final activeCols = widget.source.filterConditions.keys.toList();
+    if (activeCols.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: AppColors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt, size: 14, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(
+            'Active Filters:',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final colName in activeCols)
+                    _buildFilterChip(colName),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              widget.source.clearFilters();
+              setState(() {});
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Clear All',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.danger,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String colName) {
+    final col = widget.columns.firstWhere(
+      (c) => c.columnName == colName,
+      orElse: () => GridColumn(columnName: colName, label: Text(colName)),
+    );
+    final colLabel = _extractHeaderText(col);
+    final conditions = widget.source.filterConditions[colName] ?? [];
+
+    String summary = '';
+    num? fromVal;
+    num? toVal;
+
+    for (final c in conditions) {
+      if ((c.type == FilterType.greaterThanOrEqual || c.type == FilterType.greaterThan) && c.value is num) {
+        fromVal = c.value as num;
+      } else if ((c.type == FilterType.lessThanOrEqual || c.type == FilterType.lessThan) && c.value is num) {
+        toVal = c.value as num;
+      }
+    }
+
+    if (fromVal != null && toVal != null) {
+      summary = '$fromVal to $toVal';
+    } else if (fromVal != null) {
+      summary = '>= $fromVal';
+    } else if (toVal != null) {
+      summary = '<= $toVal';
+    } else if (conditions.isNotEmpty) {
+      if (conditions.length == 1 && conditions.first.type == FilterType.equals) {
+        summary = '= ${conditions.first.value}';
+      } else {
+        summary = '${conditions.length} values';
+      }
+    }
+
+    final bool isDark = AppColors.isDark;
+    final Color activeColor = widget.activeFilterIconColor ??
+        (isDark ? const Color(0xFFFB923C) : const Color(0xFFEA580C));
+    final Color activeBadgeBg = widget.activeFilterBadgeColor ??
+        (isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED));
+    final Color activeBorder = isDark ? const Color(0xFFEA580C) : const Color(0xFFFDBA74);
+
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: activeBadgeBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: activeBorder, width: 1.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.filter_alt,
+            size: 13,
+            color: activeColor,
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: () => _openColumnFilter(col),
+            child: Text(
+              '$colLabel: $summary',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: activeColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: () => _clearFilter(colName),
+            child: Icon(
+              Icons.close,
+              size: 13,
+              color: activeColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   SfDataGridThemeData _buildDefaultTheme(BuildContext context) {
+    final isDark = AppColors.isDark;
+
     return SfDataGridThemeData(
-      headerColor: const Color(0xFFF1F5F9), // Slate 100
-      headerHoverColor: const Color(0xFFE2E8F0), // Slate 200
-      gridLineColor: const Color(0xFFE2E8F0), // Slate 200
+      headerColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+      headerHoverColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+      gridLineColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
       gridLineStrokeWidth: 1.0,
-      rowHoverColor: AppColors.primary.withValues(alpha: 0.06),
-      selectionColor: AppColors.primary.withValues(alpha: 0.14),
+      rowHoverColor: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06),
+      selectionColor: AppColors.primary.withValues(alpha: isDark ? 0.22 : 0.14),
       sortIconColor: AppColors.primary,
       sortIcon: widget.showSortIcon ? null : const SizedBox.shrink(),
-      filterIconColor: const Color(0xFF64748B), // Slate 500
+      filterIconColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
       filterIconHoverColor: AppColors.primary,
       columnResizeIndicatorColor: AppColors.primary,
       columnResizeIndicatorStrokeWidth: 2.0,
@@ -401,7 +674,7 @@ class _AppDataGridState extends State<AppDataGrid> {
         allowMultiColumnSorting: widget.allowMultiColumnSorting,
         showSortNumbers: widget.showSortIcon && widget.showSortNumbers,
         sortingGestureType: widget.sortingGestureType,
-        allowFiltering: widget.allowFiltering,
+        allowFiltering: false, // Handled by AppDataGrid custom filter UI
         allowColumnsResizing: widget.allowColumnsResizing,
         columnResizeMode: widget.columnResizeMode,
         onColumnResizeStart: widget.onColumnResizeStart,
@@ -461,7 +734,140 @@ class _AppDataGridState extends State<AppDataGrid> {
       );
     }
 
+    if (widget.allowFiltering && widget.showActiveFilterBar && widget.source.filterConditions.isNotEmpty) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedHeight) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildActiveFiltersBar(),
+                Expanded(child: gridWidget),
+              ],
+            );
+          } else {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildActiveFiltersBar(),
+                gridWidget,
+              ],
+            );
+          }
+        },
+      );
+    }
+
     return gridWidget;
+  }
+}
+
+/// Header cell widget rendering the column title along with a hoverable/active filter trigger icon.
+class _HeaderFilterCell extends StatefulWidget {
+  final GridColumn column;
+  final String columnLabel;
+  final bool isFiltered;
+  final Widget child;
+  final VoidCallback onFilterTap;
+  final Color? activeFilterIconColor;
+  final Color? filterIconColor;
+  final Color? activeFilterBadgeColor;
+
+  const _HeaderFilterCell({
+    required this.column,
+    required this.columnLabel,
+    required this.isFiltered,
+    required this.child,
+    required this.onFilterTap,
+    this.activeFilterIconColor,
+    this.filterIconColor,
+    this.activeFilterBadgeColor,
+  });
+
+  @override
+  State<_HeaderFilterCell> createState() => _HeaderFilterCellState();
+}
+
+class _HeaderFilterCellState extends State<_HeaderFilterCell> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = AppColors.isDark;
+
+    // Distinct active color (vibrant orange / amber by default)
+    final Color activeColor = widget.activeFilterIconColor ??
+        (isDark ? const Color(0xFFFB923C) : const Color(0xFFEA580C));
+
+    // Distinct active badge background
+    final Color activeBadgeBg = widget.activeFilterBadgeColor ??
+        (isDark ? const Color(0xFF431407) : const Color(0xFFFFF7ED));
+
+    // Distinct active badge border
+    final Color activeBorder = isDark ? const Color(0xFFEA580C) : const Color(0xFFFDBA74);
+
+    // Inactive filter icon color (slate 500, distinct and clear)
+    final Color inactiveColor = widget.filterIconColor ??
+        (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(child: widget.child),
+          GestureDetector(
+            key: ValueKey('grid_filter_icon_${widget.column.columnName}'),
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onFilterTap,
+            child: Tooltip(
+              message: widget.isFiltered
+                  ? 'Active filter on ${widget.columnLabel} (Click to edit/clear)'
+                  : 'Filter ${widget.columnLabel}',
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: widget.isFiltered
+                    ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+                    : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: widget.isFiltered
+                    ? BoxDecoration(
+                        color: activeBadgeBg,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: activeBorder, width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: activeColor.withValues(alpha: 0.18),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      )
+                    : (_isHovered
+                        ? BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              width: 1.0,
+                            ),
+                          )
+                        : null),
+                child: Icon(
+                  widget.isFiltered ? Icons.filter_alt : Icons.filter_alt_outlined,
+                  size: 14,
+                  color: widget.isFiltered
+                      ? activeColor
+                      : (_isHovered ? AppColors.primary : inactiveColor),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

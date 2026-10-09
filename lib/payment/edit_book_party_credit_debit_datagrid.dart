@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/common/input_formatters.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
@@ -67,14 +68,14 @@ class EditBookPartyCreditDebitDataGrid extends DataGridSource {
 
     // Check if the row is the summary row
     bool isSummaryRow =
-    row.getCells().any((cell) => cell.value.toString().contains('Total'));
+        row.getCells().any((cell) => cell.value.toString().contains('Total'));
 
     return DataGridRowAdapter(
       color: isSummaryRow
-          ? Colors.grey
+          ? (AppColors.isDark ? const Color(0xFF334155) : Colors.grey[300])
           : rowIndex % 2 == 0
-          ? Colors.grey[200] // Light color for even rows
-          : null, // White for odd rows
+              ? AppColors.tableRowAlt
+              : AppColors.surface,
       cells: row.getCells().map<Widget>((dataGridCell) {
         return Container(
           alignment: Alignment.centerLeft,
@@ -83,7 +84,9 @@ class EditBookPartyCreditDebitDataGrid extends DataGridSource {
             dataGridCell.value.toString(),
             style: TextStyle(
               fontSize: 12,
-              color: isSummaryRow ? Colors.white : Colors.black,
+              color: isSummaryRow
+                  ? (AppColors.isDark ? Colors.white : Colors.black87)
+                  : AppColors.textPrimary,
               fontWeight: isSummaryRow
                   ? FontWeight.bold
                   : FontWeight.normal, // Bold for summary row
@@ -316,14 +319,14 @@ class EditBookPartyCreditDebitDataGrid extends DataGridSource {
 
     return Container(
       alignment: /*isFirstColumn ? Alignment.centerLeft : */
-      Alignment.centerLeft,
+          Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 5.0),
       child: Text(
         /*isFirstColumn ? 'Total' :*/
         summaryValue, // 'Total' in the first column
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Colors.black,
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),

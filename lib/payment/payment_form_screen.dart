@@ -760,7 +760,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                 const SizedBox(width: 8),
                 Text(
                   p.partyName ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
                 ),
               ],
             ),
@@ -813,35 +813,38 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: !_isEnabled ? () => _enableFields() : null,
-      onSave: _isEnabled ? _handleSave : null,
-      onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
-      onCancel: _isEnabled ? _handleCancel : null,
-      onExit: () {
-        if (_isSearch) {
-          setState(() => _isSearch = false);
-        } else {
-          tabController.closeCurrentTab();
-        }
-      },
-      onSearch: () {
-        setState(() {
-          _isSearch = !_isSearch;
-        });
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) Header(title: _isSearch ? 'Payment Search' : 'Payment Voucher'),
-            Expanded(
-              child: _isSearch ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? () => _enableFields() : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: _isEnabled ? _handleCancel : null,
+        onExit: () {
+          if (_isSearch) {
+            setState(() => _isSearch = false);
+          } else {
+            tabController.closeCurrentTab();
+          }
+        },
+        onSearch: () {
+          setState(() {
+            _isSearch = !_isSearch;
+          });
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) Header(title: _isSearch ? 'Payment Search' : 'Payment Voucher'),
+              Expanded(
+                child: _isSearch ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==================== SEARCH / DIRECTORY VIEW ====================
@@ -878,8 +881,8 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
           // Filter Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
           child: LayoutBuilder(
@@ -890,7 +893,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   label: 'From Date',
                   controller: fromDateController,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -911,7 +914,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   label: 'To Date',
                   controller: toDateController,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -975,6 +978,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
               }
 
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(child: dateFields[0]),
                   const SizedBox(width: 12),
@@ -987,7 +991,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
           ),
           ),
           Obx(() => defaultController.isLoading.value
-              ? const LinearProgressIndicator(color: AppColors.primary, minHeight: 2)
+              ? LinearProgressIndicator(color: AppColors.primary, minHeight: 2)
               : const SizedBox.shrink()),
           // Table of Vouchers
           Expanded(
@@ -997,7 +1001,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: AppColors.border),
+                  side: BorderSide(color: AppColors.border),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -1086,7 +1090,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
@@ -1101,13 +1105,13 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.payment_rounded, size: 20, color: AppColors.primary),
+                child: Icon(Icons.payment_rounded, size: 20, color: AppColors.primary),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Payment / Receipt Voucher',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
@@ -1115,7 +1119,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                     _isFromEdit
                         ? 'Editing Voucher #${selectedPaymentMstID.value}'
                         : (_isEnabled ? 'New Voucher Entry' : 'Press [Alt+A] to create a new voucher'),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -1205,14 +1209,14 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'VOUCHER IDENTIFICATION',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 0.5),
             ),
@@ -1226,7 +1230,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                     label: 'MST ID',
                     controller: mstIdController,
                     enabled: false,
-                    prefixIcon: const Icon(Icons.tag_rounded, size: 16, color: AppColors.textSecondary),
+                    prefixIcon: Icon(Icons.tag_rounded, size: 16, color: AppColors.textSecondary),
                   ),
                 );
 
@@ -1245,7 +1249,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                     nextFocusNode: _checkNoFocus,
                     enabled: _isEnabled,
                     readOnly: true,
-                    prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                    prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
                     onTap: _isEnabled ? _openDatePicker : null,
                   ),
                 );
@@ -1256,7 +1260,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   focusNode: _checkNoFocus,
                   nextFocusNode: _bookPartyFocNode,
                   enabled: _isEnabled,
-                  prefixIcon: const Icon(Icons.receipt_long_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.receipt_long_rounded, size: 16, color: AppColors.textSecondary),
                 );
 
                 if (constraints.maxWidth >= 750) {
@@ -1321,7 +1325,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                         pCode != null ? getPartyName(pCode) : '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                       );
                     },
                     onChanged: _onBookPartyChanged,
@@ -1334,7 +1338,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                     label: 'Book Balance',
                     controller: balance1Controller,
                     enabled: false,
-                    prefixIcon: const Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.textSecondary),
+                    prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.textSecondary),
                   ),
                 );
 
@@ -1354,7 +1358,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                         pCode != null ? getPartyName(pCode) : '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                       );
                     },
                     onChanged: _onAccountPartyChanged,
@@ -1367,7 +1371,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                     label: 'Account Balance',
                     controller: balance2Controller,
                     enabled: false,
-                    prefixIcon: const Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.textSecondary),
+                    prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.textSecondary),
                   ),
                 );
 
@@ -1430,14 +1434,14 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'PAYMENT / RECEIPT AMOUNT',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 0.5),
             ),
@@ -1452,12 +1456,12 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   focusNode: _jamaCreditFocus,
                   enabled: _isEnabled && _isCreditEnabled,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  prefixIcon: const Icon(Icons.arrow_downward_rounded, size: 16, color: AppColors.success),
+                  prefixIcon: Icon(Icons.arrow_downward_rounded, size: 16, color: AppColors.success),
                   onFieldSubmitted: (_) {
                     if (_isDebitEnabled) {
-                      _udharDebitFocus.requestFocus();
+                       _udharDebitFocus.requestFocus();
                     } else {
-                      _remarks1Focus.requestFocus();
+                       _remarks1Focus.requestFocus();
                     }
                   },
                 );
@@ -1468,7 +1472,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   focusNode: _udharDebitFocus,
                   enabled: _isEnabled && _isDebitEnabled,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  prefixIcon: const Icon(Icons.arrow_upward_rounded, size: 16, color: AppColors.danger),
+                  prefixIcon: Icon(Icons.arrow_upward_rounded, size: 16, color: AppColors.danger),
                   onFieldSubmitted: (_) => _remarks1Focus.requestFocus(),
                 );
 
@@ -1477,7 +1481,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
                   controller: remarks1Controller,
                   focusNode: _remarks1Focus,
                   enabled: _isEnabled,
-                  prefixIcon: const Icon(Icons.notes_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.notes_rounded, size: 16, color: AppColors.textSecondary),
                   onFieldSubmitted: (_) {
                     if (selectedTypeBookParty.isNotEmpty && selectedTypeAccountParty.isNotEmpty) {
                       _remarks1Focus.unfocus();
@@ -1554,7 +1558,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1567,11 +1571,11 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.table_chart_outlined, size: 16, color: AppColors.primary),
+                    Icon(Icons.table_chart_outlined, size: 16, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
                       'BOOK OUTSTANDING (${bookPartyCreditDebitDataGridSource.length})',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                   ],
                 ),
@@ -1653,7 +1657,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1666,11 +1670,11 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.table_chart_outlined, size: 16, color: AppColors.primary),
+                    Icon(Icons.table_chart_outlined, size: 16, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
                       'ACCOUNT OUTSTANDING (${accountPartyCreditDebitDataGridSource.length})',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                   ],
                 ),
@@ -1760,7 +1764,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              Text(label, style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
               Text('₹ $val', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
@@ -1773,7 +1777,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
@@ -1945,7 +1949,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
       alignment: Alignment.center,
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 11,
           color: AppColors.textPrimary,

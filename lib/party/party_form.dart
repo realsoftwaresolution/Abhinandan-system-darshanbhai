@@ -402,7 +402,7 @@ class PartyFormState extends State<PartyForm> {
         value: partyType.typeCode.toString(),
         child: Text(
           partyType.typeName ?? '',
-          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
         ),
       );
     }).toList();
@@ -410,30 +410,33 @@ class PartyFormState extends State<PartyForm> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: !_isEnabled ? () => _enableFields() : null,
-      onSave: _isEnabled ? _handleSave : null,
-      onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
-      onCancel: (_isEnabled || _isFromEdit) ? _clearFormFields : null,
-      onExit: () => tabController.closeCurrentTab(),
-      onSearch: () {
-        setState(() {
-          _isSearchMode = !_isSearchMode;
-        });
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader)
-              Header(title: _isSearchMode ? 'Party Master Search' : 'Party Master Entry'),
-            Expanded(
-              child: _isSearchMode ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? () => _enableFields() : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: (_isEnabled || _isFromEdit) ? _clearFormFields : null,
+        onExit: () => tabController.closeCurrentTab(),
+        onSearch: () {
+          setState(() {
+            _isSearchMode = !_isSearchMode;
+          });
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader)
+                Header(title: _isSearchMode ? 'Party Master Search' : 'Party Master Entry'),
+              Expanded(
+                child: _isSearchMode ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==================== SEARCH / DEDICATED DATAGRID VIEW ====================
@@ -442,8 +445,8 @@ class PartyFormState extends State<PartyForm> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
             border: Border(bottom: BorderSide(color: AppColors.borderLight)),
           ),
           child: LayoutBuilder(
@@ -497,6 +500,7 @@ class PartyFormState extends State<PartyForm> {
                       ],
                     )
                   : Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Expanded(child: searchField),
                         const SizedBox(width: 12),
@@ -529,10 +533,10 @@ class PartyFormState extends State<PartyForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.person_outline_rounded, size: 18, color: AppColors.primary),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           'Basic Information',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -813,10 +817,10 @@ class PartyFormState extends State<PartyForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.badge_outlined, size: 18, color: AppColors.primary),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           'Tax & Legal Identification',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -964,10 +968,10 @@ class PartyFormState extends State<PartyForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.account_balance_outlined, size: 18, color: AppColors.primary),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           'Banking Details & Opening Balance',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -1209,12 +1213,12 @@ class PartyFormState extends State<PartyForm> {
                         final titleWidget = Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.list_alt_rounded, size: 18, color: AppColors.primary),
+                            Icon(Icons.list_alt_rounded, size: 18, color: AppColors.primary),
                             const SizedBox(width: 8),
                             Obx(
                               () => Text(
                                 'Party Directory (${partyGridList.length})',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                               ),
                             ),
                           ],

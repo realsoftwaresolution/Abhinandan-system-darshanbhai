@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
@@ -98,9 +99,9 @@ class StockReportDataGrid extends DataGridSource {
       child: Text(
         /*isFirstColumn ? 'Total' :*/
         summaryValue, // 'Total' in the first column
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Colors.black,
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -117,15 +118,18 @@ class StockReportDataGrid extends DataGridSource {
 
     return DataGridRowAdapter(
       color: rowIndex % 2 == 0
-          ? Colors.grey[200] // Light color for even rows
-          : null, // White for odd rows
+          ? AppColors.tableRowAlt
+          : AppColors.surface,
       cells: row.getCells().map<Widget>((dataGridCell) {
         return Container(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 5.0),
           child: Text(
             dataGridCell.value.toString(),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+            ),
           ),
         );
       }).toList(),

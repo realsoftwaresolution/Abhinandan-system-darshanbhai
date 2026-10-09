@@ -267,10 +267,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.inventory_2_rounded, color: AppColors.primary, size: 20),
+                          child: Icon(Icons.inventory_2_rounded, color: AppColors.primary, size: 20),
                         ),
                         const SizedBox(width: 12),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
@@ -400,7 +400,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       ),
                       child: Text(
                         'Total Pending Wt: ${MemoIssueDetailsDataGridSource(allRoughDetails).totalWt.toStringAsFixed(3)} Cts',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.primary),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.primary),
                       ),
                     ),
                     AppButton(
@@ -734,7 +734,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
             seen.add(p.partyCode!))
         .map((p) => DropdownMenuItem<String>(
               value: p.partyCode.toString(),
-              child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
             ))
         .toList();
   }
@@ -749,7 +749,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
             seen.add(p.partyCode!))
         .map((p) => DropdownMenuItem<String>(
               value: p.partyCode.toString(),
-              child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
             ))
         .toList();
   }
@@ -758,53 +758,56 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isSearch) {
-      return _buildSearchView();
-    }
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      if (_isSearch) {
+        return _buildSearchView();
+      }
 
-    return AppKeyboardShortcutHandler(
-      onAdd: !_isEnabled ? _enableFields : null,
-      onSave: _isEnabled ? _handleSave : null,
-      onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
-      onCancel: _isEnabled ? _handleCancel : null,
-      onSearch: () => setState(() => _isSearch = true),
-      onPrint: _isFromEdit ? _handlePrint : null,
-      onExit: () => tabController.removeTab(tabController.currentIndex.value),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: Responsive.isMobile(context) ? 10 : 20,
-            vertical: Responsive.isMobile(context) ? 10 : 16,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.showHeader) ...[
-                const Header(title: 'Memo Receive'),
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? _enableFields : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: _isEnabled ? _handleCancel : null,
+        onSearch: () => setState(() => _isSearch = true),
+        onPrint: _isFromEdit ? _handlePrint : null,
+        onExit: () => tabController.removeTab(tabController.currentIndex.value),
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.isMobile(context) ? 10 : 20,
+              vertical: Responsive.isMobile(context) ? 10 : 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.showHeader) ...[
+                  const Header(title: 'Memo Receive'),
+                  const SizedBox(height: 16),
+                ],
+
+                // Card 1: Memo Receive Header
+                _buildHeaderCard(),
                 const SizedBox(height: 16),
+
+                // Card 2: Received Items Input Bar
+                _buildRoughInputCard(),
+                const SizedBox(height: 16),
+
+                // Card 3: Received Items Table & Summary Bar
+                _buildItemsTableCard(),
+                const SizedBox(height: 20),
+
+                // Card 4: Action Buttons Bar
+                _buildActionBar(),
+                const SizedBox(height: 24),
               ],
-
-              // Card 1: Memo Receive Header
-              _buildHeaderCard(),
-              const SizedBox(height: 16),
-
-              // Card 2: Received Items Input Bar
-              _buildRoughInputCard(),
-              const SizedBox(height: 16),
-
-              // Card 3: Received Items Table & Summary Bar
-              _buildItemsTableCard(),
-              const SizedBox(height: 20),
-
-              // Card 4: Action Buttons Bar
-              _buildActionBar(),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==================== CARD 1: HEADER ====================
@@ -834,10 +837,10 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 18),
+                    child: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 18),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Memo Receive Header',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                   ),
@@ -853,7 +856,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                   ),
                   child: Text(
                     'Editing Voucher #${selectedMemoRecMstID.value}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.warning),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.warning),
                   ),
                 ),
             ],
@@ -896,7 +899,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                   nextFocusNode: _brokerFocus,
                   enabled: _isEnabled && !_isFromEdit,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
                   onTap: (_isEnabled && !_isFromEdit) ? _openDatePicker : null,
                 ),
               );
@@ -928,14 +931,14 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       () => OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          side: const BorderSide(color: AppColors.primary),
+                          side: BorderSide(color: AppColors.primary),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           backgroundColor: AppColors.primary.withValues(alpha: 0.05),
                         ),
-                        icon: const Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.primary),
+                        icon: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.primary),
                         label: Text(
                           allRoughDetails.isEmpty ? 'Select Pending Items' : 'Pending Items (${allRoughDetails.length})',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                         ),
                         onPressed: _openPendingItemsDialog,
                       ),
@@ -1039,16 +1042,16 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                         color: AppColors.brandRed.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Icon(Icons.diamond_rounded, color: AppColors.brandRed, size: 18),
+                      child: Icon(Icons.diamond_rounded, color: AppColors.brandRed, size: 18),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'Item Details & Auto-Loss Calc',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                     ),
                   ],
                 ),
-                const Text(
+                Text(
                   'Loss Wt = Iss Wt - Rec Wt | Amount = Rec Wt × Rate',
                   style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.textMuted),
                 ),
@@ -1238,12 +1241,12 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Icon(Icons.table_chart_rounded, color: AppColors.success, size: 18),
+                    child: Icon(Icons.table_chart_rounded, color: AppColors.success, size: 18),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Received Items List (${recEntries.length})',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                   ),
                 ],
               );
@@ -1297,12 +1300,12 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       children: [
                         Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.textMuted.withValues(alpha: 0.6)),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'No received items added yet.',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 2),
-                        const Text(
+                        Text(
                           'Select Party and Broker above to pick pending items from the memo issue register.',
                           style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                         ),
@@ -1349,7 +1352,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                               for (int i = 0; i < recEntries.length; i++)
                                 TableRow(
                                   decoration: BoxDecoration(
-                                    color: i.isEven ? Colors.white : const Color(0xFFFAFAFA),
+                                    color: i.isEven ? AppColors.surface : AppColors.tableRowAlt,
                                   ),
                                   children: [
                                     _buildTableCell('${i + 1}', align: TextAlign.center),
@@ -1370,13 +1373,13 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           IconButton(
-                                            icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                                            icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
                                             splashRadius: 16,
                                             tooltip: 'Edit Item',
                                             onPressed: _isEnabled ? () => _editEntry(i) : null,
                                           ),
                                           IconButton(
-                                            icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                                            icon: Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
                                             splashRadius: 16,
                                             tooltip: 'Delete Item',
                                             onPressed: _isEnabled ? () => _deleteEntry(i) : null,
@@ -1429,7 +1432,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label: ', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+          Text('$label: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
           Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         ],
       ),
@@ -1444,7 +1447,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
         child: Text(
           text,
           textAlign: align,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
         ),
       ),
     );
@@ -1600,7 +1603,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       label: 'From Date',
                       controller: fromDateController,
                       readOnly: true,
-                      prefixIcon: const Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
+                      prefixIcon: Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -1622,7 +1625,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                       label: 'To Date',
                       controller: toDateController,
                       readOnly: true,
-                      prefixIcon: const Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
+                      prefixIcon: Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -1683,6 +1686,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
                     }
 
                     return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Expanded(child: fromDateField),
                         const SizedBox(width: 12),

@@ -414,7 +414,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     return defaultController.roughModel
         .map((item) => DropdownMenuItem<String>(
               value: item.roughTypeCode.toString(),
-              child: Text(item.roughTypeName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              child: Text(item.roughTypeName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
             ))
         .toList();
   }
@@ -429,7 +429,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
             seen.add(p.partyCode!))
         .map((p) => DropdownMenuItem<String>(
               value: p.partyCode.toString(),
-              child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
             ))
         .toList();
   }
@@ -444,7 +444,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
             seen.add(p.partyCode!))
         .map((p) => DropdownMenuItem<String>(
               value: p.partyCode.toString(),
-              child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
             ))
         .toList();
   }
@@ -453,36 +453,39 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: !_isEnabled ? () => _enableFields() : null,
-      onSave: _isEnabled ? _handleSave : null,
-      onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
-      onCancel: _isEnabled ? _handleCancel : null,
-      onExit: () {
-        if (_isSearch) {
-          setState(() => _isSearch = false);
-        } else {
-          tabController.closeCurrentTab();
-        }
-      },
-      onSearch: () {
-        setState(() {
-          _isSearch = !_isSearch;
-        });
-      },
-      onPrint: _isFromEdit ? _handlePrint : null,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) Header(title: _isSearch ? 'Memo Issue Search' : 'Memo Issue Entry'),
-            Expanded(
-              child: _isSearch ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? () => _enableFields() : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: _isEnabled ? _handleCancel : null,
+        onExit: () {
+          if (_isSearch) {
+            setState(() => _isSearch = false);
+          } else {
+            tabController.closeCurrentTab();
+          }
+        },
+        onSearch: () {
+          setState(() {
+            _isSearch = !_isSearch;
+          });
+        },
+        onPrint: _isFromEdit ? _handlePrint : null,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) Header(title: _isSearch ? 'Memo Issue Search' : 'Memo Issue Entry'),
+              Expanded(
+                child: _isSearch ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==================== SEARCH / DIRECTORY VIEW ====================
@@ -519,8 +522,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
           // Filter Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
           child: LayoutBuilder(
@@ -531,7 +534,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   label: 'From Date',
                   controller: fromDateController,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -552,7 +555,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   label: 'To Date',
                   controller: toDateController,
                   readOnly: true,
-                  prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -616,6 +619,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
               }
 
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(child: dateFields[0]),
                   const SizedBox(width: 12),
@@ -631,7 +635,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
           ),
           ),
           Obx(() => defaultController.isLoading.value
-              ? const LinearProgressIndicator(color: AppColors.primary, minHeight: 2)
+              ? LinearProgressIndicator(color: AppColors.primary, minHeight: 2)
               : const SizedBox.shrink()),
           // Table of Memos
           Expanded(
@@ -641,7 +645,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: AppColors.border),
+                  side: BorderSide(color: AppColors.border),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -729,7 +733,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
@@ -745,13 +749,13 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.outbox_rounded, size: 20, color: AppColors.primary),
+                child: Icon(Icons.outbox_rounded, size: 20, color: AppColors.primary),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Memo Issue Entry',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
@@ -759,7 +763,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                     _isFromEdit
                         ? 'Editing Memo #${selectedMemoIssueMstID.value}'
                         : (_isEnabled ? 'New Memo Issue' : 'Press [Alt+A] to create a new memo'),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -850,14 +854,14 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'MEMO IDENTIFICATION & PARTIES',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 0.5),
             ),
@@ -896,7 +900,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                     nextFocusNode: _brokerFocus,
                     enabled: _isEnabled && !_isFromEdit,
                     readOnly: true,
-                    prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                    prefixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
                     onTap: (_isEnabled && !_isFromEdit) ? _openDatePicker : null,
                   ),
                 );
@@ -968,7 +972,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -978,7 +982,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'ROUGH ITEM ENTRY (Press Enter to Add Row)',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 0.5),
                 ),
@@ -991,7 +995,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text('Editing Item #${selectedRoughId.value}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.warning)),
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -1023,7 +1027,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   focusNode: _descFocus,
                   nextFocusNode: _wtFocus,
                   enabled: _isEnabled,
-                  prefixIcon: const Icon(Icons.description_outlined, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.description_outlined, size: 16, color: AppColors.textSecondary),
                 );
 
                 final wtField = AppTextField(
@@ -1034,7 +1038,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   enabled: _isEnabled,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,3}'))],
-                  prefixIcon: const Icon(Icons.scale_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.scale_rounded, size: 16, color: AppColors.textSecondary),
                 );
 
                 final rateField = AppTextField(
@@ -1044,7 +1048,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   enabled: _isEnabled,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,3}'))],
-                  prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.currency_rupee_rounded, size: 16, color: AppColors.textSecondary),
                   onFieldSubmitted: (_) => addEntry(),
                 );
 
@@ -1052,7 +1056,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   label: 'Amount (Rs)',
                   controller: amountController,
                   enabled: false,
-                  prefixIcon: const Icon(Icons.calculate_outlined, size: 16, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.calculate_outlined, size: 16, color: AppColors.textSecondary),
                 );
 
                 final addButton = Obx(
@@ -1152,7 +1156,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1164,11 +1168,11 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                 final titleWidget = Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.format_list_bulleted_rounded, size: 16, color: AppColors.primary),
+                    Icon(Icons.format_list_bulleted_rounded, size: 16, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
                       'MEMO ITEMS LIST (${entries.length})',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                   ],
                 );
@@ -1215,11 +1219,11 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.diamond_outlined, size: 28, color: AppColors.textMuted),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text('No rough items added yet', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     Text('Select a rough type, weight, rate, and press Enter to add', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                   ],
@@ -1263,7 +1267,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                           for (int i = 0; i < entries.length; i++)
                             TableRow(
                               decoration: BoxDecoration(
-                                color: i % 2 == 0 ? Colors.white : const Color(0xFFF8FAFC),
+                                color: i % 2 == 0 ? AppColors.surface : AppColors.tableRowAlt,
                               ),
                               children: [
                                 _buildTableCell('${i + 1}', align: TextAlign.center),
@@ -1281,8 +1285,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                         InkWell(
                                           onTap: () => _editRoughEntry(i),
                                           borderRadius: BorderRadius.circular(4),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(4),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4),
                                             child: Icon(Icons.edit_outlined, size: 15, color: AppColors.primary),
                                           ),
                                         ),
@@ -1290,8 +1294,8 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
                                         InkWell(
                                           onTap: () => _deleteRoughEntry(i),
                                           borderRadius: BorderRadius.circular(4),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(4),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4),
                                             child: Icon(Icons.delete_outline_rounded, size: 15, color: AppColors.danger),
                                           ),
                                         ),
@@ -1337,7 +1341,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
@@ -1350,7 +1354,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Text(
           text,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           textAlign: align,
         ),
       ),
@@ -1378,7 +1382,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
@@ -1472,7 +1476,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
       alignment: Alignment.center,
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 11,
           color: AppColors.textPrimary,

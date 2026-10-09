@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/memo%20issue/memo_issue_model.dart';
@@ -73,9 +74,9 @@ class MemoIssueDataGridSource extends DataGridSource {
         /*isFirstColumn ? 'Total' :*/
         summaryValue,
         // isFirstColumn ? summaryValue : double.tryParse(summaryValue)!.toStringAsFixed(2), // 'Total' in the first column
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Colors.black,
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -92,15 +93,18 @@ class MemoIssueDataGridSource extends DataGridSource {
 
     return DataGridRowAdapter(
       color: rowIndex % 2 == 0
-          ? Colors.grey[200] // Light color for even rows
-          : null, // White for odd rows
+          ? AppColors.tableRowAlt
+          : AppColors.surface,
       cells: row.getCells().map<Widget>((dataGridCell) {
         return Container(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 5.0),
           child: Text(
             dataGridCell.value.toString(),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+            ),
           ),
         );
       }).toList(),

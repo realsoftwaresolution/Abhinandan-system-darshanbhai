@@ -319,7 +319,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
               ),
               child: Text(
                 'Tot: ${(p.tWeight ?? 0).toStringAsFixed(2)} Ct',
-                style: const TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(width: 8),
@@ -357,25 +357,28 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: _enableFields,
-      onSave: _saveVoucher,
-      onDelete: _isFromEdit ? _deleteVoucher : null,
-      onCancel: _cancel,
-      onSearch: _toggleSearch,
-      onExit: _exitScreen,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) Header(title: _isSearch ? 'Rough Assort Search' : 'Rough Assort Entry'),
-            Expanded(
-              child: _isSearch ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: _enableFields,
+        onSave: _saveVoucher,
+        onDelete: _isFromEdit ? _deleteVoucher : null,
+        onCancel: _cancel,
+        onSearch: _toggleSearch,
+        onExit: _exitScreen,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) Header(title: _isSearch ? 'Rough Assort Search' : 'Rough Assort Entry'),
+              Expanded(
+                child: _isSearch ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildFormView() {
@@ -416,9 +419,9 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.inventory_2_rounded, size: 18, color: AppColors.primary),
+              Icon(Icons.inventory_2_rounded, size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Parcel Identification & Real-Time Balances',
                 style: TextStyle(
                   fontSize: 14,
@@ -435,7 +438,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.warning),
                   ),
-                  child: const Text(
+                  child: Text(
                     'EDIT MODE',
                     style: TextStyle(
                       fontSize: 10,
@@ -446,7 +449,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                 ),
             ],
           ),
-          const Divider(height: 20, color: AppColors.borderLight),
+          Divider(height: 20, color: AppColors.borderLight),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -558,10 +561,10 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.add_shopping_cart_rounded, size: 16, color: AppColors.primary),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'Add Assort Item Entry',
                 style: TextStyle(
@@ -570,7 +573,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              Spacer(),
+              const Spacer(),
               Text(
                 'Press Enter on Rate to add row',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontStyle: FontStyle.italic),
@@ -666,9 +669,9 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                const Icon(Icons.table_chart_rounded, size: 16, color: AppColors.primary),
+                Icon(Icons.table_chart_rounded, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Assorted Items Register',
                   style: TextStyle(
                     fontSize: 13,
@@ -686,13 +689,13 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                   ),
                   child: Text(
                     'Lines: ${entries.length}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.borderLight),
+          Divider(height: 1, color: AppColors.borderLight),
           if (entries.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32.0),
@@ -701,7 +704,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                   children: [
                     Icon(Icons.format_list_bulleted_rounded, size: 40, color: AppColors.textMuted.withValues(alpha: 0.5)),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'No assort items added yet',
                       style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                     ),
@@ -711,7 +714,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
             )
           else ...[
             Table(
-              border: const TableBorder.symmetric(
+              border: TableBorder.symmetric(
                 inside: BorderSide(color: AppColors.borderLight, width: 1),
               ),
               columnWidths: const {
@@ -737,7 +740,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                 for (int i = 0; i < entries.length; i++)
                   TableRow(
                     decoration: BoxDecoration(
-                      color: i % 2 == 0 ? Colors.white : AppColors.tableRowAlt,
+                      color: i % 2 == 0 ? AppColors.surface : AppColors.tableRowAlt,
                     ),
                     children: [
                       _tableDataCell('${i + 1}', alignment: Alignment.center),
@@ -751,7 +754,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                              icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
                               tooltip: 'Edit Row',
                               onPressed: () {
                                 if (_isFromEdit) {
@@ -767,7 +770,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                              icon: Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
                               tooltip: 'Delete Row',
                               onPressed: () {
                                 if (_isFromEdit) {
@@ -797,7 +800,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                 TableRow(
                   decoration: BoxDecoration(
                     color: AppColors.primaryLight.withValues(alpha: 0.1),
-                    border: const Border(top: BorderSide(color: AppColors.primary, width: 1.5)),
+                    border: Border(top: BorderSide(color: AppColors.primary, width: 1.5)),
                   ),
                   children: [
                     _tableDataCell('', alignment: Alignment.center),
@@ -822,7 +825,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
       alignment: alignment,
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 12,
           color: AppColors.textPrimary,
@@ -905,11 +908,11 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
           Obx(() {
             final isLoading = defaultController.isLoading.value || defaultController.isDeleteLoading.value;
             if (isLoading) {
-              return const Row(
+              return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CupertinoActivityIndicator(radius: 8),
-                  SizedBox(width: 8),
+                  const CupertinoActivityIndicator(radius: 8),
+                  const SizedBox(width: 8),
                   Text('Saving...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 ],
               );
@@ -941,7 +944,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
                     label: 'Search Rough Assort Register',
                     controller: searchController,
                     hintText: 'Filter by invoice number...',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 16, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search_rounded, size: 16, color: AppColors.textMuted),
                     onChanged: _filterSearch,
                     suffixIcon: searchController.text.isNotEmpty
                         ? IconButton(

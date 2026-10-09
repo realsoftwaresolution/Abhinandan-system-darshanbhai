@@ -87,24 +87,26 @@ class AppTextField extends StatelessWidget {
             (suffixIcon != null ? const BoxConstraints(minWidth: 32, minHeight: 32) : null),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.border, width: 1),
+          borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : AppColors.border, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.border, width: 1),
+          borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : AppColors.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.border, width: 1),
+          borderSide: BorderSide(color: AppColors.isDark ? AppColors.border : AppColors.borderLight, width: 1),
         ),
         isDense: isDense,
         contentPadding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         filled: true,
-        fillColor: enabled ? Colors.white : const Color(0xFFF1F5F9),
+        fillColor: enabled
+            ? (AppColors.isDark ? AppColors.inputBg : Colors.white)
+            : (AppColors.isDark ? AppColors.inputBgDisabled : const Color(0xFFF1F5F9)),
       ),
       onTap: onTap,
       onChanged: onChanged,
@@ -127,10 +129,10 @@ class AppTextField extends StatelessWidget {
         children: [
           Text(
             label!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: AppColors.isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 5),

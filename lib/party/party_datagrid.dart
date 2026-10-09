@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/party/party_type_model.dart';
@@ -47,11 +48,11 @@ class PartyDataGridSource extends DataGridSource {
     // Get the index of the current row
     int rowIndex = rows.indexOf(row);
 
-    // Alternate row colors: light grey for even rows, white for odd rows
+    // Alternate row colors: AppColors.tableRowAlt for even rows, AppColors.surface for odd rows
     return DataGridRowAdapter(
       color: rowIndex % 2 == 0
-          ? Colors.grey[200] // Light grey for even rows
-          : null, // White for odd rows
+          ? AppColors.tableRowAlt
+          : AppColors.surface,
       cells: [
         for (var cell in row.getCells())
           cell.columnName == 'Active'
@@ -68,7 +69,10 @@ class PartyDataGridSource extends DataGridSource {
                   padding: const EdgeInsets.symmetric(horizontal: 5.0),
                   child: Text(
                     cell.value.toString(),
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
       ],

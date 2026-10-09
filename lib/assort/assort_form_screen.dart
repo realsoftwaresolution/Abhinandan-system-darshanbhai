@@ -205,25 +205,28 @@ class AssortFormScreenState extends State<AssortFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: _enableFields,
-      onSave: _saveAssort,
-      onDelete: _isFromEdit ? _deleteAssort : null,
-      onCancel: _cancel,
-      onSearch: _toggleSearch,
-      onExit: _exitScreen,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) Header(title: _isSearch ? 'Assort Directory Search' : 'Assort Master'),
-            Expanded(
-              child: _isSearch ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: _enableFields,
+        onSave: _saveAssort,
+        onDelete: _isFromEdit ? _deleteAssort : null,
+        onCancel: _cancel,
+        onSearch: _toggleSearch,
+        onExit: _exitScreen,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) Header(title: _isSearch ? 'Assort Directory Search' : 'Assort Master'),
+              Expanded(
+                child: _isSearch ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildFormView() {
@@ -267,9 +270,9 @@ class AssortFormScreenState extends State<AssortFormScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.category_rounded, size: 18, color: AppColors.primary),
+              Icon(Icons.category_rounded, size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Assort Master Details',
                 style: TextStyle(
                   fontSize: 14,
@@ -286,7 +289,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.warning),
                   ),
-                  child: const Text(
+                  child: Text(
                     'EDIT MODE',
                     style: TextStyle(
                       fontSize: 10,
@@ -297,7 +300,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
                 ),
             ],
           ),
-          const Divider(height: 24, color: AppColors.borderLight),
+          Divider(height: 24, color: AppColors.borderLight),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -411,11 +414,11 @@ class AssortFormScreenState extends State<AssortFormScreen> {
           Obx(() {
             final isLoading = defaultController.isLoading.value || defaultController.isDeleteLoading.value;
             if (isLoading) {
-              return const Row(
+              return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CupertinoActivityIndicator(radius: 8),
-                  SizedBox(width: 8),
+                  const CupertinoActivityIndicator(radius: 8),
+                  const SizedBox(width: 8),
                   Text('Processing...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 ],
               );
@@ -441,9 +444,9 @@ class AssortFormScreenState extends State<AssortFormScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.list_alt_rounded, size: 16, color: AppColors.primary),
+                Icon(Icons.list_alt_rounded, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Existing Assort Items',
                   style: TextStyle(
                     fontSize: 13,
@@ -455,7 +458,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
                 Obx(
                   () => Text(
                     'Total: ${defaultController.assortMstList.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
@@ -465,7 +468,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.borderLight),
+          Divider(height: 1, color: AppColors.borderLight),
           SizedBox(
             height: 300,
             child: Obx(
@@ -529,7 +532,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
                     label: 'Search Assort Directory',
                     controller: searchController,
                     hintText: 'Type to filter by name or group...',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 16, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search_rounded, size: 16, color: AppColors.textMuted),
                     onChanged: _filterSearch,
                     suffixIcon: searchController.text.isNotEmpty
                         ? IconButton(
@@ -611,7 +614,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
       alignment: alignment,
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 12,
           color: AppColors.textPrimary,

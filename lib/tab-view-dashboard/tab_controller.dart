@@ -6,6 +6,18 @@ class TabControllerX extends GetxController {
   RxInt currentIndex = 0.obs; // Track the currently active tab
   RxInt draggingIndex = (-1).obs;
   RxBool isReportForm = false.obs;
+  RxBool isSidebarCollapsed = false.obs;
+
+  void toggleSidebar() {
+    isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  }
+
+  String get activeTabLabel {
+    if (tabList.isEmpty || currentIndex.value < 0 || currentIndex.value >= tabList.length) {
+      return 'Dashboard';
+    }
+    return tabList[currentIndex.value].label;
+  }
 
   // Add a new tab dynamically
   void addTab(TabItem tab) {

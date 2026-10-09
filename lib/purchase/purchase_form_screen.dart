@@ -313,7 +313,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     return defaultController.roughModel.map((item) {
       return DropdownMenuItem<String>(
         value: item.roughTypeCode.toString(),
-        child: Text(item.roughTypeName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+        child: Text(item.roughTypeName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
       );
     }).toList();
   }
@@ -324,7 +324,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         .map((p) {
           return DropdownMenuItem<String>(
             value: p.partyCode.toString(),
-            child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
           );
         })
         .toSet()
@@ -337,7 +337,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         .map((p) {
           return DropdownMenuItem<String>(
             value: p.partyCode.toString(),
-            child: Text(p.partyName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            child: Text(p.partyName ?? '', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
           );
         })
         .toList();
@@ -345,30 +345,33 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppKeyboardShortcutHandler(
-      onAdd: !_isEnabled ? () => _enableFields() : null,
-      onSave: _isEnabled ? _handleSave : null,
-      onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
-      onCancel: _isEnabled ? _handleCancel : null,
-      onExit: () => tabController.closeCurrentTab(),
-      onSearch: () {
-        setState(() {
-          _isSearch = !_isSearch;
-        });
-      },
-      onPrint: _isFromEdit ? _handlePrint : null,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            if (widget.showHeader) Header(title: _isSearch ? 'Purchase Search' : 'Purchase Entry'),
-            Expanded(
-              child: _isSearch ? _buildSearchView() : _buildFormView(),
-            ),
-          ],
+    return Obx(() {
+      final isDark = AppColors.isDark;
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? () => _enableFields() : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: _isEnabled ? _handleCancel : null,
+        onExit: () => tabController.closeCurrentTab(),
+        onSearch: () {
+          setState(() {
+            _isSearch = !_isSearch;
+          });
+        },
+        onPrint: _isFromEdit ? _handlePrint : null,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) Header(title: _isSearch ? 'Purchase Search' : 'Purchase Entry'),
+              Expanded(
+                child: _isSearch ? _buildSearchView() : _buildFormView(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==================== SEARCH / DATAGRID VIEW ====================
@@ -377,8 +380,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
             border: Border(bottom: BorderSide(color: AppColors.borderLight)),
           ),
           child: LayoutBuilder(
@@ -476,6 +479,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
               }
 
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(child: dateFields[0]),
                   const SizedBox(width: 12),
@@ -644,10 +648,10 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.receipt_rounded, size: 18, color: AppColors.primary),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           'Purchase Invoice Header',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -828,15 +832,15 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                         final isCompact = constraints.maxWidth < 600;
                         return Row(
                           children: [
-                            const Icon(Icons.diamond_outlined, size: 18, color: AppColors.primary),
+                            Icon(Icons.diamond_outlined, size: 18, color: AppColors.primary),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Add Rough Details',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                             ),
                             if (!isCompact) ...[
                               const Spacer(),
-                              const Text(
+                              Text(
                                 'Keyboard: Enter on Rate automatically adds item to table',
                                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                               ),
@@ -999,11 +1003,11 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
+                        Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Rough Items (${entries.length})',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                         ),
                       ],
                     ),
@@ -1091,10 +1095,10 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 36),
         alignment: Alignment.center,
-        child: const Column(
+        child: Column(
           children: [
             Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.textMuted),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'No rough items added yet.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
@@ -1117,7 +1121,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
             constraints: const BoxConstraints(minWidth: 700),
             child: Table(
           border: TableBorder(
-            horizontalInside: BorderSide(color: Colors.grey.shade200, width: 1),
+            horizontalInside: BorderSide(color: AppColors.borderLight, width: 1),
           ),
           columnWidths: const {
             0: FixedColumnWidth(55), // SR
@@ -1131,7 +1135,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
           children: [
             // Header
             TableRow(
-              decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+              decoration: BoxDecoration(color: AppColors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC)),
               children: [
                 _buildTableCell('SR.', isHeader: true, align: TextAlign.center),
                 _buildTableCell('ROUGH TYPE', isHeader: true),
@@ -1147,7 +1151,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
             for (int i = 0; i < entries.length; i++)
               TableRow(
                 decoration: BoxDecoration(
-                  color: i.isEven ? Colors.white : AppColors.tableRowAlt,
+                  color: i.isEven ? AppColors.surface : AppColors.tableRowAlt,
                 ),
                 children: [
                   _buildTableCell('${i + 1}', align: TextAlign.center),
@@ -1162,7 +1166,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                          icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
                           splashRadius: 14,
                           tooltip: 'Edit Item',
                           onPressed: () {
@@ -1180,7 +1184,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                          icon: Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
                           splashRadius: 14,
                           tooltip: 'Delete Item',
                           onPressed: () {

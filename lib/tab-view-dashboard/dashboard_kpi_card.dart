@@ -50,7 +50,7 @@ class _DashboardKpiCardState extends State<DashboardKpiCard> {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardBg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _isHovered
@@ -62,7 +62,7 @@ class _DashboardKpiCardState extends State<DashboardKpiCard> {
               BoxShadow(
                 color: _isHovered
                     ? widget.accentColor.withValues(alpha: 0.08)
-                    : const Color(0x05000000),
+                    : Colors.black.withValues(alpha: AppColors.isDark ? 0.2 : 0.03),
                 blurRadius: _isHovered ? 10 : 4,
                 offset: const Offset(0, 2),
               ),
@@ -89,7 +89,7 @@ class _DashboardKpiCardState extends State<DashboardKpiCard> {
                   Expanded(
                     child: Text(
                       widget.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
@@ -153,7 +153,7 @@ class _DashboardKpiCardState extends State<DashboardKpiCard> {
                         ),
                         child: Text(
                           compactText,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
@@ -169,7 +169,7 @@ class _DashboardKpiCardState extends State<DashboardKpiCard> {
                 const SizedBox(height: 6),
                 Text(
                   widget.subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textMuted,
                   ),

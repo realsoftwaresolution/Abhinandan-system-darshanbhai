@@ -14,8 +14,8 @@ class Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.borderLight, width: 1)),
       ),
       child: Row(
@@ -23,7 +23,7 @@ class Header extends StatelessWidget {
           if (!Responsive.isMobile(context))
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -50,7 +50,7 @@ class ProfileCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: AppColors.isDark ? AppColors.surface : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.borderLight, width: 1),
         ),
@@ -60,7 +60,7 @@ class ProfileCard extends StatelessWidget {
             Container(
               width: 28,
               height: 28,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
@@ -73,7 +73,7 @@ class ProfileCard extends StatelessWidget {
                   defaultController.companyCode.value == 0
                       ? 'Abhinandan Diamond'
                       : getCompanyName(defaultController.companyCode.value),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -81,7 +81,7 @@ class ProfileCard extends StatelessWidget {
                 ),
               ),
             const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.textSecondary),
+            Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.textSecondary),
           ],
         ),
       ),
@@ -98,7 +98,7 @@ class ProfileCard extends StatelessWidget {
             width: 380,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.borderLight, width: 1),
               boxShadow: [
@@ -121,7 +121,7 @@ class ProfileCard extends StatelessWidget {
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 22),
+                      child: Icon(Icons.business_rounded, color: AppColors.primary, size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -130,7 +130,7 @@ class ProfileCard extends StatelessWidget {
                         children: [
                           Text(
                             getCompanyName(defaultController.companyCode.value),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
@@ -139,7 +139,7 @@ class ProfileCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             getCompanyDetails(defaultController.companyCode.value).mobileno ?? '',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -150,13 +150,13 @@ class ProfileCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: AppColors.isDark ? AppColors.inputBg : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppColors.borderLight),
                   ),
                   child: Text(
                     getCompanyDetails(defaultController.companyCode.value).address ?? 'No Address',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -205,27 +205,27 @@ class SearchField extends StatelessWidget {
       height: 36,
       child: TextField(
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
+          prefixIcon: Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
           hintText: "Search...",
-          hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
           filled: true,
-          fillColor: const Color(0xFFF1F5F9),
+          fillColor: AppColors.isDark ? AppColors.inputBg : const Color(0xFFF1F5F9),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : Colors.transparent, width: 1),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: AppColors.isDark ? AppColors.borderLight : Colors.transparent, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1),
+            borderSide: BorderSide(color: AppColors.primary, width: 1),
           ),
         ),
-        style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+        style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
       ),
     );
   }
