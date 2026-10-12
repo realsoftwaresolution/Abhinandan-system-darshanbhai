@@ -49,6 +49,15 @@ class _ReportScreenState extends State<ReportScreen> {
     outstandingPurchaseDataGridSource = OutstandingPurchaseReportDataGridSource();
     outstandingSaleDataGridSource = OutstandingSaleReportDataGridSource();
     stockDataGridSource = StockReportDataGrid();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.roughModel.isEmpty) {
+        defaultController.getRoughData();
+      }
+    });
   }
 
   @override

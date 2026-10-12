@@ -79,6 +79,7 @@ class SaleFormScreenState extends State<SaleFormScreen> {
 
   RxList<PolishSaleModel> saleDataGridSource = <PolishSaleModel>[].obs;
   RxList<PolishSaleModel> filteredDataGridSource = <PolishSaleModel>[].obs;
+  Worker? _listWorker;
 
   double get totalWt => entries.fold(0.0, (prev, e) => prev + (double.tryParse(e['wt'] ?? '0') ?? 0.0));
   double get totalRate => totalWt == 0 ? 0 : totalAmount / totalWt;
@@ -90,10 +91,33 @@ class SaleFormScreenState extends State<SaleFormScreen> {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
     saleDataGridSource.value = defaultController.polishSaleList;
+
+    _listWorker = ever(defaultController.polishSaleList, (list) {
+      if (mounted) {
+        saleDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.polishSaleList.isEmpty) {
+        defaultController.getSaleData();
+      }
+      if (defaultController.saleDetailsList.isEmpty) {
+        defaultController.getSaleDetailsData();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.roughModel.isEmpty) {
+        defaultController.getRoughData();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     invNoController.dispose();
     dateController.dispose();
     dueDaysController.dispose();

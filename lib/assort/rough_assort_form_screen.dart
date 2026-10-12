@@ -50,6 +50,7 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
 
   final DefaultController defaultController = Get.find<DefaultController>();
   final RxList<RoughAssortMst> roughAssortMstDataGridSource = <RoughAssortMst>[].obs;
+  Worker? _listWorker;
 
   double get assortWt => entries.fold(0.0, (prev, e) => prev + (double.tryParse(e['wt'] ?? '0') ?? 0.0));
 
@@ -81,10 +82,33 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
     roughAssortMstDataGridSource.value = defaultController.roughAssortMstList;
+
+    _listWorker = ever(defaultController.roughAssortMstList, (list) {
+      if (mounted) {
+        roughAssortMstDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.roughAssortMstList.isEmpty) {
+        defaultController.getRoughAssortData();
+      }
+      if (defaultController.roughAssortMstDetList.isEmpty) {
+        defaultController.getRoughAssortDetailsData();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.roughModel.isEmpty) {
+        defaultController.getRoughData();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     wtController.dispose();
     rateController.dispose();
     amountController.dispose();

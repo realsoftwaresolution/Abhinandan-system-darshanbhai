@@ -101,11 +101,28 @@ class PartyFormState extends State<PartyForm> {
   bool _isSearchMode = false;
 
   RxList<PartyMstModel> partyGridList = <PartyMstModel>[].obs;
+  Worker? _listWorker;
 
   @override
   void initState() {
     super.initState();
     partyGridList.value = defaultController.partyMstList;
+
+    _listWorker = ever(defaultController.partyMstList, (list) {
+      if (mounted) {
+        partyGridList.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.partyTypeMstList.isEmpty) {
+        defaultController.getPartyTypeData();
+      }
+    });
 
     // Auto capitalize PAN
     _panController.addListener(() {
@@ -132,6 +149,7 @@ class PartyFormState extends State<PartyForm> {
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     _codeController.dispose();
     _nameController.dispose();
     _contactPersonController.dispose();

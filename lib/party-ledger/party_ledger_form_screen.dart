@@ -62,6 +62,11 @@ class _PartyLedgerFormScreenState extends State<PartyLedgerFormScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+    });
   }
 
   @override

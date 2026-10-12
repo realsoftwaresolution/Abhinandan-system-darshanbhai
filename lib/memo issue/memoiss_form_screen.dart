@@ -79,6 +79,7 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
 
   RxList<MemoIssueModel> memoIssueDataGridSource = <MemoIssueModel>[].obs;
   RxList<MemoIssueModel> filteredDataGridSource = <MemoIssueModel>[].obs;
+  Worker? _listWorker;
 
   // Calculation Getters
   double get totalWt =>
@@ -95,10 +96,33 @@ class MemoIssFormScreenState extends State<MemoIssFormScreen> {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
     memoIssueDataGridSource.value = defaultController.memoIssueList;
+
+    _listWorker = ever(defaultController.memoIssueList, (list) {
+      if (mounted) {
+        memoIssueDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.memoIssueList.isEmpty) {
+        defaultController.getMemoIssueData();
+      }
+      if (defaultController.memoIssueDetailsList.isEmpty) {
+        defaultController.getMemoIssueDetailsData();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.roughModel.isEmpty) {
+        defaultController.getRoughData();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     wtController.removeListener(_updateAmount);
     rateController.removeListener(_updateAmount);
 

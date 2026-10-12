@@ -408,10 +408,10 @@ class _AppSidebarState extends State<AppSidebar> {
         width: width,
         height: double.infinity,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFF1A262F),
           border: Border(
             right: BorderSide(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFF263544),
               width: 1.0,
             ),
           ),
@@ -424,7 +424,7 @@ class _AppSidebarState extends State<AppSidebar> {
 
             Divider(
               height: 1,
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFF263544),
             ),
 
             // 2. High-Contrast Dynamic Scrollable Navigation Menu Items
@@ -542,6 +542,10 @@ class _AppSidebarState extends State<AppSidebar> {
                           }
 
                           // CASE B: Single menu item without submenus (e.g. REPORT, UTILITY)
+                          if (!_defaultController.canViewMenu(menuId, categoryKey: catIndex)) {
+                            return const SizedBox.shrink();
+                          }
+
                           return _buildDirectMenuItem(
                             mainTitle: mainTitle,
                             mainIcon: mainIcon,
@@ -560,7 +564,7 @@ class _AppSidebarState extends State<AppSidebar> {
 
             Divider(
               height: 1,
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFF263544),
             ),
 
             // 3. Bottom Footer: User Profile & Logout
@@ -639,6 +643,9 @@ class _AppSidebarState extends State<AppSidebar> {
 
   /// Clean Brand Header with Diamond Logo & Collapse Toggle
   Widget _buildBrandHeader(bool collapsed, bool isDark) {
+    final Color logoBg = isDark ? const Color(0xFF1E293B) : const Color(0xFF243340);
+    final Color logoBorder = const Color(0xFF38BDF8).withValues(alpha: 0.35);
+
     if (collapsed) {
       return Container(
         height: 64,
@@ -651,18 +658,14 @@ class _AppSidebarState extends State<AppSidebar> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                color: logoBg,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF38BDF8).withValues(alpha: 0.35)
-                      : const Color(0xFF1D4ED8).withValues(alpha: 0.25),
+                  color: logoBorder,
                   width: 1.2,
                 ),
               ),
-              child: isDark
-                  ? DiamondLogo.lightOnDark(size: 24)
-                  : DiamondLogo.blueOnLight(size: 24),
+              child: DiamondLogo.lightOnDark(size: 24),
             ),
           ),
         ),
@@ -678,23 +681,19 @@ class _AppSidebarState extends State<AppSidebar> {
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+              color: logoBg,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isDark
-                    ? const Color(0xFF38BDF8).withValues(alpha: 0.35)
-                    : const Color(0xFF1D4ED8).withValues(alpha: 0.25),
+                color: logoBorder,
                 width: 1.2,
               ),
             ),
-            child: isDark
-                ? DiamondLogo.lightOnDark(size: 26)
-                : DiamondLogo.blueOnLight(size: 26),
+            child: DiamondLogo.lightOnDark(size: 26),
           ),
           const SizedBox(width: 10),
 
           // Brand Typography
-          Expanded(
+          const Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -702,7 +701,7 @@ class _AppSidebarState extends State<AppSidebar> {
                 Text(
                   'Abhinandan',
                   style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.2,
@@ -712,7 +711,7 @@ class _AppSidebarState extends State<AppSidebar> {
                 Text(
                   'D I A M O N D',
                   style: TextStyle(
-                    color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF1D4ED8),
+                    color: Color(0xFF38BDF8),
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 3.2,
@@ -736,6 +735,8 @@ class _AppSidebarState extends State<AppSidebar> {
     required VoidCallback onTap,
     required bool isDark,
   }) {
+    final Color badgeBg = isDark ? const Color(0xFF1E293B) : const Color(0xFF243340);
+
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 2),
       child: Material(
@@ -743,9 +744,7 @@ class _AppSidebarState extends State<AppSidebar> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
-          hoverColor: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.03),
+          hoverColor: Colors.white.withValues(alpha: 0.05),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
@@ -753,14 +752,14 @@ class _AppSidebarState extends State<AppSidebar> {
                 Icon(
                   icon,
                   size: 18,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  color: const Color(0xFF94A3B8),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.0,
@@ -773,33 +772,29 @@ class _AppSidebarState extends State<AppSidebar> {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E293B)
-                          : const Color(0xFFF1F5F9),
+                      color: badgeBg,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: isDark
-                            ? const Color(0xFF334155)
-                            : const Color(0xFFE2E8F0),
+                        color: const Color(0xFF334155),
                         width: 0.8,
                       ),
                     ),
                     child: Text(
                       '$itemCount',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        color: Color(0xFF94A3B8),
                       ),
                     ),
                   ),
                 AnimatedRotation(
                   turns: isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(
+                  child: const Icon(
                     Icons.keyboard_arrow_down_rounded,
                     size: 18,
-                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    color: Color(0xFF94A3B8),
                   ),
                 ),
               ],
@@ -827,9 +822,7 @@ class _AppSidebarState extends State<AppSidebar> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
-          hoverColor: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFF1D4ED8).withValues(alpha: 0.06),
+          hoverColor: Colors.white.withValues(alpha: 0.08),
           splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.2),
           child: Padding(
             padding: const EdgeInsets.only(left: 18, right: 10),
@@ -840,7 +833,7 @@ class _AppSidebarState extends State<AppSidebar> {
                   size: 17,
                   color: isActive
                       ? Colors.white
-                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                      : const Color(0xFF94A3B8),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -849,7 +842,7 @@ class _AppSidebarState extends State<AppSidebar> {
                     style: TextStyle(
                       color: isActive
                           ? Colors.white
-                          : (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B)),
+                          : const Color(0xFFE2E8F0),
                       fontSize: 13,
                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -883,13 +876,13 @@ class _AppSidebarState extends State<AppSidebar> {
     return PopupMenuButton<SubMenuModel>(
       tooltip: title,
       offset: const Offset(65, 0),
-      color: isDark ? const Color(0xFF0F172A) : Colors.white,
+      color: isDark ? const Color(0xFF0F172A) : const Color(0xFF1A262F),
       surfaceTintColor: Colors.transparent,
       elevation: 12,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFF263544),
         ),
       ),
       onSelected: (sub) => _navigateToSubMenu(sub),
@@ -899,8 +892,8 @@ class _AppSidebarState extends State<AppSidebar> {
             enabled: false,
             child: Text(
               title,
-              style: TextStyle(
-                color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF1D4ED8),
+              style: const TextStyle(
+                color: Color(0xFF38BDF8),
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.0,
@@ -918,14 +911,14 @@ class _AppSidebarState extends State<AppSidebar> {
                   Icon(
                     icon,
                     size: 16,
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    color: const Color(0xFF94A3B8),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     sub.menuName ?? '',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      color: Colors.white,
                     ),
                   ),
                 ],
@@ -938,10 +931,10 @@ class _AppSidebarState extends State<AppSidebar> {
         height: 42,
         margin: const EdgeInsets.symmetric(vertical: 2),
         alignment: Alignment.center,
-        child: Icon(
+        child:  Icon(
           icon,
           size: 20,
-          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          color: const Color(0xFF94A3B8),
         ),
       ),
     );
@@ -957,9 +950,7 @@ class _AppSidebarState extends State<AppSidebar> {
           height: 38,
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
           decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.04),
+            color: Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -998,9 +989,7 @@ class _AppSidebarState extends State<AppSidebar> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
-          hoverColor: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFF1D4ED8).withValues(alpha: 0.06),
+          hoverColor: Colors.white.withValues(alpha: 0.08),
           splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.2),
           child: Padding(
             padding: EdgeInsets.symmetric(
@@ -1016,7 +1005,7 @@ class _AppSidebarState extends State<AppSidebar> {
                   color: customColor ??
                       (isActive
                           ? Colors.white
-                          : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                          : const Color(0xFF94A3B8)),
                 ),
                 if (!collapsed) ...[
                   const SizedBox(width: 12),
@@ -1027,7 +1016,7 @@ class _AppSidebarState extends State<AppSidebar> {
                         color: customColor ??
                             (isActive
                                 ? Colors.white
-                                : (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B))),
+                                : const Color(0xFFE2E8F0)),
                         fontSize: 13.5,
                         fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -1092,7 +1081,7 @@ class _AppSidebarState extends State<AppSidebar> {
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      color: isDark ? const Color(0xFF0A0F1D) : const Color(0xFFF8FAFC),
+      color: isDark ? const Color(0xFF0A0F1D) : const Color(0xFF141F27),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1140,8 +1129,8 @@ class _AppSidebarState extends State<AppSidebar> {
                     children: [
                       Text(
                         name,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1149,8 +1138,8 @@ class _AppSidebarState extends State<AppSidebar> {
                       ),
                       Text(
                         role,
-                        style: TextStyle(
-                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
                           fontSize: 10,
                         ),
                         overflow: TextOverflow.ellipsis,

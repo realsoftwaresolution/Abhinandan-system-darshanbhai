@@ -212,6 +212,7 @@ class UserMenuItemRightModel {
   bool canAdd;
   bool canEdit;
   bool canDel;
+  bool isHide;
 
   UserMenuItemRightModel({
     this.mainMenuMstId,
@@ -221,6 +222,7 @@ class UserMenuItemRightModel {
     this.canAdd = false,
     this.canEdit = false,
     this.canDel = false,
+    this.isHide = false,
   });
 
   factory UserMenuItemRightModel.fromJson(
@@ -236,18 +238,29 @@ class UserMenuItemRightModel {
     bool parseBool(dynamic v) {
       if (v == null) return false;
       if (v is bool) return v;
-      return v == 1 || v == '1' || v == 'true';
+      final str = v.toString().trim().toLowerCase();
+      return v == 1 || str == '1' || str == 'true' || str == 'yes';
     }
+
+    final bool isHideVal = parseBool(
+      json['IsHide'] ??
+      json['isHide'] ??
+      json['Hide'] ??
+      json['hide'] ??
+      json['IsHidden'] ??
+      json['isHidden']
+    );
 
     return UserMenuItemRightModel(
       mainMenuMstId: parseInt(json['MainMenuMstID'] ?? json['mainMenuMstId']) ??
           parentMainMenuId,
       menuMstId: parseInt(json['MenuMstID'] ?? json['menuMstId']),
       menuName: json['MenuName']?.toString() ?? json['menuName']?.toString() ?? '',
-      canView: parseBool(json['CanView'] ?? json['canView']),
-      canAdd: parseBool(json['CanAdd'] ?? json['canAdd']),
-      canEdit: parseBool(json['CanEdit'] ?? json['canEdit']),
-      canDel: parseBool(json['CanDel'] ?? json['canDel']),
+      canView: isHideVal ? false : parseBool(json['CanView'] ?? json['canView']),
+      canAdd: isHideVal ? false : parseBool(json['CanAdd'] ?? json['canAdd']),
+      canEdit: isHideVal ? false : parseBool(json['CanEdit'] ?? json['canEdit']),
+      canDel: isHideVal ? false : parseBool(json['CanDel'] ?? json['canDel']),
+      isHide: isHideVal,
     );
   }
 
@@ -255,13 +268,16 @@ class UserMenuItemRightModel {
     return {
       if (mainMenuMstId != null) 'MainMenuMstID': mainMenuMstId,
       if (menuMstId != null) 'MenuMstID': menuMstId,
-      'CanView': canView,
-      'CanAdd': canAdd,
-      'CanEdit': canEdit,
-      'CanDel': canDel,
+      'CanView': isHide ? false : canView,
+      'CanAdd': isHide ? false : canAdd,
+      'CanEdit': isHide ? false : canEdit,
+      'CanDel': isHide ? false : canDel,
+      'IsHide': isHide,
     };
   }
 }
+
+typedef MenuRightItem = UserMenuItemRightModel;
 
 /// ==================== MODULE 3: ALLOW ISSUE ====================
 

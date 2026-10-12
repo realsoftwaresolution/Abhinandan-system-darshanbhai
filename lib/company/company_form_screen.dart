@@ -109,6 +109,12 @@ class CompanyFormScreenState extends State<CompanyFormScreen> {
       }
     });
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.companyModelList.isEmpty) {
+        defaultController.getCompanyData();
+      }
+    });
+
     // Auto capitalize GST
     _gstController.addListener(() {
       final text = _gstController.text.toUpperCase();

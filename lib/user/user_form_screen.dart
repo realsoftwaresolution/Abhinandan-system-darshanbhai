@@ -120,6 +120,9 @@ class UserFormScreenState extends State<UserFormScreen>
       if (defaultController.branchModelList.isEmpty) {
         defaultController.getBranchData();
       }
+      if (defaultController.currentUserId.value > 0 && _selectedUserId.value == 0) {
+        _selectedUserId.value = defaultController.currentUserId.value;
+      }
     });
   }
 
@@ -157,6 +160,9 @@ class UserFormScreenState extends State<UserFormScreen>
   void _handleTabChange() {
     if (_moduleTabController.indexIsChanging) return;
     final int idx = _moduleTabController.index;
+    if (_selectedUserId.value == 0 && defaultController.currentUserId.value > 0) {
+      _selectedUserId.value = defaultController.currentUserId.value;
+    }
     if (_selectedUserId.value != 0) {
       if (idx == 1 && _menuRightsData.value == null) {
         _loadMenuRightsForUser(_selectedUserId.value);
@@ -453,14 +459,8 @@ class UserFormScreenState extends State<UserFormScreen>
     final List<Map<String, dynamic>> menuRightsPayload = [];
     for (final cat in data.categories) {
       for (final menu in cat.menus) {
-        menuRightsPayload.add({
-          'MainMenuMstID': cat.mainMenuMstId ?? menu.mainMenuMstId ?? 1,
-          'MenuMstID': menu.menuMstId,
-          'CanView': menu.canView,
-          'CanAdd': menu.canAdd,
-          'CanEdit': menu.canEdit,
-          'CanDel': menu.canDel,
-        });
+        menu.mainMenuMstId ??= cat.mainMenuMstId;
+        menuRightsPayload.add(menu.toJson());
       }
     }
 
@@ -470,19 +470,45 @@ class UserFormScreenState extends State<UserFormScreen>
   void _toggleCategoryPermission(
     UserMenuCategoryModel cat,
     String permType,
-    bool targetVal,
-  ) {
+    bool targetVal, {
+    bool canConfigureHide = true,
+  }) {
     setState(() {
       for (final m in cat.menus) {
-        if (permType == 'view') m.canView = targetVal;
-        if (permType == 'add') m.canAdd = targetVal;
-        if (permType == 'edit') m.canEdit = targetVal;
-        if (permType == 'del') m.canDel = targetVal;
+        // If the current user cannot configure hide (e.g. User A-1), preserve hidden menus
+        if (!canConfigureHide && m.isHide) continue;
+
+        if (permType == 'view') {
+          m.canView = targetVal;
+          if (targetVal) m.isHide = false;
+        }
+        if (permType == 'add') {
+          m.canAdd = targetVal;
+          if (targetVal) m.isHide = false;
+        }
+        if (permType == 'edit') {
+          m.canEdit = targetVal;
+          if (targetVal) m.isHide = false;
+        }
+        if (permType == 'del') {
+          m.canDel = targetVal;
+          if (targetVal) m.isHide = false;
+        }
+        if (permType == 'hide' && canConfigureHide) {
+          m.isHide = targetVal;
+          if (targetVal) {
+            m.canView = false;
+            m.canAdd = false;
+            m.canEdit = false;
+            m.canDel = false;
+          }
+        }
         if (permType == 'all') {
           m.canView = targetVal;
           m.canAdd = targetVal;
           m.canEdit = targetVal;
           m.canDel = targetVal;
+          if (targetVal) m.isHide = false;
         }
       }
     });
@@ -1445,7 +1471,9 @@ class UserFormScreenState extends State<UserFormScreen>
                   const SizedBox(height: 2),
                   if (currentUser != null)
                     Text(
-                      'Configuring for: ${currentUser.userName ?? currentUser.loginName} (#${currentUser.counterMstId}) [${currentUser.userGrp ?? 'USER'}]',
+                      selectedId == defaultController.currentUserId.value
+                          ? 'My Menu Rights: ${currentUser.userName ?? currentUser.loginName} (#${currentUser.counterMstId}) [${currentUser.userGrp ?? 'USER'}]'
+                          : 'Configuring for: ${currentUser.userName ?? currentUser.loginName} (#${currentUser.counterMstId}) [${currentUser.userGrp ?? 'USER'}]',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -1517,6 +1545,17 @@ class UserFormScreenState extends State<UserFormScreen>
       final selectedId = _selectedUserId.value;
       final isLoading = _isLoadingMenuRights.value;
       final rights = _menuRightsData.value;
+
+      // Automatically fetch menu rights if selected user rights haven't been loaded
+      if (selectedId != 0 && rights == null && !isLoading) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_selectedUserId.value != 0 &&
+              _menuRightsData.value == null &&
+              !_isLoadingMenuRights.value) {
+            _loadMenuRightsForUser(_selectedUserId.value);
+          }
+        });
+      }
 
       return Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1603,13 +1642,68 @@ class UserFormScreenState extends State<UserFormScreen>
   }
 
   Widget _buildCategoryMatrixCard(UserMenuCategoryModel cat) {
+    final int selectedId = _selectedUserId.value;
+    final int myId = defaultController.currentUserId.value;
+    final String myName =
+        defaultController.currentUserName.value.trim().toUpperCase();
+    final String myFullName =
+        defaultController.currentUserFullName.value.trim().toUpperCase();
+    final String myGrp =
+        defaultController.currentUserGrp.value.trim().toUpperCase();
+
+    // Check if the current user session is User A-1 or viewing self
+    final bool isSelf = selectedId != 0 && selectedId == myId;
+    final bool isA1User = myName.contains('A-1') ||
+        myName.contains('A1') ||
+        myName.contains('A 1') ||
+        myFullName.contains('A-1') ||
+        myFullName.contains('A1') ||
+        myFullName.contains('A 1') ||
+        myGrp.contains('A-1') ||
+        myGrp.contains('A1');
+
+    // Only master root superadmin editing ANOTHER user can see and configure isHide rows
+    final bool isMasterSuperAdmin = !isA1User &&
+        (myGrp == 'SUPERADMIN' ||
+            myName == 'SUPERADMIN' ||
+            myName == 'DARSHANBHAI' ||
+            (myGrp == 'ADMIN' &&
+                !myName.contains('-') &&
+                !myName.contains('1')));
+
+    final bool canConfigureHide = isMasterSuperAdmin && !isSelf;
+
+    // If User A-1 is logged in or any user is seeing their rights, any row with isHide == true is NOT visible!
+    final List<UserMenuItemRightModel> displayMenus = canConfigureHide
+        ? cat.menus
+        : cat.menus.where((m) {
+            if (m.isHide) return false;
+            if (defaultController.isMenuHidden(m.menuMstId)) return false;
+            return true;
+          }).toList();
+
+    if (displayMenus.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final bool allView =
+        displayMenus.isNotEmpty && displayMenus.every((m) => m.canView);
+    final bool allAdd =
+        displayMenus.isNotEmpty && displayMenus.every((m) => m.canAdd);
+    final bool allEdit =
+        displayMenus.isNotEmpty && displayMenus.every((m) => m.canEdit);
+    final bool allDel =
+        displayMenus.isNotEmpty && displayMenus.every((m) => m.canDel);
+    final bool allHide =
+        displayMenus.isNotEmpty && displayMenus.every((m) => m.isHide);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 Icon(Icons.folder_open_rounded,
@@ -1624,61 +1718,143 @@ class UserFormScreenState extends State<UserFormScreen>
                   ),
                 ),
                 Text(
-                  ' (${cat.menus.length} menus)',
+                  ' (${displayMenus.length} menus)',
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                 ),
                 const Spacer(),
-                _bulkActionChip('View All', () {
-                  final anyOff = cat.menus.any((m) => !m.canView);
-                  _toggleCategoryPermission(cat, 'view', anyOff);
-                }),
-                const SizedBox(width: 6),
-                _bulkActionChip('Add All', () {
-                  final anyOff = cat.menus.any((m) => !m.canAdd);
-                  _toggleCategoryPermission(cat, 'add', anyOff);
-                }),
-                const SizedBox(width: 6),
-                _bulkActionChip('Edit All', () {
-                  final anyOff = cat.menus.any((m) => !m.canEdit);
-                  _toggleCategoryPermission(cat, 'edit', anyOff);
-                }),
-                const SizedBox(width: 6),
-                _bulkActionChip('Del All', () {
-                  final anyOff = cat.menus.any((m) => !m.canDel);
-                  _toggleCategoryPermission(cat, 'del', anyOff);
-                }),
-                const SizedBox(width: 6),
                 _bulkActionChip('All On', () {
-                  _toggleCategoryPermission(cat, 'all', true);
+                  _toggleCategoryPermission(cat, 'all', true,
+                      canConfigureHide: canConfigureHide);
                 }),
                 const SizedBox(width: 6),
                 _bulkActionChip('Clear', () {
-                  _toggleCategoryPermission(cat, 'all', false);
+                  _toggleCategoryPermission(cat, 'all', false,
+                      canConfigureHide: canConfigureHide);
                 }),
+                if (canConfigureHide) ...[
+                  const SizedBox(width: 6),
+                  _bulkActionChip('Hide All', () {
+                    _toggleCategoryPermission(cat, 'hide', true,
+                        canConfigureHide: canConfigureHide);
+                  }),
+                ],
+                _categoryCheckbox(
+                  label: 'View All',
+                  value: allView,
+                  onChanged: (val) {
+                    _toggleCategoryPermission(cat, 'view', val ?? false,
+                        canConfigureHide: canConfigureHide);
+                  },
+                ),
+                _categoryCheckbox(
+                  label: 'Add All',
+                  value: allAdd,
+                  onChanged: (val) {
+                    _toggleCategoryPermission(cat, 'add', val ?? false,
+                        canConfigureHide: canConfigureHide);
+                  },
+                ),
+                _categoryCheckbox(
+                  label: 'Edit All',
+                  value: allEdit,
+                  onChanged: (val) {
+                    _toggleCategoryPermission(cat, 'edit', val ?? false,
+                        canConfigureHide: canConfigureHide);
+                  },
+                ),
+                _categoryCheckbox(
+                  label: 'Del All',
+                  value: allDel,
+                  onChanged: (val) {
+                    _toggleCategoryPermission(cat, 'del', val ?? false,
+                        canConfigureHide: canConfigureHide);
+                  },
+                ),
+                if (canConfigureHide)
+                  _categoryCheckbox(
+                    label: 'Hide All',
+                    value: allHide,
+                    activeColor: Colors.red,
+                    onChanged: (val) {
+                      _toggleCategoryPermission(cat, 'hide', val ?? false,
+                          canConfigureHide: canConfigureHide);
+                    },
+                  ),
               ],
             ),
           ),
           const Divider(height: 1),
           Table(
-            columnWidths: const {
-              0: FlexColumnWidth(4),
-              1: FixedColumnWidth(80),
-              2: FixedColumnWidth(80),
-              3: FixedColumnWidth(80),
-              4: FixedColumnWidth(80),
-            },
+            columnWidths: canConfigureHide
+                ? const {
+                    0: FlexColumnWidth(4),
+                    1: FixedColumnWidth(70),
+                    2: FixedColumnWidth(70),
+                    3: FixedColumnWidth(70),
+                    4: FixedColumnWidth(70),
+                    5: FixedColumnWidth(70),
+                  }
+                : const {
+                    0: FlexColumnWidth(4),
+                    1: FixedColumnWidth(70),
+                    2: FixedColumnWidth(70),
+                    3: FixedColumnWidth(70),
+                    4: FixedColumnWidth(70),
+                  },
             children: [
               TableRow(
                 decoration: BoxDecoration(color: AppColors.tableRowAlt),
                 children: [
                   _tableHeaderCell('Menu Name'),
-                  _tableHeaderCell('View', isCentered: true),
-                  _tableHeaderCell('Add', isCentered: true),
-                  _tableHeaderCell('Edit', isCentered: true),
-                  _tableHeaderCell('Delete', isCentered: true),
+                  _tableHeaderCell(
+                    'View',
+                    isCentered: true,
+                    tooltip: 'Toggle View for all',
+                    onTap: () {
+                      _toggleCategoryPermission(cat, 'view', !allView,
+                          canConfigureHide: canConfigureHide);
+                    },
+                  ),
+                  _tableHeaderCell(
+                    'Add',
+                    isCentered: true,
+                    tooltip: 'Toggle Add for all',
+                    onTap: () {
+                      _toggleCategoryPermission(cat, 'add', !allAdd,
+                          canConfigureHide: canConfigureHide);
+                    },
+                  ),
+                  _tableHeaderCell(
+                    'Edit',
+                    isCentered: true,
+                    tooltip: 'Toggle Edit for all',
+                    onTap: () {
+                      _toggleCategoryPermission(cat, 'edit', !allEdit,
+                          canConfigureHide: canConfigureHide);
+                    },
+                  ),
+                  _tableHeaderCell(
+                    'Delete',
+                    isCentered: true,
+                    tooltip: 'Toggle Delete for all',
+                    onTap: () {
+                      _toggleCategoryPermission(cat, 'del', !allDel,
+                          canConfigureHide: canConfigureHide);
+                    },
+                  ),
+                  if (canConfigureHide)
+                    _tableHeaderCell(
+                      'Hide',
+                      isCentered: true,
+                      tooltip: 'Toggle Hide for all',
+                      onTap: () {
+                        _toggleCategoryPermission(cat, 'hide', !allHide,
+                          canConfigureHide: canConfigureHide);
+                      },
+                    ),
                 ],
               ),
-              ...cat.menus.asMap().entries.map((entry) {
+              ...displayMenus.asMap().entries.map((entry) {
                 final int idx = entry.key;
                 final UserMenuItemRightModel menu = entry.value;
                 final rowBg =
@@ -1694,8 +1870,13 @@ class UserFormScreenState extends State<UserFormScreen>
                         menu.menuName ?? 'Menu #${menu.menuMstId}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textPrimary,
+                          color: menu.isHide
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
                           fontWeight: FontWeight.w500,
+                          decoration: menu.isHide
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                       ),
                     ),
@@ -1706,6 +1887,9 @@ class UserFormScreenState extends State<UserFormScreen>
                         onChanged: (val) {
                           setState(() {
                             menu.canView = val ?? false;
+                            if (menu.canView) {
+                              menu.isHide = false;
+                            }
                           });
                         },
                       ),
@@ -1717,6 +1901,9 @@ class UserFormScreenState extends State<UserFormScreen>
                         onChanged: (val) {
                           setState(() {
                             menu.canAdd = val ?? false;
+                            if (menu.canAdd) {
+                              menu.isHide = false;
+                            }
                           });
                         },
                       ),
@@ -1728,6 +1915,9 @@ class UserFormScreenState extends State<UserFormScreen>
                         onChanged: (val) {
                           setState(() {
                             menu.canEdit = val ?? false;
+                            if (menu.canEdit) {
+                              menu.isHide = false;
+                            }
                           });
                         },
                       ),
@@ -1739,10 +1929,32 @@ class UserFormScreenState extends State<UserFormScreen>
                         onChanged: (val) {
                           setState(() {
                             menu.canDel = val ?? false;
+                            if (menu.canDel) {
+                              menu.isHide = false;
+                            }
                           });
                         },
                       ),
                     ),
+                    if (canConfigureHide)
+                      Center(
+                        child: Checkbox(
+                          value: menu.isHide,
+                          activeColor: Colors.red,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              menu.isHide = value ?? false;
+                              if (menu.isHide) {
+                                // If hidden, clear other permissions
+                                menu.canView = false;
+                                menu.canAdd = false;
+                                menu.canEdit = false;
+                                menu.canDel = false;
+                              }
+                            });
+                          },
+                        ),
+                      ),
                   ],
                 );
               }),
@@ -1771,6 +1983,37 @@ class UserFormScreenState extends State<UserFormScreen>
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _categoryCheckbox({
+    required String label,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    Color? activeColor,
+  }) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 67,
+              height: 18,
+              child: Checkbox(
+                value: value,
+                activeColor: activeColor ?? AppColors.primary,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                onChanged: onChanged,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2237,8 +2480,13 @@ class UserFormScreenState extends State<UserFormScreen>
 
   // ==================== HELPER TABLE CELLS ====================
 
-  Widget _tableHeaderCell(String text, {bool isCentered = false}) {
-    return Padding(
+  Widget _tableHeaderCell(
+    String text, {
+    bool isCentered = false,
+    VoidCallback? onTap,
+    String? tooltip,
+  }) {
+    Widget child = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Text(
         text,
@@ -2250,5 +2498,20 @@ class UserFormScreenState extends State<UserFormScreen>
         ),
       ),
     );
+
+    if (onTap != null) {
+      child = InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: child,
+      );
+    }
+    if (tooltip != null) {
+      child = Tooltip(
+        message: tooltip,
+        child: child,
+      );
+    }
+    return child;
   }
 }

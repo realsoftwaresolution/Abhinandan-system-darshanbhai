@@ -44,15 +44,33 @@ class AssortFormScreenState extends State<AssortFormScreen> {
 
   final DefaultController defaultController = Get.find<DefaultController>();
   final RxList<AssortMst> assortDataGridSource = <AssortMst>[].obs;
+  Worker? _listWorker;
 
   @override
   void initState() {
     super.initState();
     assortDataGridSource.value = defaultController.assortMstList;
+
+    _listWorker = ever(defaultController.assortMstList, (list) {
+      if (mounted) {
+        assortDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.assortGroupMstList.isEmpty) {
+        defaultController.getAssortGroupData();
+      }
+      if (defaultController.assortMstList.isEmpty) {
+        defaultController.getAssortData();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     nameController.dispose();
     sortIdController.dispose();
     searchController.dispose();

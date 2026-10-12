@@ -384,34 +384,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                 tooltip: 'Open Menu',
                 onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
               ),
-            )
-          else
-            Obx(
-              () => Tooltip(
-                message: tabController.isSidebarCollapsed.value
-                    ? 'Expand Sidebar (Ctrl+B)'
-                    : 'Collapse Sidebar (Ctrl+B)',
-                child: InkWell(
-                  onTap: () => tabController.toggleSidebar(),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      tabController.isSidebarCollapsed.value
-                          ? Icons.menu_rounded
-                          : Icons.menu_open_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
             ),
-          const SizedBox(width: 12),
 
           // Active Module / Tab Breadcrumb Badge
           Obx(() {
@@ -420,33 +393,6 @@ class DashboardWithDynamicTabs extends StatelessWidget {
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isHome ? Icons.dashboard_rounded : Icons.diamond_outlined,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        activeLabel,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 if (!Responsive.isDesktop(context)) ...[
                   const SizedBox(width: 10),
                   Obx(
@@ -732,9 +678,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
   }
 
   void _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    Get.offAllNamed('/');
+    await defaultController.logout();
   }
 
   void _showAccountMenu(BuildContext context) async {
@@ -758,11 +702,16 @@ class DashboardWithDynamicTabs extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                getCompanyName(defaultController.companyCode.value),
+                defaultController.currentUserFullName.value.isNotEmpty
+                    ? defaultController.currentUserFullName.value
+                    : (defaultController.currentUserName.value.isNotEmpty
+                        ? defaultController.currentUserName.value
+                        : 'Admin'),
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
               ),
+              const SizedBox(height: 2),
               Text(
-                getCompanyDetails(defaultController.companyCode.value).mobileno ?? '',
+                'Role: ${defaultController.currentUserGrp.value.isNotEmpty ? defaultController.currentUserGrp.value : "ADMIN"} • ${getCompanyName(defaultController.companyCode.value)}',
                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ],

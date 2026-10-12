@@ -190,9 +190,7 @@ class ProfileCard extends StatelessWidget {
   }
 
   void _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    Get.offAllNamed('/');
+    await defaultController.logout();
   }
 }
 

@@ -34,6 +34,22 @@ class _AdvancedDashboardState extends State<AdvancedDashboard> {
   String _upcomingSearchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.outstandingPurchaseSaleDetailsList.isEmpty) {
+        defaultController.getOutstandingPurchaseSaleDetails();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.creditDebitDataList.isEmpty) {
+        defaultController.getCreditDebitData();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _overdueSearchController.dispose();
     _upcomingSearchController.dispose();

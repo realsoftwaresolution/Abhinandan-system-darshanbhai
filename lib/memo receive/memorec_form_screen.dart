@@ -89,6 +89,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
   RxList<MemoRecModel> memoRecDataGridSource = <MemoRecModel>[].obs;
   RxList<MemoRecModel> filteredDataGridSource = <MemoRecModel>[].obs;
+  Worker? _listWorker;
 
   // Calculation Getters
   double get totalWt =>
@@ -112,6 +113,28 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
     super.initState();
     _addListeners();
     memoRecDataGridSource.value = defaultController.memoRecList;
+
+    _listWorker = ever(defaultController.memoRecList, (list) {
+      if (mounted) {
+        memoRecDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.memoRecList.isEmpty) {
+        defaultController.getMemoRecData();
+      }
+      if (defaultController.memoRecDetailsList.isEmpty) {
+        defaultController.getMemoRecDetailsData();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.roughModel.isEmpty) {
+        defaultController.getRoughData();
+      }
+    });
   }
 
   void _addListeners() {
@@ -122,6 +145,7 @@ class MemoRecFormScreenState extends State<MemoRecFormScreen> {
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     recWtController.removeListener(_calculateLossAndAmount);
     issWtController.removeListener(_calculateLossAndAmount);
     rateController.removeListener(_calculateLossAndAmount);

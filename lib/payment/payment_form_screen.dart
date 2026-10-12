@@ -97,6 +97,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
   RxList<PendingPaymentModel> accountPartyCreditDebitDataGridSource = <PendingPaymentModel>[].obs;
   RxList<PaymentDetailsModel> editAccountPartyCreditDebitDataGridSource = <PaymentDetailsModel>[].obs;
   RxList<PaymentMstModel> filteredDataGridSource = <PaymentMstModel>[].obs;
+  Worker? _listWorker;
   List<Map<String, String>> entries = [];
 
   // Form State Flags
@@ -134,6 +135,31 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
 
     // Load master list
     paymentDataGridSource.value = defaultController.paymentMstList;
+
+    _listWorker = ever(defaultController.paymentMstList, (list) {
+      if (mounted) {
+        paymentDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.paymentMstList.isEmpty) {
+        defaultController.getPaymentMstData();
+      }
+      if (defaultController.paymentDetList.isEmpty) {
+        defaultController.getPaymentDetData();
+      }
+      if (defaultController.paymentDetAccList.isEmpty) {
+        defaultController.getPaymentDetAccData();
+      }
+      if (defaultController.pendingPaymentList.isEmpty) {
+        defaultController.getPendingPaymentData();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+    });
 
     // Jama (Credit) Listener: Typing disables Debit & syncs on-account controllers
     jamaCreditController.addListener(_onJamaChanged);
@@ -192,6 +218,7 @@ class PaymentFormScreenState extends State<PaymentFormScreen> {
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     jamaCreditController.removeListener(_onJamaChanged);
     udharDebitController.removeListener(_onUdharChanged);
 

@@ -74,6 +74,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
 
   RxList<PurchaseDetailsModel> purchaseDataGridSource = <PurchaseDetailsModel>[].obs;
   RxList<PurchaseDetailsModel> filteredDataGridSource = <PurchaseDetailsModel>[].obs;
+  Worker? _listWorker;
 
   double get totalWt => entries.fold(0.0, (prev, e) => prev + (double.tryParse(e['wt'] ?? '0') ?? 0.0));
   double get totalRate => totalWt == 0 ? 0 : totalAmount / totalWt;
@@ -85,10 +86,33 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     wtController.addListener(_updateAmount);
     rateController.addListener(_updateAmount);
     purchaseDataGridSource.value = defaultController.purchaseDataList;
+
+    _listWorker = ever(defaultController.purchaseDataList, (list) {
+      if (mounted) {
+        purchaseDataGridSource.value = list;
+        setState(() {});
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.purchaseDataList.isEmpty) {
+        defaultController.getPurchaseData();
+      }
+      if (defaultController.roughDetailsModel.isEmpty) {
+        defaultController.getPurchaseDetailsData();
+      }
+      if (defaultController.partyMstList.isEmpty) {
+        defaultController.getPartyData();
+      }
+      if (defaultController.roughModel.isEmpty) {
+        defaultController.getRoughData();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _listWorker?.dispose();
     invNoController.dispose();
     dateController.dispose();
     dueDaysController.dispose();

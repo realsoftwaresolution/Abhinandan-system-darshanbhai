@@ -38,6 +38,7 @@ import 'package:real_web_rough_entry_system/polish_type/polish_type_model.dart';
 import 'package:real_web_rough_entry_system/company/company_model.dart';
 import 'package:real_web_rough_entry_system/branch/branch_model.dart';
 import 'package:real_web_rough_entry_system/services/api_service.dart';
+import 'package:real_web_rough_entry_system/services/api_client.dart';
 import 'package:real_web_rough_entry_system/user/user_model.dart';
 import 'package:real_web_rough_entry_system/payment/payment_det_acc.dart';
 import 'package:real_web_rough_entry_system/payment/payment_det_model.dart';
@@ -60,9 +61,12 @@ import '../main/menu_model.dart';
 import 'package:real_web_rough_entry_system/services/master_crud_service.dart';
 
 class DefaultController extends GetxController {
+  static DefaultController get to => Get.find<DefaultController>();
+  Dio get dio => ApiService.to.dio;
   RxList<MainMenuModel> menuList = <MainMenuModel>[].obs;
   RxBool isLoadingMenuList = false.obs;
   RxString authToken = ''.obs;
+  RxString refreshToken = ''.obs;
   RxList<PartyMstModel> partyMstList = <PartyMstModel>[].obs;
   RxList<AssortGroupMst> assortGroupMstList = <AssortGroupMst>[].obs;
   RxList<AssortMst> assortMstList = <AssortMst>[].obs;
@@ -100,6 +104,8 @@ class DefaultController extends GetxController {
   RxList<MemoIssueDetailsModel> memoIssueDetailsList =
       <MemoIssueDetailsModel>[].obs;
   RxList<MemoRecDetailsModel> memoRecDetailsList = <MemoRecDetailsModel>[].obs;
+  RxList<MemoIssueDetailsModel> get memoIssueDetailsModel => memoIssueDetailsList;
+  RxList<MemoRecDetailsModel> get memoRecDetailsModel => memoRecDetailsList;
   RxList<PaymentMstModel> paymentMstList = <PaymentMstModel>[].obs;
   RxList<PaymentDetModel> paymentDetList = <PaymentDetModel>[].obs;
   RxList<PaymentDetAccModel> paymentDetAccList = <PaymentDetAccModel>[].obs;
@@ -148,6 +154,20 @@ class DefaultController extends GetxController {
     final int? mId = int.tryParse(menuId.toString());
     if (mId == null || mId <= 0) return true;
 
+    // Check if menu is in explicit hidden list in userAccessMap ('hidden', 'hide')
+    if (userAccessMap.containsKey('hidden')) {
+      final hiddenList = userAccessMap['hidden'];
+      if (hiddenList is List && hiddenList.any((id) => id.toString() == mId.toString())) {
+        return false;
+      }
+    }
+    if (userAccessMap.containsKey('hide')) {
+      final hiddenList = userAccessMap['hide'];
+      if (hiddenList is List && hiddenList.any((id) => id.toString() == mId.toString())) {
+        return false;
+      }
+    }
+
     // Granular flags check for edit/delete
     if (actionType == '2' && !canUserEdit.value) return false;
     if (actionType == '3' && !canUserDelete.value) return false;
@@ -169,6 +189,7 @@ class DefaultController extends GetxController {
 
     // 2. Search across ALL category lists in userAccessMap ('0', '1', '2', '3', etc.)
     for (var entry in userAccessMap.entries) {
+      if (entry.key == 'hidden' || entry.key == 'hide') continue;
       final dynamic list = entry.value;
       if (list is List && list.any((id) => id.toString() == mId.toString())) {
         return true;
@@ -186,6 +207,29 @@ class DefaultController extends GetxController {
       hasMenuPermission(menuId, actionType: '2', categoryKey: categoryKey);
   bool canDeleteMenu(dynamic menuId, {dynamic categoryKey}) =>
       hasMenuPermission(menuId, actionType: '3', categoryKey: categoryKey);
+
+  /// Check if a menu is explicitly hidden for the current user session
+  bool isMenuHidden(dynamic menuId) {
+    if (menuId == null) return false;
+    final int? mId = int.tryParse(menuId.toString());
+    if (mId == null || mId <= 0) return false;
+
+    if (userAccessMap.containsKey('hidden')) {
+      final hiddenList = userAccessMap['hidden'];
+      if (hiddenList is List &&
+          hiddenList.any((id) => id.toString() == mId.toString())) {
+        return true;
+      }
+    }
+    if (userAccessMap.containsKey('hide')) {
+      final hiddenList = userAccessMap['hide'];
+      if (hiddenList is List &&
+          hiddenList.any((id) => id.toString() == mId.toString())) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// Helper to check if a main category has any allowed menus in ua
   bool canViewCategory(dynamic categoryKey) {
@@ -215,7 +259,8 @@ class DefaultController extends GetxController {
   GlobalKey<ScaffoldState> get scaffoldKey => _scaffoldKey;
 
   /// Sets observable state and persists user session values to SharedPreferences.
-  Future<void> setUserSession(Map<String, dynamic> data, {String? outerToken}) async {
+  Future<void> setUserSession(Map<String, dynamic> data,
+      {String? outerToken, String? outerRefreshToken}) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     // 1. Extract and persist authentication token
@@ -228,6 +273,16 @@ class DefaultController extends GetxController {
     if (token != null && token.isNotEmpty) {
       authToken.value = token;
       await prefs.setString('token', token);
+    }
+
+    // Extract and persist refresh token
+    final String? rToken = (outerRefreshToken != null && outerRefreshToken.isNotEmpty)
+        ? outerRefreshToken
+        : (data['RefreshToken']?.toString() ??
+            data['refreshToken']?.toString());
+    if (rToken != null && rToken.isNotEmpty) {
+      refreshToken.value = rToken;
+      await prefs.setString('refreshToken', rToken);
     }
 
     // 2. Parse User ID (CounterMstID / CrId)
@@ -339,6 +394,7 @@ class DefaultController extends GetxController {
       if (!isLoggedIn) return;
 
       authToken.value = prefs.getString('token') ?? '';
+      refreshToken.value = prefs.getString('refreshToken') ?? '';
       currentUserId.value = prefs.getInt('userId') ?? 0;
       currentUserName.value = prefs.getString('username') ?? '';
       currentUserFullName.value = prefs.getString('fullName') ?? '';
@@ -375,7 +431,32 @@ class DefaultController extends GetxController {
 
   /// Clears stored user session and resets application state.
   Future<void> logout() async {
+    ApiClient().stopAutoRefreshTimer();
+    final String currentRefresh = refreshToken.value.isNotEmpty
+        ? refreshToken.value
+        : ((await SharedPreferences.getInstance()).getString('refreshToken') ?? '');
+
+    if (currentRefresh.isNotEmpty) {
+      try {
+        final revokeDio = Dio(BaseOptions(
+          baseUrl: baseUrl,
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+          headers: {'content-type': 'application/json'},
+        ));
+        await revokeDio.post(
+          ApiService.to.resolvePath('user/revoke-token'),
+          data: {'refreshToken': currentRefresh},
+        );
+      } catch (e) {
+        if (kDebugMode) {
+          log('Error revoking token on logout: $e');
+        }
+      }
+    }
+
     authToken.value = '';
+    refreshToken.value = '';
     currentUserId.value = 0;
     currentUserName.value = '';
     currentUserFullName.value = '';
@@ -428,7 +509,14 @@ class DefaultController extends GetxController {
             response.data['accessToken']?.toString() ??
             response.data['jwt']?.toString();
 
-        await setUserSession(data, outerToken: outerToken);
+        final String? outerRefreshToken = response.data['refreshToken']?.toString() ??
+            response.data['RefreshToken']?.toString();
+
+        await setUserSession(data,
+            outerToken: outerToken, outerRefreshToken: outerRefreshToken);
+
+        // Start the 28-Minute Refresh Timer
+        ApiClient().startAutoRefreshTimer();
 
         // Fetch dynamic menu list right after login success
         await getMenuList();
@@ -459,28 +547,12 @@ class DefaultController extends GetxController {
     try {
       isLoadingMenuList.value = true;
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String tokenToUse = authToken.value.isNotEmpty
-          ? authToken.value
-          : (prefs.getString('token') ?? '');
-
-      final Map<String, dynamic> headers = {
-        'content-type': 'application/json',
-      };
-      if (tokenToUse.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $tokenToUse';
-      }
-
-      final dio = Dio(BaseOptions(
-        headers: headers,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
 
       if (kDebugMode) {
-        log('Calling getMenuList: ${baseUrl}rough-entry/menu/getMenuList with Bearer token: ${tokenToUse.isNotEmpty}');
+        log('Calling getMenuList: ${baseUrl}rough-entry/menu/getMenuList');
       }
 
-      final response = await dio.get(
+      final response = await ApiService.to.get(
         '${baseUrl}rough-entry/menu/getMenuList',
       );
 
@@ -535,24 +607,8 @@ class DefaultController extends GetxController {
   Future<void> getCompanies() async {
     try {
       isLoadingCompanies.value = true;
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String tokenToUse = authToken.value.isNotEmpty
-          ? authToken.value
-          : (prefs.getString('token') ?? '');
 
-      final Map<String, dynamic> headers = {
-        'content-type': 'application/json',
-      };
-      if (tokenToUse.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $tokenToUse';
-      }
-      final dio = Dio(BaseOptions(
-        headers: headers,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
-
-      final response = await dio.get(
+      final response = await ApiService.to.get(
         '${baseUrl}rough-entry/companies',
       );
 
@@ -600,7 +656,8 @@ class DefaultController extends GetxController {
     return headers;
   }
 
-  Future<void> getPartyData() async {
+  Future<void> getPartyData({bool force = false}) async {
+    if (!force && partyMstList.isNotEmpty) return;
     final data = await _masterService.fetchList<PartyMstModel>(
       endpoint: 'rough-entry/party',
       fromJson: (j) => PartyMstModel.fromJson(j),
@@ -616,11 +673,10 @@ class DefaultController extends GetxController {
         id: id,
         fromJson: (j) => PartyMstModel.fromJson(j),
       );
-  Future<void> getAssortGroupData() async {
+  Future<void> getAssortGroupData({bool force = false}) async {
+    if (!force && assortGroupMstList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/assort-group',
@@ -644,11 +700,10 @@ class DefaultController extends GetxController {
       }
     }
   }
-  Future<void> getAssortData() async {
+  Future<void> getAssortData({bool force = false}) async {
+    if (!force && assortMstList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/assort',
@@ -674,11 +729,10 @@ class DefaultController extends GetxController {
       }
     }
   }
-  Future<void> getRoughAssortData() async {
+  Future<void> getRoughAssortData({bool force = false}) async {
+    if (!force && roughAssortMstList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/rough-assort',
@@ -704,11 +758,10 @@ class DefaultController extends GetxController {
       }
     }
   }
-  Future<void> getRoughAssortDetailsData() async {
+  Future<void> getRoughAssortDetailsData({bool force = false}) async {
+    if (!force && roughAssortMstDetList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/rough-assort-det',
@@ -735,11 +788,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getCreditDebitData() async {
+  Future<void> getCreditDebitData({bool force = false}) async {
+    if (!force && creditDebitDataList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/credit-debit',
@@ -763,12 +815,11 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getPurchaseData() async {
+  Future<void> getPurchaseData({bool force = false}) async {
+    if (!force && purchaseDataList.isNotEmpty) return;
     isLoadingDashboardData.value = true;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/purchase',
@@ -801,11 +852,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getPurchaseDetailsData() async {
+  Future<void> getPurchaseDetailsData({bool force = false}) async {
+    if (!force && roughDetailsModel.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/rough-details',
@@ -852,11 +902,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getSaleData() async {
+  Future<void> getSaleData({bool force = false}) async {
+    if (!force && polishSaleList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/polish-sale',
@@ -883,11 +932,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getMemoIssueData() async {
+  Future<void> getMemoIssueData({bool force = false}) async {
+    if (!force && memoIssueList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/memo-issue',
@@ -914,11 +962,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getMemoRecData() async {
+  Future<void> getMemoRecData({bool force = false}) async {
+    if (!force && memoRecList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/memo-rec',
@@ -945,11 +992,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getSaleDetailsData() async {
+  Future<void> getSaleDetailsData({bool force = false}) async {
+    if (!force && saleDetailsList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/sale-details',
@@ -994,11 +1040,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getMemoIssueDetailsData() async {
+  Future<void> getMemoIssueDetailsData({bool force = false}) async {
+    if (!force && memoIssueDetailsList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/memo-issue-details',
@@ -1025,11 +1070,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getMemoRecDetailsData() async {
+  Future<void> getMemoRecDetailsData({bool force = false}) async {
+    if (!force && memoRecDetailsList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/memo-rec-details',
@@ -1057,7 +1101,8 @@ class DefaultController extends GetxController {
   }
 
   // ==================== PARTY TYPE MASTER APIS ====================
-  Future<void> getPartyTypeData() async {
+  Future<void> getPartyTypeData({bool force = false}) async {
+    if (!force && partyTypeMstList.isNotEmpty) return;
     final data = await _masterService.fetchList<PartyTypeMstModel>(
       endpoint: 'rough-entry/partyType',
       fromJson: (j) => PartyTypeMstModel.fromJson(j),
@@ -1068,7 +1113,8 @@ class DefaultController extends GetxController {
   }
 
   // ==================== ROUGH TYPE MASTER APIS ====================
-  Future<void> getRoughData() async {
+  Future<void> getRoughData({bool force = false}) async {
+    if (!force && roughModel.isNotEmpty) return;
     final data = await _masterService.fetchList<RoughModel>(
       endpoint: 'rough-entry/rough-type',
       fromJson: (j) => RoughModel.fromJson(j),
@@ -2399,9 +2445,16 @@ class DefaultController extends GetxController {
   // --- Module 2: Menu Rights Matrix ---
   Future<UserMenuRightsResponse?> getUserMenuRights(dynamic userId) async {
     try {
-      final response =
-          await ApiService.to.get('rough-entry/user/$userId/menu-rights');
-      if (response.statusCode == 200 && response.data != null) {
+      dynamic response;
+      try {
+        response = await ApiService.to.get('user/$userId/menu-rights');
+      } catch (_) {
+        response =
+            await ApiService.to.get('rough-entry/user/$userId/menu-rights');
+      }
+      if (response != null &&
+          (response.statusCode == 200 || response.statusCode == 201) &&
+          response.data != null) {
         if (response.data is Map<String, dynamic>) {
           return UserMenuRightsResponse.fromJson(
               response.data as Map<String, dynamic>);
@@ -2420,20 +2473,28 @@ class DefaultController extends GetxController {
     try {
       isLoading.value = true;
       final payload = {'menuRights': menuRights};
-      final response = await ApiService.to.post(
-        'rough-entry/user/$userId/menu-rights',
-        data: payload,
-      );
+      dynamic response;
+      try {
+        response = await ApiService.to.post(
+          'user/$userId/menu-rights',
+          data: payload,
+        );
+      } catch (_) {
+        response = await ApiService.to.post(
+          'rough-entry/user/$userId/menu-rights',
+          data: payload,
+        );
+      }
       isLoading.value = false;
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
             : 'Menu rights saved successfully';
         successDialog(messageText: msg);
         return true;
       } else {
-        final err = (response.data is Map && response.data['message'] != null)
+        final err = (response != null && response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
             : 'Failed to save menu rights';
         errorDialog(messageText: err);
@@ -2577,11 +2638,10 @@ class DefaultController extends GetxController {
     return null;
   }
 
-  Future<void> getPaymentMstData() async {
+  Future<void> getPaymentMstData({bool force = false}) async {
+    if (!force && paymentMstList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/payment-mst',
@@ -2608,11 +2668,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getPaymentDetData() async {
+  Future<void> getPaymentDetData({bool force = false}) async {
+    if (!force && paymentDetList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/payment-det',
@@ -2639,11 +2698,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getPaymentDetAccData() async {
+  Future<void> getPaymentDetAccData({bool force = false}) async {
+    if (!force && paymentDetAccList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}rough-entry/payment-det-acc',
@@ -2670,11 +2728,10 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getPendingPaymentData() async {
+  Future<void> getPendingPaymentData({bool force = false}) async {
+    if (!force && pendingPaymentList.isNotEmpty) return;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}executeView/getPendingPayment',
@@ -2702,9 +2759,7 @@ class DefaultController extends GetxController {
       int partyCode, paymentMstId) async {
     isLoading.value = true;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}search/paymentDetails?paymentMstId=$paymentMstId&partyCode=$partyCode',
@@ -2737,9 +2792,7 @@ class DefaultController extends GetxController {
       required DateTime toDate}) async {
     isLoading.value = true;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}search/outstandingPaymentDetails?fromDate=$fromDate&toDate=$toDate&partyCode=$partyCode',
@@ -2770,13 +2823,14 @@ class DefaultController extends GetxController {
   }
 
   Future<RxList<OutstandingPurchaseSaleDetails>>
-      getOutstandingPurchaseSaleDetails() async {
+      getOutstandingPurchaseSaleDetails({bool force = false}) async {
+    if (!force && outstandingPurchaseSaleDetailsList.isNotEmpty) {
+      return outstandingPurchaseSaleDetailsList;
+    }
     isLoading.value = true;
     isLoadingDashboardData.value = true;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}report/outstandingPurchaseDetails',
@@ -2813,9 +2867,7 @@ class DefaultController extends GetxController {
       int partyCode, paymentMstId) async {
     isLoading.value = true;
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.get(
         '${baseUrl}search/paymentDetails?paymentMstId=$paymentMstId&partyCode=$partyCode',
@@ -2868,9 +2920,7 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
       var params = <String, dynamic>{
         "PaymentDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(paymentDate!),
         "PaymentDay": paymentDay,
@@ -3138,9 +3188,7 @@ class DefaultController extends GetxController {
     try {
       isLoading.value = true;
       await deletePaymentDetails(id: mstId);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = <String, dynamic>{
         "PaymentDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(paymentDate!),
@@ -3412,9 +3460,7 @@ class DefaultController extends GetxController {
       invNo}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
       var params = <String, dynamic>{
         "PaymentMstID": paymentMstId,
         "PartyCode": partyCode,
@@ -3497,9 +3543,7 @@ class DefaultController extends GetxController {
       invNo}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
       var params = <String, dynamic>{
         "PaymentMstID": paymentMstId,
         "PartyCode": partyCode,
@@ -3596,12 +3640,7 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final headers = await _getAuthHeaders();
-      final dio = Dio(BaseOptions(
-        headers: headers,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
+      final dio = ApiService.to.dio;
 
       // Resolve party type name if numeric typeCode is provided
       String? resolvedTypeName = partyType;
@@ -3727,12 +3766,7 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final headers = await _getAuthHeaders();
-      final dio = Dio(BaseOptions(
-        headers: headers,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
+      final dio = ApiService.to.dio;
 
       // Resolve party type name if numeric typeCode is provided
       String? resolvedTypeName = partyType;
@@ -3835,9 +3869,7 @@ class DefaultController extends GetxController {
       required List entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         // "RPType": "12",
@@ -4052,9 +4084,7 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "MstID": mstId,
@@ -4143,9 +4173,7 @@ class DefaultController extends GetxController {
       required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
@@ -4306,9 +4334,7 @@ class DefaultController extends GetxController {
       required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
@@ -4440,9 +4466,7 @@ class DefaultController extends GetxController {
       required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
@@ -4584,9 +4608,7 @@ class DefaultController extends GetxController {
     try {
       isLoading.value = true;
       await deletePurchaseCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         // "RPType": "12",
@@ -4804,9 +4826,7 @@ class DefaultController extends GetxController {
     try {
       isLoading.value = true;
       await deleteSaleCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
@@ -4979,9 +4999,7 @@ class DefaultController extends GetxController {
       required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
@@ -5127,9 +5145,7 @@ class DefaultController extends GetxController {
       required List<Map<String, String>> entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         // "PolishDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
@@ -5258,9 +5274,7 @@ class DefaultController extends GetxController {
   Future<void> _addPurchaseRoughData(
       {roughName, roughPurMstID, wt, rate, amount, description, srNo}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "RoughPurMstID": roughPurMstID,
@@ -5303,9 +5317,7 @@ class DefaultController extends GetxController {
   Future<void> _addSaleRoughData(
       {roughName, wt, rate, amount, description, srNo, polishSaleMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "PolishSaleMstID": polishSaleMstID,
@@ -5355,9 +5367,7 @@ class DefaultController extends GetxController {
       memoIssueMstID,
       rec}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "MemoIssueMstID": memoIssueMstID,
@@ -5411,9 +5421,7 @@ class DefaultController extends GetxController {
       srNo,
       memoRecMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "MemoRecMstID": memoRecMstID,
@@ -5467,9 +5475,7 @@ class DefaultController extends GetxController {
       srNo,
       polishSaleMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "PolishSaleMstID": polishSaleMstID,
@@ -5520,9 +5526,7 @@ class DefaultController extends GetxController {
       rec,
       memoIssueMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         if (memoIssueMstID != null) "MemoIssueMstID": memoIssueMstID,
@@ -5575,9 +5579,7 @@ class DefaultController extends GetxController {
       srNo,
       memoRecMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "MemoRecMstID": memoRecMstID,
@@ -5629,9 +5631,7 @@ class DefaultController extends GetxController {
       srNo,
       roughPurMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "RoughPurMstID": roughPurMstID,
@@ -5674,9 +5674,7 @@ class DefaultController extends GetxController {
   Future<void> deletePurchaseRoughData({required id}) async {
     try {
       isDeleteLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}rough-entry/rough-details/$id');
@@ -5706,9 +5704,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}rough-entry/sale-details/$id');
@@ -5739,9 +5735,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}rough-entry/memo-issue-details/$id');
@@ -5772,9 +5766,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}rough-entry/memo-rec-details/$id');
@@ -5805,12 +5797,7 @@ class DefaultController extends GetxController {
   Future<void> deletePartyData({required id}) async {
     try {
       isDeleteLoading.value = true;
-      final headers = await _getAuthHeaders();
-      final dio = Dio(BaseOptions(
-        headers: headers,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
+      final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/party/$id');
 
@@ -5843,9 +5830,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
       await deletePurchaseCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/purchase/$id');
 
@@ -5892,9 +5877,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
       // await deletePurchaseCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/assort/$id');
 
@@ -5929,9 +5912,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
       await deleteSaleCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}rough-entry/polish-sale/$id');
@@ -5978,9 +5959,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/memo-issue/$id');
 
@@ -6024,9 +6003,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/memo-rec/$id');
 
@@ -6071,9 +6048,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
       await deletePaymentDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}rough-entry/payment-mst/$id');
@@ -6122,9 +6097,7 @@ class DefaultController extends GetxController {
     try {
       // isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
           await dio.delete('${baseUrl}delete/payment-details?paymentMstId=$id');
@@ -6169,9 +6142,7 @@ class DefaultController extends GetxController {
     try {
       // isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio
           .delete('${baseUrl}delete/purchase-credit-debit-details?mstId=$id');
@@ -6212,9 +6183,7 @@ class DefaultController extends GetxController {
     try {
       // isDeleteLoading.value = true;
 
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio
           .delete('${baseUrl}delete/sale-credit-debit-details?mstId=$id');
@@ -6311,9 +6280,7 @@ class DefaultController extends GetxController {
       }) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "Name": "$name",
@@ -6355,9 +6322,7 @@ class DefaultController extends GetxController {
       }) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "Name": "$name",
@@ -6402,9 +6367,7 @@ class DefaultController extends GetxController {
     try {
       isLoading.value = true;
       await deletePurchaseCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "InvoiceNo": "$invoiceNo",
@@ -6484,9 +6447,7 @@ class DefaultController extends GetxController {
         amount,
         roughAssortMstID}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "RoughAssortMstID": roughAssortMstID,
@@ -6518,9 +6479,7 @@ class DefaultController extends GetxController {
   Future<void> _addAssortRoughData(
       {assort, roughAssortMstID, wt, rate, amount}) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "RoughAssortMstID": roughAssortMstID,
@@ -6557,9 +6516,7 @@ class DefaultController extends GetxController {
         required List entries}) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       var params = {
         "InvoiceNo": "$invoiceNo",
@@ -6619,9 +6576,7 @@ class DefaultController extends GetxController {
     try {
       isDeleteLoading.value = true;
       // await deletePurchaseCreditDebitDetails(id: id);
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/rough-assort/$id');
 
@@ -6662,9 +6617,7 @@ class DefaultController extends GetxController {
   Future<void> deleteRoughAssortDetData({required id}) async {
     try {
       isDeleteLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = ApiService.to.dio;
 
       final response =
       await dio.delete('${baseUrl}rough-entry/rough-assort-det/$id');
@@ -6689,58 +6642,24 @@ class DefaultController extends GetxController {
     }
   }
 
-  static bool enableAutoFetchOnInit = true;
+  static bool enableAutoFetchOnInit = false;
 
   @override
   Future<void> onInit() async {
     super.onInit();
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     authToken.value = prefs.getString('token') ?? '';
+    refreshToken.value = prefs.getString('refreshToken') ?? '';
     await restoreUserSession();
-    if (!enableAutoFetchOnInit ||
-        WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
-      return;
+    if (authToken.value.isNotEmpty && refreshToken.value.isNotEmpty) {
+      ApiClient().startAutoRefreshTimer();
     }
-    await getMenuList();
-    await getCompanies();
-    // await getIpAddress();
-    await getDeviceInfo();
-    // await getAssortGroupData();
-    // await getAssortData();
-    // await getRoughAssortData();
-    // await getRoughAssortDetailsData();
-    await getOutstandingPurchaseSaleDetails();
-    await getPurchaseData();
-    // await getHostName();
-    await getPartyData();
-    await getCreditDebitData();
-    await getPartyTypeData();
-    await getPurchaseDetailsData();
-    await getSaleDetailsData();
-    await getMemoIssueData();
-    await getMemoIssueDetailsData();
-    await getMemoRecData();
-    await getMemoRecDetailsData();
-    await getSaleData();
-    await getRoughData();
-    await getQualityData();
-    await getCharniRptGroups();
-    await getCharniData();
-    await getClarityData();
-    await getColorData();
-    await getShapeData();
-    await getExpenseGroupData();
-    await getExpenseGroupsDropdownData();
-    await getExpenseData();
-    await getAccTypeData();
-    await getTypeGroupsDropdownData();
-    await getPolishTypeData();
-    await getCompanyData();
-    await getBranchData();
-    await getUserData();
-    await getPaymentMstData();
-    await getPaymentDetData();
-    await getPaymentDetAccData();
-    await getPendingPaymentData();
+    // Do not bulk-fetch all 35+ APIs on init/login.
+    // Each screen loads its required data lazily on mount.
+    if (authToken.value.isNotEmpty && companyCode.value > 0) {
+      if (menuList.isEmpty) {
+        await getMenuList();
+      }
+    }
   }
 }
