@@ -12,32 +12,40 @@ class PartyDataGridSource extends DataGridSource {
 
   PartyDataGridSource(RxList<PartyMstModel> partyList) {
     _dataGridRows = partyList
-        .where((e) => e.companyCode == defaultController.companyCode.value)
+        .where((e) =>
+            e.companyCode == null ||
+            e.companyCode == 0 ||
+            defaultController.companyCode.value == 0 ||
+            e.companyCode == defaultController.companyCode.value)
         .toList()
         .map<DataGridRow>((party) {
+      final String resolvedType = (party.partyType != null && party.partyType!.isNotEmpty)
+          ? party.partyType!
+          : getTypeName(party.typeCode);
+
       return DataGridRow(cells: [
-        DataGridCell<int>(columnName: 'Code', value: party.partyCode),
+        DataGridCell<int>(columnName: 'Code', value: party.partyCode ?? party.partyMstID),
+        DataGridCell<String>(columnName: 'Type', value: resolvedType),
+        DataGridCell<String>(columnName: 'Name', value: party.partyName ?? ''),
         DataGridCell<String>(
-            columnName: 'Type', value: getTypeName(party.typeCode)),
-        DataGridCell<String>(columnName: 'Name', value: party.partyName),
-        DataGridCell<String>(
-            columnName: 'Contact Person', value: party.contactPerson),
-        DataGridCell<String>(columnName: 'Address', value: party.address),
-        DataGridCell<String>(columnName: 'Location', value: party.location),
+            columnName: 'Contact Person', value: party.contactPerson ?? ''),
+        DataGridCell<String>(columnName: 'Address', value: party.address ?? ''),
+        DataGridCell<String>(columnName: 'Location', value: party.location ?? party.city ?? ''),
         DataGridCell<dynamic>(columnName: 'CGST', value: party.cGST),
         DataGridCell<dynamic>(columnName: 'SGST', value: party.sGST),
         DataGridCell<dynamic>(columnName: 'IGST', value: party.iGST),
         DataGridCell<int>(columnName: 'Sort Id', value: party.sortID),
-        DataGridCell<bool>(columnName: 'Active', value: party.active),
+        DataGridCell<bool>(columnName: 'Active', value: party.active ?? true),
       ]);
     }).toList();
   }
 
   String getTypeName(int? typeCode) {
+    if (typeCode == null) return '';
     final party = defaultController.partyTypeMstList.firstWhere(
         (p) => p.typeCode == typeCode,
-        orElse: () => PartyTypeMstModel(typeName: 'Unknown'));
-    return party.typeName ?? 'Unknown';
+        orElse: () => PartyTypeMstModel(typeName: ''));
+    return party.typeName ?? '';
   }
 
   @override
@@ -60,7 +68,7 @@ class PartyDataGridSource extends DataGridSource {
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 5.0),
                   child: Checkbox(
-                    value: cell.value as bool,
+                    value: (cell.value as bool?) ?? true,
                     onChanged: null, // Disable interaction
                   ),
                 )
@@ -68,7 +76,7 @@ class PartyDataGridSource extends DataGridSource {
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 5.0),
                   child: Text(
-                    cell.value.toString(),
+                    cell.value != null ? cell.value.toString() : '',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textPrimary,

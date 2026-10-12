@@ -271,11 +271,16 @@ class PartyFormState extends State<PartyForm> {
       return;
     }
 
+    final selectedTypeItem = defaultController.partyTypeMstList.firstWhereOrNull(
+      (p) => p.typeCode.toString() == _selectedType.value,
+    );
+    final String? resolvedPartyTypeName = selectedTypeItem?.typeName ?? (_selectedType.value.isEmpty ? null : _selectedType.value);
+
     if (_isFromEdit) {
       await defaultController.updatePartyData(
         id: selectedPartyMstID.value,
         partyName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
-        partyType: _selectedType.value.isEmpty ? null : _selectedType.value,
+        partyType: resolvedPartyTypeName,
         typeCode: _selectedType.value.isEmpty ? null : _selectedType.value,
         contactPerson: _contactPersonController.text.trim().isEmpty ? null : _contactPersonController.text.trim(),
         address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
@@ -307,7 +312,7 @@ class PartyFormState extends State<PartyForm> {
     } else {
       await defaultController.addPartyData(
         partyName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
-        partyType: _selectedType.value.isEmpty ? null : _selectedType.value,
+        partyType: resolvedPartyTypeName,
         typeCode: _selectedType.value.isEmpty ? null : _selectedType.value,
         contactPerson: _contactPersonController.text.trim().isEmpty ? null : _contactPersonController.text.trim(),
         address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
@@ -356,12 +361,13 @@ class PartyFormState extends State<PartyForm> {
       orElse: () => PartyMstModel(),
     );
 
-    if (partyEntry.partyMstID != null) {
-      selectedPartyMstID.value = partyEntry.partyMstID!;
+    final id = partyEntry.partyMstID ?? partyEntry.partyCode;
+    if (id != null && id != 0) {
+      selectedPartyMstID.value = id;
       _codeController.text = partyEntry.partyCode?.toString() ?? partyEntry.partyMstID.toString();
       _nameController.text = partyEntry.partyName ?? '';
       _contactPersonController.text = partyEntry.contactPerson ?? '';
-      _locationController.text = partyEntry.city ?? partyEntry.location ?? '';
+      _locationController.text = partyEntry.location ?? partyEntry.city ?? '';
       _addressController.text = partyEntry.address ?? '';
       _mobileNoController.text = partyEntry.mobileno ?? '';
       _emailController.text = partyEntry.emailID ?? '';
@@ -384,7 +390,25 @@ class PartyFormState extends State<PartyForm> {
       _debitController.text = partyEntry.debitOpBalRs?.toString() ?? '';
       _debitControllerDollor.text = partyEntry.debitOpBalDollar?.toString() ?? '';
       _isActive = partyEntry.active ?? true;
-      _selectedType.value = partyEntry.typeCode?.toString() ?? '';
+
+      String typeVal = '';
+      if (partyEntry.typeCode != null) {
+        final match = defaultController.partyTypeMstList.firstWhereOrNull(
+          (p) => p.typeCode == partyEntry.typeCode,
+        );
+        if (match != null) {
+          typeVal = match.typeCode.toString();
+        }
+      }
+      if (typeVal.isEmpty && partyEntry.partyType != null && partyEntry.partyType!.isNotEmpty) {
+        final match = defaultController.partyTypeMstList.firstWhereOrNull(
+          (p) => p.typeName?.trim().toLowerCase() == partyEntry.partyType?.trim().toLowerCase(),
+        );
+        if (match != null && match.typeCode != null) {
+          typeVal = match.typeCode.toString();
+        }
+      }
+      _selectedType.value = typeVal;
 
       setState(() {
         _isFromEdit = true;
@@ -562,7 +586,9 @@ class PartyFormState extends State<PartyForm> {
                             focusNode: _typeFocus,
                             nextFocusNode: _nameFocus,
                             isEnabled: _isEnabled,
-                            value: _selectedType.value.isEmpty ? null : _selectedType.value,
+                            value: dropdownItems.any((item) => item.value == _selectedType.value)
+                                ? _selectedType.value
+                                : null,
                             items: dropdownItems,
                             hintText: 'Select Type',
                             onChanged: (val) {

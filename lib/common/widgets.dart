@@ -26,76 +26,82 @@ import 'package:shared_preferences/shared_preferences.dart';
 final DefaultController defaultController = Get.find<DefaultController>();
 final TabControllerX tabController = Get.find<TabControllerX>();
 
-Future infoDialog({required String messageText}) {
-  if (Get.overlayContext == null) return Future.value();
-  return Get.defaultDialog(
-    title: 'Alert',
-    content: KeyboardListener(
-      focusNode: FocusNode(),
-      autofocus: true, // Automatically listens for keyboard events
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.enter) {
-          Get.back(); // Close dialog on Enter key press
-        }
+Future<void> infoDialog({required String messageText}) async {
+  if (Get.overlayContext == null) return;
+  try {
+    Get.defaultDialog(
+      title: 'Alert',
+      content: KeyboardListener(
+        focusNode: FocusNode(),
+        autofocus: true, // Automatically listens for keyboard events
+        onKeyEvent: (KeyEvent event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.enter) {
+            Get.back(); // Close dialog on Enter key press
+          }
+        },
+        child: Text(messageText),
+      ),
+      barrierDismissible: false,
+      // Prevent closing by tapping outside
+      onConfirm: () {
+        Get.back(); // Close the dialog on button press
       },
-      child: Text(messageText),
-    ),
-    barrierDismissible: false,
-    // Prevent closing by tapping outside
-    onConfirm: () {
-      Get.back(); // Close the dialog on button press
-    },
-    textConfirm: 'OK',
-  );
+      textConfirm: 'OK',
+    );
+  } catch (_) {}
 }
 
-Future successDialog({required String messageText}) {
-  if (Get.overlayContext == null) return Future.value();
-  return Get.defaultDialog(
-    title: 'Success',
-    content: KeyboardListener(
-      focusNode: FocusNode(),
-      autofocus: true, // Automatically listens for keyboard events
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.enter) {
-          Get.back(); // Close dialog on Enter key press
-        }
+Future<void> successDialog({required String messageText}) async {
+  if (Get.overlayContext == null) return;
+  try {
+    Get.defaultDialog(
+      title: 'Success',
+      content: KeyboardListener(
+        focusNode: FocusNode(),
+        autofocus: true, // Automatically listens for keyboard events
+        onKeyEvent: (KeyEvent event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.enter) {
+            Get.back(); // Close dialog on Enter key press
+          }
+        },
+        child: Text(messageText),
+      ),
+      barrierDismissible: false,
+      // Prevent closing by tapping outside
+      onConfirm: () {
+        Get.back(); // Close the dialog on button press
       },
-      child: Text(messageText),
-    ),
-    barrierDismissible: false,
-    // Prevent closing by tapping outside
-    onConfirm: () {
-      Get.back(); // Close the dialog on button press
-    },
-    textConfirm: 'OK',
-  );
+      textConfirm: 'OK',
+    );
+  } catch (_) {}
 }
 
-Future errorDialog({required String messageText}) {
-  if (Get.overlayContext == null) return Future.value();
-  return Get.defaultDialog(
-    title: 'Error',
-    content: KeyboardListener(
-      focusNode: FocusNode(),
-      autofocus: true, // Automatically listens for keyboard events
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.enter) {
-          Get.back(); // Close dialog on Enter key press
-        }
+Future<void> errorDialog({required String messageText}) async {
+  if (Get.overlayContext == null) return;
+  try {
+    Get.defaultDialog(
+      title: 'Error',
+      content: KeyboardListener(
+        focusNode: FocusNode(),
+        autofocus: true, // Automatically listens for keyboard events
+        onKeyEvent: (KeyEvent event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.enter) {
+            Get.back(); // Close dialog on Enter key press
+          }
+        },
+        child: Text(messageText),
+      ),
+      barrierDismissible: false,
+      // Prevent closing by tapping outside
+      onConfirm: () {
+        Get.back(); // Close the dialog on button press
       },
-      child: Text(messageText),
-    ),
-    barrierDismissible: false,
-    // Prevent closing by tapping outside
-    onConfirm: () {
-      Get.back(); // Close the dialog on button press
-    },
-    textConfirm: 'OK',
-  );
+      textConfirm: 'OK',
+    );
+  } catch (_) {}
 }
 
 Widget buildTextField(String label, TextEditingController? controller,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
+import 'package:real_web_rough_entry_system/controllers/menu_app_controller.dart';
 import 'package:real_web_rough_entry_system/controllers/theme_controller.dart';
 import 'package:real_web_rough_entry_system/main/main_screen.dart';
 import 'package:real_web_rough_entry_system/splash_screen.dart';
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
       },
       initialBinding: BindingsBuilder(() {
         Get.put(TabControllerX());
+        Get.put(MenuAppController());
         Get.put(DefaultController());
       }),
       getPages: [

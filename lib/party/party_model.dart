@@ -87,13 +87,13 @@ class PartyMstModel {
         this.remarks});
 
   PartyMstModel.fromJson(Map<String, dynamic> json) {
-    partyMstID = json['PartyMstID'];
-    partyCode = json['PartyCode'];
-    partyType = json['PartyType'];
-    partyName = json['PartyName'];
+    partyMstID = json['PartyMstID'] ?? json['PartyCode'];
+    partyCode = json['PartyCode'] ?? json['PartyMstID'];
+    partyType = json['PartyType'] ?? json['Type'];
+    partyName = json['PartyName'] ?? json['Name'];
     contactPerson = json['ContactPerson'];
     address = json['Address'];
-    mobileno = json['Mobileno'];
+    mobileno = json['Mobileno'] ?? json['MobileNo'];
     phNo = json['PhNo'];
     fax = json['Fax'];
     emailID = json['EmailID'];
@@ -102,7 +102,7 @@ class PartyMstModel {
     adharNo = json['AdharNo'];
     bankName = json['BankName'];
     branchName = json['BranchName'];
-    bankAdress = json['BankAdress'];
+    bankAdress = json['BankAdress'] ?? json['BankAddress'];
     iFSCCode = json['IFSCCode'];
     bankAcNo = json['BankAcNo'];
     sflag = json['Sflag'];
@@ -134,12 +134,15 @@ class PartyMstModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['PartyMstID'] = partyMstID;
-    data['PartyCode'] = partyCode;
+    data['PartyCode'] = partyCode ?? partyMstID;
     data['PartyType'] = partyType;
+    data['Type'] = partyType;
     data['PartyName'] = partyName;
+    data['Name'] = partyName;
     data['ContactPerson'] = contactPerson;
     data['Address'] = address;
     data['Mobileno'] = mobileno;
+    data['MobileNo'] = mobileno;
     data['PhNo'] = phNo;
     data['Fax'] = fax;
     data['EmailID'] = emailID;
@@ -149,6 +152,7 @@ class PartyMstModel {
     data['BankName'] = bankName;
     data['BranchName'] = branchName;
     data['BankAdress'] = bankAdress;
+    data['BankAddress'] = bankAdress;
     data['IFSCCode'] = iFSCCode;
     data['BankAcNo'] = bankAcNo;
     data['Sflag'] = sflag;

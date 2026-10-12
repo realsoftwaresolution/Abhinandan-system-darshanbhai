@@ -26,6 +26,19 @@ import 'package:real_web_rough_entry_system/memo%20receive/memo_rec_model.dart';
 import 'package:real_web_rough_entry_system/party-ledger/outstanding_payment_details_model.dart';
 import 'package:real_web_rough_entry_system/party/party_model.dart';
 import 'package:real_web_rough_entry_system/party/party_type_model.dart';
+import 'package:real_web_rough_entry_system/charni/charni_model.dart';
+import 'package:real_web_rough_entry_system/clarity/clarity_model.dart';
+import 'package:real_web_rough_entry_system/color/color_model.dart';
+import 'package:real_web_rough_entry_system/quality/quality_model.dart';
+import 'package:real_web_rough_entry_system/shape/shape_model.dart';
+import 'package:real_web_rough_entry_system/expense_group/expense_group_model.dart';
+import 'package:real_web_rough_entry_system/expense/expense_model.dart';
+import 'package:real_web_rough_entry_system/acc_type/acc_type_model.dart';
+import 'package:real_web_rough_entry_system/polish_type/polish_type_model.dart';
+import 'package:real_web_rough_entry_system/company/company_model.dart';
+import 'package:real_web_rough_entry_system/branch/branch_model.dart';
+import 'package:real_web_rough_entry_system/services/api_service.dart';
+import 'package:real_web_rough_entry_system/user/user_model.dart';
 import 'package:real_web_rough_entry_system/payment/payment_det_acc.dart';
 import 'package:real_web_rough_entry_system/payment/payment_det_model.dart';
 import 'package:real_web_rough_entry_system/payment/payment_details_model.dart';
@@ -43,8 +56,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 import '../assort/rough_assort_det_mst_model.dart';
+import '../main/menu_model.dart';
+import 'package:real_web_rough_entry_system/services/master_crud_service.dart';
 
 class DefaultController extends GetxController {
+  RxList<MainMenuModel> menuList = <MainMenuModel>[].obs;
+  RxBool isLoadingMenuList = false.obs;
+  RxString authToken = ''.obs;
   RxList<PartyMstModel> partyMstList = <PartyMstModel>[].obs;
   RxList<AssortGroupMst> assortGroupMstList = <AssortGroupMst>[].obs;
   RxList<AssortMst> assortMstList = <AssortMst>[].obs;
@@ -61,6 +79,22 @@ class DefaultController extends GetxController {
   // RxList<RoughPurchaseModel> polishSaleList = <RoughPurchaseModel>[].obs;
   RxList<PartyTypeMstModel> partyTypeMstList = <PartyTypeMstModel>[].obs;
   RxList<RoughModel> roughModel = <RoughModel>[].obs;
+  RxList<QualityModel> qualityModelList = <QualityModel>[].obs;
+  RxList<CharniModel> charniModelList = <CharniModel>[].obs;
+  RxList<CharniRptGroupModel> charniRptGroupList = <CharniRptGroupModel>[].obs;
+  RxList<ClarityModel> clarityModelList = <ClarityModel>[].obs;
+  RxList<ColorModel> colorModelList = <ColorModel>[].obs;
+  RxList<ShapeModel> shapeModelList = <ShapeModel>[].obs;
+  RxList<ExpenseGroupModel> expenseGroupModelList = <ExpenseGroupModel>[].obs;
+  RxList<ExpenseModel> expenseModelList = <ExpenseModel>[].obs;
+  RxList<ExpenseGroupModel> expenseGroupDropdownList = <ExpenseGroupModel>[].obs;
+  RxList<AccTypeModel> accTypeModelList = <AccTypeModel>[].obs;
+  RxList<TypeGroupModel> typeGroupDropdownList = <TypeGroupModel>[].obs;
+  RxList<PolishTypeModel> polishTypeModelList = <PolishTypeModel>[].obs;
+  RxList<CompanyMstModel> companyModelList = <CompanyMstModel>[].obs;
+  RxList<BranchModel> branchModelList = <BranchModel>[].obs;
+  RxList<UserModel> userModelList = <UserModel>[].obs;
+  Rx<UserModel?> selectedUserForRights = Rx<UserModel?>(null);
   RxList<RoughDetailsModel> roughDetailsModel = <RoughDetailsModel>[].obs;
   RxList<SaleDetailsModel> saleDetailsList = <SaleDetailsModel>[].obs;
   RxList<MemoIssueDetailsModel> memoIssueDetailsList =
@@ -88,70 +122,432 @@ class DefaultController extends GetxController {
   RxBool enabledAdvancedDashboard = true.obs;
   RxBool isLoadingDashboardData = false.obs;
 
+  // ==================== USER SESSION & SECURITY STATE ====================
+  RxInt currentUserId = 0.obs;
+  RxString currentUserName = ''.obs;
+  RxString currentUserFullName = ''.obs;
+  RxString currentUserGrp = ''.obs;
+  RxInt currentUserBranch = 0.obs;
+  RxBool canUserEdit = true.obs;
+  RxBool canUserDelete = true.obs;
+  RxInt currentLogId = 0.obs;
+  RxString currentPcId = ''.obs;
+  RxDouble userStockLimit = 0.0.obs;
+  RxString userLoginTimeFrom = ''.obs;
+  RxString userLoginTimeTo = ''.obs;
+  RxMap<String, dynamic> userAccessMap = <String, dynamic>{}.obs;
+
+  bool get isAdmin =>
+      currentUserGrp.value.trim().toUpperCase() == 'ADMIN' ||
+      currentUserGrp.value.trim().toUpperCase() == 'SUPERADMIN';
+
+  /// Check permission for a specific menu and action.
+  /// Handles category arrays in 'ua' ('0', '1', '2', '3', etc.).
+  bool hasMenuPermission(dynamic menuId, {String actionType = '0', dynamic categoryKey}) {
+    if (menuId == null) return true;
+    final int? mId = int.tryParse(menuId.toString());
+    if (mId == null || mId <= 0) return true;
+
+    // Granular flags check for edit/delete
+    if (actionType == '2' && !canUserEdit.value) return false;
+    if (actionType == '3' && !canUserDelete.value) return false;
+
+    // If ua is not configured/empty, fallback to admin or allow
+    if (userAccessMap.isEmpty) {
+      if (isAdmin) return true;
+      return true;
+    }
+
+    // 1. If categoryKey is provided, check that specific category list in ua
+    if (categoryKey != null) {
+      final String catStr = categoryKey.toString();
+      final catList = userAccessMap[catStr];
+      if (catList is List && catList.any((id) => id.toString() == mId.toString())) {
+        return true;
+      }
+    }
+
+    // 2. Search across ALL category lists in userAccessMap ('0', '1', '2', '3', etc.)
+    for (var entry in userAccessMap.entries) {
+      final dynamic list = entry.value;
+      if (list is List && list.any((id) => id.toString() == mId.toString())) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  bool canViewMenu(dynamic menuId, {dynamic categoryKey}) =>
+      hasMenuPermission(menuId, actionType: '0', categoryKey: categoryKey);
+  bool canAddMenu(dynamic menuId, {dynamic categoryKey}) =>
+      hasMenuPermission(menuId, actionType: '1', categoryKey: categoryKey);
+  bool canEditMenu(dynamic menuId, {dynamic categoryKey}) =>
+      hasMenuPermission(menuId, actionType: '2', categoryKey: categoryKey);
+  bool canDeleteMenu(dynamic menuId, {dynamic categoryKey}) =>
+      hasMenuPermission(menuId, actionType: '3', categoryKey: categoryKey);
+
+  /// Helper to check if a main category has any allowed menus in ua
+  bool canViewCategory(dynamic categoryKey) {
+    if (userAccessMap.isEmpty) return true;
+    final String key = categoryKey.toString();
+    if (userAccessMap.containsKey(key)) {
+      final list = userAccessMap[key];
+      if (list is List) {
+        return list.isNotEmpty;
+      }
+    }
+    return false;
+  }
+
   DataGridController accountDataGridController = DataGridController();
   DataGridController bookDataGridController = DataGridController();
 
   final RxString selectedTypeAccountParty = ''.obs;
   final RxString selectedTypeBookParty = ''.obs;
 
-  // String baseUrl= 'http://localhost:301/';
-  String baseUrl = 'http://50.62.183.116:8080/';
-
-  // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
-  // String baseUrl = 'https://us-central1-real-rough-api.cloudfunctions.net/api/';
+  String get baseUrl => ApiService.to.baseUrl;
+  set baseUrl(String url) => ApiService.to.updateBaseUrl(url);
+  final MasterCrudService _masterService = MasterCrudService();
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   GlobalKey<ScaffoldState> get scaffoldKey => _scaffoldKey;
 
+  /// Sets observable state and persists user session values to SharedPreferences.
+  Future<void> setUserSession(Map<String, dynamic> data, {String? outerToken}) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // 1. Extract and persist authentication token
+    final String? token = (outerToken != null && outerToken.isNotEmpty)
+        ? outerToken
+        : (data['Token']?.toString() ??
+            data['token']?.toString() ??
+            data['accessToken']?.toString() ??
+            data['jwt']?.toString());
+    if (token != null && token.isNotEmpty) {
+      authToken.value = token;
+      await prefs.setString('token', token);
+    }
+
+    // 2. Parse User ID (CounterMstID / CrId)
+    int userId = 0;
+    if (data['CounterMstID'] != null) {
+      userId = int.tryParse(data['CounterMstID'].toString()) ?? 0;
+    } else if (data['CrId'] != null) {
+      userId = int.tryParse(data['CrId'].toString()) ?? 0;
+    }
+    currentUserId.value = userId;
+    await prefs.setInt('userId', userId);
+
+    // 3. User Login Name & Full Name
+    final String uName = data['CrName']?.toString() ??
+        data['LoginName']?.toString() ??
+        '';
+    currentUserName.value = uName;
+    if (uName.isNotEmpty) {
+      await prefs.setString('username', uName);
+    }
+
+    final String fullName = data['UserName']?.toString() ??
+        data['Name']?.toString() ??
+        '';
+    currentUserFullName.value = fullName;
+    await prefs.setString('fullName', fullName);
+
+    if (data['CrPass'] != null) {
+      await prefs.setString('password', data['CrPass'].toString());
+    }
+
+    // 4. User Group / Role
+    final String uGrp = data['UserGrp']?.toString() ??
+        data['Rights']?.toString() ??
+        'USER';
+    currentUserGrp.value = uGrp;
+    await prefs.setString('userGrp', uGrp);
+
+    // 5. Branch Code
+    int branchCode = 0;
+    if (data['BranchCode'] != null) {
+      branchCode = int.tryParse(data['BranchCode'].toString()) ?? 0;
+    }
+    currentUserBranch.value = branchCode;
+    await prefs.setInt('branchCode', branchCode);
+
+    // 6. Action Rights (CrEdit / CrDel)
+    final bool canEdit = data['CrEdit'] == null ||
+        data['CrEdit'].toString().toUpperCase() == 'Y' ||
+        data['CrEdit'] == true;
+    final bool canDel = data['CrDel'] == null ||
+        data['CrDel'].toString().toUpperCase() == 'Y' ||
+        data['CrDel'] == true;
+    canUserEdit.value = canEdit;
+    canUserDelete.value = canDel;
+    await prefs.setBool('crEdit', canEdit);
+    await prefs.setBool('crDel', canDel);
+
+    // 7. Audit fields (LogID / PcID)
+    final int logId = int.tryParse(data['LogID']?.toString() ?? '') ?? 0;
+    final String pcId = data['PcID']?.toString() ?? '';
+    currentLogId.value = logId;
+    currentPcId.value = pcId;
+    if (logId > 0) await prefs.setInt('logId', logId);
+    if (pcId.isNotEmpty) await prefs.setString('pcId', pcId);
+
+    // 8. Stock limit & Login timings
+    if (data['StockLimit'] != null) {
+      userStockLimit.value =
+          double.tryParse(data['StockLimit'].toString()) ?? 0.0;
+      await prefs.setDouble('stockLimit', userStockLimit.value);
+    }
+    if (data['LoginTimeFrom'] != null) {
+      userLoginTimeFrom.value = data['LoginTimeFrom'].toString();
+      await prefs.setString('loginTimeFrom', userLoginTimeFrom.value);
+    }
+    if (data['LoginTimeTo'] != null) {
+      userLoginTimeTo.value = data['LoginTimeTo'].toString();
+      await prefs.setString('loginTimeTo', userLoginTimeTo.value);
+    }
+
+    // 9. User Access Matrix ('ua')
+    if (data['ua'] is Map) {
+      final uaMap = Map<String, dynamic>.from(data['ua'] as Map);
+      userAccessMap.value = uaMap;
+      await prefs.setString('ua', jsonEncode(uaMap));
+    } else {
+      userAccessMap.clear();
+      await prefs.remove('ua');
+    }
+
+    // 10. Auto-assign Company Code if returned in login payload
+    if (data['CompanyCode'] != null) {
+      final int? compCode = int.tryParse(data['CompanyCode'].toString());
+      if (compCode != null && compCode > 0) {
+        companyCode.value = compCode;
+        await prefs.setInt('companyCode', compCode);
+      }
+    }
+
+    await prefs.setBool('isLoggedIn', true);
+  }
+
+  /// Restores saved session from SharedPreferences on app resume or initialization.
+  Future<void> restoreUserSession() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      if (!isLoggedIn) return;
+
+      authToken.value = prefs.getString('token') ?? '';
+      currentUserId.value = prefs.getInt('userId') ?? 0;
+      currentUserName.value = prefs.getString('username') ?? '';
+      currentUserFullName.value = prefs.getString('fullName') ?? '';
+      currentUserGrp.value = prefs.getString('userGrp') ?? '';
+      currentUserBranch.value = prefs.getInt('branchCode') ?? 0;
+      canUserEdit.value = prefs.getBool('crEdit') ?? true;
+      canUserDelete.value = prefs.getBool('crDel') ?? true;
+      currentLogId.value = prefs.getInt('logId') ?? 0;
+      currentPcId.value = prefs.getString('pcId') ?? '';
+      userStockLimit.value = prefs.getDouble('stockLimit') ?? 0.0;
+      userLoginTimeFrom.value = prefs.getString('loginTimeFrom') ?? '';
+      userLoginTimeTo.value = prefs.getString('loginTimeTo') ?? '';
+
+      final int? savedComp = prefs.getInt('companyCode');
+      if (savedComp != null && savedComp > 0) {
+        companyCode.value = savedComp;
+      }
+
+      final String? uaRaw = prefs.getString('ua');
+      if (uaRaw != null && uaRaw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(uaRaw);
+          if (decoded is Map) {
+            userAccessMap.value = Map<String, dynamic>.from(decoded);
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        log('Error restoring user session: $e');
+      }
+    }
+  }
+
+  /// Clears stored user session and resets application state.
+  Future<void> logout() async {
+    authToken.value = '';
+    currentUserId.value = 0;
+    currentUserName.value = '';
+    currentUserFullName.value = '';
+    currentUserGrp.value = '';
+    currentUserBranch.value = 0;
+    canUserEdit.value = true;
+    canUserDelete.value = true;
+    currentLogId.value = 0;
+    currentPcId.value = '';
+    userStockLimit.value = 0.0;
+    userLoginTimeFrom.value = '';
+    userLoginTimeTo.value = '';
+    userAccessMap.clear();
+    menuList.clear();
+
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Get.offAllNamed('/');
+  }
+
   Future<void> login(String username, String password) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiService.to.baseUrl,
+        headers: {
+          'content-type': 'application/json',
+        },
+      ));
       var params = <String, dynamic>{"CrName": username, "CrPass": password};
       final response =
-          await dio.post('${baseUrl}rough-entry/user/login', data: params);
-      if (response.data['data'] != null) {
-        if (response.data['data']['Active'] == true) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('username', response.data['data']['CrName']);
-          await prefs.setString('password', response.data['data']['CrPass']);
-          await prefs.setBool('isLoggedIn', true);
-          // await prefs.setBool('isDashboard', response.data['data']['Dashboard']);
-          // enabledAdvancedDashboard = response.data['data']['Dashboard'];
-          isLoading.value = false;
-          Get.back();
-          // Ensure company data is fetched before showing selection dialog
-          if (companies.isEmpty) {
-            await getCompanies();
-          }
-          showCompanySelectionDialog(isFromSwitchCompany: false);
-        } else {
+          await dio.post('rough-entry/user/login', data: params);
+
+      if (response.data != null && response.data['data'] != null) {
+        final Map<String, dynamic> data = (response.data['data'] is Map<String, dynamic>)
+            ? response.data['data'] as Map<String, dynamic>
+            : Map<String, dynamic>.from(response.data['data'] as Map);
+
+        final bool isActive = data['Active'] == true ||
+            data['Active']?.toString() == '1' ||
+            data['Active']?.toString().toLowerCase() == 'true';
+        if (!isActive) {
           isLoading.value = false;
           infoDialog(messageText: 'User Inactive, Please Contact Your Admin.');
+          return;
         }
+
+        final String? outerToken = response.data['token']?.toString() ??
+            response.data['Token']?.toString() ??
+            response.data['accessToken']?.toString() ??
+            response.data['jwt']?.toString();
+
+        await setUserSession(data, outerToken: outerToken);
+
+        // Fetch dynamic menu list right after login success
+        await getMenuList();
+
+        isLoading.value = false;
+        Get.back();
+
+        // Ensure company data is fetched before showing selection dialog
+        if (companies.isEmpty) {
+          await getCompanies();
+        }
+        showCompanySelectionDialog(isFromSwitchCompany: false);
       } else {
         isLoading.value = false;
-        infoDialog(messageText: response.data['message']);
+        final String msg = response.data?['message']?.toString() ?? 'Invalid credentials.';
+        infoDialog(messageText: msg);
       }
     } catch (error) {
       isLoading.value = false;
-      errorDialog(messageText: 'An unexpected error occurred.');
+      errorDialog(messageText: 'An unexpected error occurred during login.');
       if (kDebugMode) {
-        log('$error');
+        log('Login error: $error');
       }
+    }
+  }
+
+  Future<void> getMenuList() async {
+    try {
+      isLoadingMenuList.value = true;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String tokenToUse = authToken.value.isNotEmpty
+          ? authToken.value
+          : (prefs.getString('token') ?? '');
+
+      final Map<String, dynamic> headers = {
+        'content-type': 'application/json',
+      };
+      if (tokenToUse.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $tokenToUse';
+      }
+
+      final dio = Dio(BaseOptions(
+        headers: headers,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
+
+      if (kDebugMode) {
+        log('Calling getMenuList: ${baseUrl}rough-entry/menu/getMenuList with Bearer token: ${tokenToUse.isNotEmpty}');
+      }
+
+      final response = await dio.get(
+        '${baseUrl}rough-entry/menu/getMenuList',
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final dynamic raw = response.data;
+        List<dynamic> data;
+        if (raw is List) {
+          data = raw;
+        } else if (raw is Map && raw['data'] is List) {
+          data = raw['data'];
+        } else {
+          data = [];
+        }
+
+        if (data.isNotEmpty) {
+          menuList.value = data
+              .map((json) => MainMenuModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+          await prefs.setString('menuList_cache', jsonEncode(data));
+          if (kDebugMode) {
+            log('getMenuList loaded: ${menuList.length} menu groups');
+          }
+        }
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        log('getMenuList error: $error');
+      }
+    } finally {
+      if (menuList.isEmpty) {
+        try {
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          final String? cached = prefs.getString('menuList_cache');
+          if (cached != null && cached.isNotEmpty) {
+            final List<dynamic> cachedData = jsonDecode(cached);
+            menuList.value = cachedData
+                .map((j) => MainMenuModel.fromJson(j as Map<String, dynamic>))
+                .toList();
+          }
+        } catch (_) {}
+
+        if (menuList.isEmpty) {
+          menuList.value = defaultMenuListJson
+              .map((j) => MainMenuModel.fromJson(j))
+              .toList();
+        }
+      }
+      isLoadingMenuList.value = false;
     }
   }
 
   Future<void> getCompanies() async {
     try {
       isLoadingCompanies.value = true;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String tokenToUse = authToken.value.isNotEmpty
+          ? authToken.value
+          : (prefs.getString('token') ?? '');
+
+      final Map<String, dynamic> headers = {
+        'content-type': 'application/json',
+      };
+      if (tokenToUse.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $tokenToUse';
+      }
       final dio = Dio(BaseOptions(
-        headers: {
-          'content-type': 'application/json',
-        },
+        headers: headers,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
       ));
@@ -189,36 +585,37 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> getPartyData() async {
-    try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+  Future<Map<String, dynamic>> _getAuthHeaders() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String tokenToUse = authToken.value.isNotEmpty
+        ? authToken.value
+        : (prefs.getString('token') ?? '');
 
-      final response = await dio.get(
-        '${baseUrl}rough-entry/party',
-      );
-
-      if (response.statusCode == 200) {
-        // Assuming the response.data is a List of JSON objects
-        final List<dynamic> data = response.data;
-
-        // Mapping each JSON object to a PartyMstModel
-        partyMstList.value = data
-            .map((json) => PartyMstModel.fromJson(json))
-            .toList()
-            .reversed
-            .toList();
-      } else {
-        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
-      }
-    } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.getPartyData');
-      if (kDebugMode) {
-        log('$error');
-      }
+    final Map<String, dynamic> headers = {
+      'content-type': 'application/json',
+    };
+    if (tokenToUse.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $tokenToUse';
     }
+    return headers;
   }
+
+  Future<void> getPartyData() async {
+    final data = await _masterService.fetchList<PartyMstModel>(
+      endpoint: 'rough-entry/party',
+      fromJson: (j) => PartyMstModel.fromJson(j),
+      errorContext: 'getPartyData',
+      reverse: true,
+    );
+    if (data != null) partyMstList.value = data;
+  }
+
+  Future<PartyMstModel?> getPartyById(dynamic id) =>
+      _masterService.fetchById<PartyMstModel>(
+        endpoint: 'rough-entry/party',
+        id: id,
+        fromJson: (j) => PartyMstModel.fromJson(j),
+      );
   Future<void> getAssortGroupData() async {
     try {
       final dio = Dio(BaseOptions(headers: {
@@ -659,71 +1056,1525 @@ class DefaultController extends GetxController {
     }
   }
 
+  // ==================== PARTY TYPE MASTER APIS ====================
   Future<void> getPartyTypeData() async {
-    try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+    final data = await _masterService.fetchList<PartyTypeMstModel>(
+      endpoint: 'rough-entry/partyType',
+      fromJson: (j) => PartyTypeMstModel.fromJson(j),
+      errorContext: 'getPartyTypeData',
+      reverse: true,
+    );
+    if (data != null) partyTypeMstList.value = data;
+  }
 
-      final response = await dio.get(
-        '${baseUrl}rough-entry/partyType',
+  // ==================== ROUGH TYPE MASTER APIS ====================
+  Future<void> getRoughData() async {
+    final data = await _masterService.fetchList<RoughModel>(
+      endpoint: 'rough-entry/rough-type',
+      fromJson: (j) => RoughModel.fromJson(j),
+      errorContext: 'getRoughData',
+    );
+    if (data != null) roughModel.value = data;
+  }
+
+  Future<RoughModel?> getRoughTypeById(dynamic id) =>
+      _masterService.fetchById<RoughModel>(
+        endpoint: 'rough-entry/rough-type',
+        id: id,
+        fromJson: (j) => RoughModel.fromJson(j),
       );
 
-      if (response.statusCode == 200) {
-        // Assuming the response.data is a List of JSON objects
-        final List<dynamic> data = response.data;
+  Future<void> addRoughTypeData({
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final int codeToUse =
+        companyCodeParam ?? (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.create(
+      endpoint: 'rough-entry/rough-type/add',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      onSuccess: () => getRoughData(),
+      defaultSuccessMessage: 'Rough Type Entry Saved Successfully',
+      loadingState: isLoading,
+    );
+  }
 
-        // Mapping each JSON object to a PartyMstModel
-        partyTypeMstList.value = data
-            .map((json) => PartyTypeMstModel.fromJson(json))
-            .toList()
-            .reversed
+  Future<void> updateRoughTypeData({
+    required dynamic id,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final int codeToUse =
+        companyCodeParam ?? (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.update(
+      endpoint: 'rough-entry/rough-type',
+      id: id,
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      onSuccess: () => getRoughData(),
+      defaultSuccessMessage: 'Rough Type Details Updated Successfully',
+      loadingState: isLoading,
+    );
+  }
+
+  Future<void> deleteRoughTypeData({required dynamic id}) =>
+      _masterService.delete(
+        endpoint: 'rough-entry/rough-type',
+        id: id,
+        onSuccess: () => getRoughData(),
+        defaultSuccessMessage: 'Rough Type Entry Deleted Successfully',
+        deleteLoadingState: isDeleteLoading,
+      );
+
+  // ==================== QUALITY MASTER APIS ====================
+  Future<void> getQualityData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<QualityModel>(
+      endpoint: 'rough-entry/quality',
+      fromJson: (j) => QualityModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getQualityData',
+    );
+    if (data != null) qualityModelList.value = data;
+  }
+
+  Future<QualityModel?> getQualityById(dynamic id) =>
+      _masterService.fetchById<QualityModel>(
+        endpoint: 'rough-entry/quality',
+        id: id,
+        fromJson: (j) => QualityModel.fromJson(j),
+      );
+
+  Future<Map<String, dynamic>?> getNextQualityCode() =>
+      _masterService.fetchNextCode(endpoint: 'rough-entry/quality/nextCode');
+
+  Future<void> addQualityData({
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/quality/add',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      onSuccess: () => getQualityData(companyCodeParam: codeToUse),
+      defaultSuccessMessage: 'Quality Entry Saved Successfully',
+      loadingState: isLoading,
+    );
+  }
+
+  Future<void> updateQualityData({
+    required dynamic id,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/quality',
+      id: id,
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      onSuccess: () => getQualityData(companyCodeParam: codeToUse),
+      defaultSuccessMessage: 'Quality Details Updated Successfully',
+      loadingState: isLoading,
+    );
+  }
+
+  Future<void> deleteQualityData({required dynamic id}) =>
+      _masterService.delete(
+        endpoint: 'rough-entry/quality',
+        id: id,
+        onSuccess: () => getQualityData(),
+        defaultSuccessMessage: 'Quality Entry Deleted Successfully',
+        deleteLoadingState: isDeleteLoading,
+      );
+
+  // ==================== CHARNI MASTER APIS ====================
+  Future<void> getCharniRptGroups() async {
+    final data = await _masterService.fetchList<CharniRptGroupModel>(
+      endpoint: 'rough-entry/charni/rpt-groups',
+      fromJson: (j) => CharniRptGroupModel.fromJson(j),
+      errorContext: 'getCharniRptGroups',
+    );
+    if (data != null) charniRptGroupList.value = data;
+  }
+
+  Future<void> getCharniData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<CharniModel>(
+      endpoint: 'rough-entry/charni',
+      fromJson: (j) => CharniModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getCharniData',
+    );
+    if (data != null) charniModelList.value = data;
+  }
+
+  Future<CharniModel?> getCharniById(dynamic id) async {
+    return await _masterService.fetchById<CharniModel>(
+      endpoint: 'rough-entry/charni/$id',
+      fromJson: (j) => CharniModel.fromJson(j),
+      errorContext: 'getCharniById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextCharniCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/charni/nextCode',
+      errorContext: 'getNextCharniCode',
+    );
+  }
+
+  Future<void> addCharniData({
+    required String name,
+    int? rptGroup,
+    double? fromSize,
+    double? toSize,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.create(
+      endpoint: 'rough-entry/charni/add',
+      payload: {
+        'Name': name,
+        if (rptGroup != null) 'RptGroup': rptGroup,
+        'FromSize': fromSize ?? 0.0,
+        'ToSize': toSize ?? 0.0,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Charni Entry Saved Successfully',
+      onSuccess: () => getCharniData(),
+      errorContext: 'addCharniData',
+    );
+  }
+
+  Future<void> updateCharniData({
+    required dynamic id,
+    required String name,
+    int? rptGroup,
+    double? fromSize,
+    double? toSize,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.update(
+      endpoint: 'rough-entry/charni/$id',
+      payload: {
+        'Name': name,
+        if (rptGroup != null) 'RptGroup': rptGroup,
+        'FromSize': fromSize ?? 0.0,
+        'ToSize': toSize ?? 0.0,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Charni Entry Updated Successfully',
+      onSuccess: () => getCharniData(),
+      errorContext: 'updateCharniData',
+    );
+  }
+
+  Future<void> deleteCharniData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/charni/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Charni Entry Deleted Successfully',
+      onSuccess: () => getCharniData(),
+      errorContext: 'deleteCharniData',
+    );
+  }
+
+  // ==================== CLARITY MASTER APIS ====================
+  Future<void> getClarityData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<ClarityModel>(
+      endpoint: 'rough-entry/clarity',
+      fromJson: (j) => ClarityModel.fromJson(j),
+      companyCode: companyCodeParam,
+      errorContext: 'getClarityData',
+    );
+    if (data != null) clarityModelList.value = data;
+  }
+
+  Future<ClarityModel?> getClarityById(dynamic id) async {
+    return await _masterService.fetchById<ClarityModel>(
+      endpoint: 'rough-entry/clarity/$id',
+      fromJson: (j) => ClarityModel.fromJson(j),
+      errorContext: 'getClarityById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextClaritySort() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/clarity/nextSort',
+      errorContext: 'getNextClaritySort',
+    );
+  }
+
+  Future<void> addClarityData({
+    required String name,
+    String? aliasName,
+    int? sortId,
+    bool active = true,
+    bool purchase = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.create(
+      endpoint: 'rough-entry/clarity/add',
+      payload: {
+        'Name': name,
+        if (aliasName != null && aliasName.isNotEmpty) 'AliasName': aliasName,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'Purchase': purchase,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Clarity Entry Saved Successfully',
+      onSuccess: () => getClarityData(),
+      errorContext: 'addClarityData',
+    );
+  }
+
+  Future<void> updateClarityData({
+    required dynamic id,
+    required String name,
+    String? aliasName,
+    int? sortId,
+    bool active = true,
+    bool purchase = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.update(
+      endpoint: 'rough-entry/clarity/$id',
+      payload: {
+        'Name': name,
+        if (aliasName != null && aliasName.isNotEmpty) 'AliasName': aliasName,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'Purchase': purchase,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Clarity Entry Updated Successfully',
+      onSuccess: () => getClarityData(),
+      errorContext: 'updateClarityData',
+    );
+  }
+
+  Future<void> deleteClarityData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/clarity/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Clarity Entry Deleted Successfully',
+      onSuccess: () => getClarityData(),
+      errorContext: 'deleteClarityData',
+    );
+  }
+
+  // ==================== COLOR MASTER APIS ====================
+  Future<void> getColorData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<ColorModel>(
+      endpoint: 'rough-entry/color',
+      fromJson: (j) => ColorModel.fromJson(j),
+      companyCode: companyCodeParam,
+      errorContext: 'getColorData',
+    );
+    if (data != null) colorModelList.value = data;
+  }
+
+  Future<ColorModel?> getColorById(dynamic id) async {
+    return await _masterService.fetchById<ColorModel>(
+      endpoint: 'rough-entry/color/$id',
+      fromJson: (j) => ColorModel.fromJson(j),
+      errorContext: 'getColorById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextColorCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/color/nextCode',
+      errorContext: 'getNextColorCode',
+    );
+  }
+
+  Future<void> addColorData({
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.create(
+      endpoint: 'rough-entry/color/add',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Color Entry Saved Successfully',
+      onSuccess: () => getColorData(),
+      errorContext: 'addColorData',
+    );
+  }
+
+  Future<void> updateColorData({
+    required dynamic id,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.update(
+      endpoint: 'rough-entry/color/$id',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Color Entry Updated Successfully',
+      onSuccess: () => getColorData(),
+      errorContext: 'updateColorData',
+    );
+  }
+
+  Future<void> deleteColorData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/color/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Color Entry Deleted Successfully',
+      onSuccess: () => getColorData(),
+      errorContext: 'deleteColorData',
+    );
+  }
+
+  // ==================== SHAPE MASTER APIS ====================
+  Future<void> getShapeData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<ShapeModel>(
+      endpoint: 'rough-entry/shape',
+      fromJson: (j) => ShapeModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getShapeData',
+    );
+    if (data != null) shapeModelList.value = data;
+  }
+
+  Future<ShapeModel?> getShapeById(dynamic id) async {
+    return await _masterService.fetchById<ShapeModel>(
+      endpoint: 'rough-entry/shape/$id',
+      fromJson: (j) => ShapeModel.fromJson(j),
+      errorContext: 'getShapeById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextShapeCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/shape/nextCode',
+      errorContext: 'getNextShapeCode',
+    );
+  }
+
+  Future<void> addShapeData({
+    required String name,
+    String? repCode,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/shape/add',
+      payload: {
+        'Name': name,
+        if (repCode != null && repCode.isNotEmpty) 'RepCode': repCode,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Shape Entry Saved Successfully',
+      onSuccess: () => getShapeData(companyCodeParam: codeToUse),
+      errorContext: 'addShapeData',
+    );
+  }
+
+  Future<void> updateShapeData({
+    required dynamic id,
+    required String name,
+    String? repCode,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/shape/$id',
+      payload: {
+        'Name': name,
+        if (repCode != null && repCode.isNotEmpty) 'RepCode': repCode,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Shape Entry Updated Successfully',
+      onSuccess: () => getShapeData(companyCodeParam: codeToUse),
+      errorContext: 'updateShapeData',
+    );
+  }
+
+  Future<void> deleteShapeData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/shape/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Shape Entry Deleted Successfully',
+      onSuccess: () => getShapeData(),
+      errorContext: 'deleteShapeData',
+    );
+  }
+
+  // ==================== EXPENSE GROUP MASTER APIS ====================
+  Future<void> getExpenseGroupData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<ExpenseGroupModel>(
+      endpoint: 'rough-entry/expense-group',
+      fromJson: (j) => ExpenseGroupModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getExpenseGroupData',
+    );
+    if (data != null) expenseGroupModelList.value = data;
+  }
+
+  Future<ExpenseGroupModel?> getExpenseGroupById(dynamic id) async {
+    return await _masterService.fetchById<ExpenseGroupModel>(
+      endpoint: 'rough-entry/expense-group/$id',
+      fromJson: (j) => ExpenseGroupModel.fromJson(j),
+      errorContext: 'getExpenseGroupById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextExpenseGroupCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/expense-group/nextCode',
+      errorContext: 'getNextExpenseGroupCode',
+    );
+  }
+
+  Future<void> addExpenseGroupData({
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/expense-group/add',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Expense Group Entry Saved Successfully',
+      onSuccess: () => getExpenseGroupData(companyCodeParam: codeToUse),
+      errorContext: 'addExpenseGroupData',
+    );
+  }
+
+  Future<void> updateExpenseGroupData({
+    required dynamic id,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/expense-group/$id',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Expense Group Entry Updated Successfully',
+      onSuccess: () => getExpenseGroupData(companyCodeParam: codeToUse),
+      errorContext: 'updateExpenseGroupData',
+    );
+  }
+
+  Future<void> deleteExpenseGroupData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/expense-group/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Expense Group Entry Deleted Successfully',
+      onSuccess: () => getExpenseGroupData(),
+      errorContext: 'deleteExpenseGroupData',
+    );
+  }
+
+  // ==================== EXPENSE MASTER APIS ====================
+  Future<void> getExpenseGroupsDropdownData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<ExpenseGroupModel>(
+      endpoint: 'rough-entry/expense/groups',
+      fromJson: (j) => ExpenseGroupModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getExpenseGroupsDropdownData',
+    );
+    if (data != null) expenseGroupDropdownList.value = data;
+  }
+
+  Future<void> getExpenseData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<ExpenseModel>(
+      endpoint: 'rough-entry/expense',
+      fromJson: (j) => ExpenseModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getExpenseData',
+    );
+    if (data != null) expenseModelList.value = data;
+  }
+
+  Future<ExpenseModel?> getExpenseById(dynamic id) async {
+    return await _masterService.fetchById<ExpenseModel>(
+      endpoint: 'rough-entry/expense/$id',
+      fromJson: (j) => ExpenseModel.fromJson(j),
+      errorContext: 'getExpenseById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextExpenseCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/expense/nextCode',
+      errorContext: 'getNextExpenseCode',
+    );
+  }
+
+  Future<void> addExpenseData({
+    required String name,
+    required int expGroupCode,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/expense/add',
+      payload: {
+        'Name': name,
+        'ExpGroupCode': expGroupCode,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Expense Entry Saved Successfully',
+      onSuccess: () => getExpenseData(companyCodeParam: codeToUse),
+      errorContext: 'addExpenseData',
+    );
+  }
+
+  Future<void> updateExpenseData({
+    required dynamic id,
+    required String name,
+    required int expGroupCode,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/expense/$id',
+      payload: {
+        'Name': name,
+        'ExpGroupCode': expGroupCode,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Expense Entry Updated Successfully',
+      onSuccess: () => getExpenseData(companyCodeParam: codeToUse),
+      errorContext: 'updateExpenseData',
+    );
+  }
+
+  Future<void> deleteExpenseData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/expense/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Expense Entry Deleted Successfully',
+      onSuccess: () => getExpenseData(),
+      errorContext: 'deleteExpenseData',
+    );
+  }
+
+  // ==================== ACC TYPE / TYPE MASTER APIS ====================
+  Future<void> getTypeGroupsDropdownData() async {
+    final data = await _masterService.fetchList<TypeGroupModel>(
+      endpoint: 'rough-entry/type/groups',
+      fromJson: (j) => TypeGroupModel.fromJson(j),
+      errorContext: 'getTypeGroupsDropdownData',
+    );
+    if (data != null) typeGroupDropdownList.value = data;
+  }
+
+  Future<void> getAccTypeData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<AccTypeModel>(
+      endpoint: 'rough-entry/type',
+      fromJson: (j) => AccTypeModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getAccTypeData',
+    );
+    if (data != null) accTypeModelList.value = data;
+  }
+
+  Future<AccTypeModel?> getAccTypeById(dynamic id) async {
+    return await _masterService.fetchById<AccTypeModel>(
+      endpoint: 'rough-entry/type/$id',
+      fromJson: (j) => AccTypeModel.fromJson(j),
+      errorContext: 'getAccTypeById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextAccTypeCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/type/nextCode',
+      errorContext: 'getNextAccTypeCode',
+    );
+  }
+
+  Future<void> addAccTypeData({
+    required String name,
+    required String group,
+    int? typeGroupCode,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/type/add',
+      payload: {
+        'Name': name,
+        'Group': group,
+        if (typeGroupCode != null) 'TypeGroupCode': typeGroupCode,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Type Entry Saved Successfully',
+      onSuccess: () => getAccTypeData(companyCodeParam: codeToUse),
+      errorContext: 'addAccTypeData',
+    );
+  }
+
+  Future<void> updateAccTypeData({
+    required dynamic id,
+    required String name,
+    required String group,
+    int? typeGroupCode,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/type/$id',
+      payload: {
+        'Name': name,
+        'Group': group,
+        if (typeGroupCode != null) 'TypeGroupCode': typeGroupCode,
+        'CompanyCode': codeToUse,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Type Entry Updated Successfully',
+      onSuccess: () => getAccTypeData(companyCodeParam: codeToUse),
+      errorContext: 'updateAccTypeData',
+    );
+  }
+
+  Future<void> deleteAccTypeData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/type/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Type Entry Deleted Successfully',
+      onSuccess: () => getAccTypeData(),
+      errorContext: 'deleteAccTypeData',
+    );
+  }
+
+  // ==================== POLISH TYPE MASTER APIS ====================
+  Future<void> getPolishTypeData({int? companyCodeParam}) async {
+    final data = await _masterService.fetchList<PolishTypeModel>(
+      endpoint: 'rough-entry/polish-type',
+      fromJson: (j) => PolishTypeModel.fromJson(j),
+      companyCode: companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : null),
+      errorContext: 'getPolishTypeData',
+    );
+    if (data != null) polishTypeModelList.value = data;
+  }
+
+  Future<PolishTypeModel?> getPolishTypeById(dynamic id) async {
+    return await _masterService.fetchById<PolishTypeModel>(
+      endpoint: 'rough-entry/polish-type/$id',
+      fromJson: (j) => PolishTypeModel.fromJson(j),
+      errorContext: 'getPolishTypeById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextPolishTypeCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/polish-type/nextCode',
+      errorContext: 'getNextPolishTypeCode',
+    );
+  }
+
+  Future<void> addPolishTypeData({
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/polish-type/add',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'CompanyCode': codeToUse,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Polish Type Entry Saved Successfully',
+      onSuccess: () => getPolishTypeData(companyCodeParam: codeToUse),
+      errorContext: 'addPolishTypeData',
+    );
+  }
+
+  Future<void> updatePolishTypeData({
+    required dynamic id,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/polish-type/$id',
+      payload: {
+        'Name': name,
+        'CompanyCode': codeToUse,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Polish Type Entry Updated Successfully',
+      onSuccess: () => getPolishTypeData(companyCodeParam: codeToUse),
+      errorContext: 'updatePolishTypeData',
+    );
+  }
+
+  Future<void> deletePolishTypeData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/polish-type/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Polish Type Entry Deleted Successfully',
+      onSuccess: () => getPolishTypeData(),
+      errorContext: 'deletePolishTypeData',
+    );
+  }
+
+  // ==================== COMPANY MASTER APIS ====================
+  Future<void> getCompanyData() async {
+    final data = await _masterService.fetchList<CompanyMstModel>(
+      endpoint: 'rough-entry/company',
+      fromJson: (j) => CompanyMstModel.fromJson(j),
+      errorContext: 'getCompanyData',
+    );
+    if (data != null) companyModelList.value = data;
+  }
+
+  Future<CompanyMstModel?> getCompanyById(dynamic id) async {
+    return await _masterService.fetchById<CompanyMstModel>(
+      endpoint: 'rough-entry/company/$id',
+      fromJson: (j) => CompanyMstModel.fromJson(j),
+      errorContext: 'getCompanyById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextCompanyCode() async {
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/company/nextCode',
+      errorContext: 'getNextCompanyCode',
+    );
+  }
+
+  Future<void> addCompanyData({
+    required String name,
+    String? address,
+    String? mobileNo,
+    String? phone,
+    String? fax,
+    String? email,
+    String? web,
+    String? gstNo,
+    String? cstNo,
+    String? tinNo,
+    String? bank,
+    String? branch,
+    String? bankAdd,
+    String? ifsc,
+    String? accNo,
+    String? insurance,
+    String? finalAmt,
+    String? fromDate,
+    String? toDate,
+    int? sortId,
+    bool active = true,
+  }) async {
+    await _masterService.create(
+      endpoint: 'rough-entry/company/add',
+      payload: {
+        'Name': name,
+        if (address != null && address.isNotEmpty) 'Address': address,
+        if (mobileNo != null && mobileNo.isNotEmpty) 'MobileNo': mobileNo,
+        if (phone != null && phone.isNotEmpty) 'Phone': phone,
+        if (fax != null && fax.isNotEmpty) 'Fax': fax,
+        if (email != null && email.isNotEmpty) 'Email': email,
+        if (web != null && web.isNotEmpty) 'Web': web,
+        if (gstNo != null && gstNo.isNotEmpty) 'GSTNo': gstNo,
+        if (cstNo != null && cstNo.isNotEmpty) 'CSTNo': cstNo,
+        if (tinNo != null && tinNo.isNotEmpty) 'TINNo': tinNo,
+        if (bank != null && bank.isNotEmpty) 'Bank': bank,
+        if (branch != null && branch.isNotEmpty) 'Branch': branch,
+        if (bankAdd != null && bankAdd.isNotEmpty) 'BankAdd': bankAdd,
+        if (ifsc != null && ifsc.isNotEmpty) 'IFSC': ifsc,
+        if (accNo != null && accNo.isNotEmpty) 'AccNo': accNo,
+        if (insurance != null && insurance.isNotEmpty) 'Insurance': insurance,
+        if (finalAmt != null && finalAmt.isNotEmpty) 'FinalAmt': finalAmt,
+        if (fromDate != null && fromDate.isNotEmpty) 'FromDate': fromDate,
+        if (toDate != null && toDate.isNotEmpty) 'ToDate': toDate,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Company Entry Saved Successfully',
+      onSuccess: () => getCompanyData(),
+      errorContext: 'addCompanyData',
+    );
+  }
+
+  Future<void> updateCompanyData({
+    required dynamic id,
+    required String name,
+    String? address,
+    String? mobileNo,
+    String? phone,
+    String? fax,
+    String? email,
+    String? web,
+    String? gstNo,
+    String? cstNo,
+    String? tinNo,
+    String? bank,
+    String? branch,
+    String? bankAdd,
+    String? ifsc,
+    String? accNo,
+    String? insurance,
+    String? finalAmt,
+    String? fromDate,
+    String? toDate,
+    int? sortId,
+    bool active = true,
+  }) async {
+    await _masterService.update(
+      endpoint: 'rough-entry/company/$id',
+      payload: {
+        'Name': name,
+        if (address != null && address.isNotEmpty) 'Address': address,
+        if (mobileNo != null && mobileNo.isNotEmpty) 'MobileNo': mobileNo,
+        if (phone != null && phone.isNotEmpty) 'Phone': phone,
+        if (fax != null && fax.isNotEmpty) 'Fax': fax,
+        if (email != null && email.isNotEmpty) 'Email': email,
+        if (web != null && web.isNotEmpty) 'Web': web,
+        if (gstNo != null && gstNo.isNotEmpty) 'GSTNo': gstNo,
+        if (cstNo != null && cstNo.isNotEmpty) 'CSTNo': cstNo,
+        if (tinNo != null && tinNo.isNotEmpty) 'TINNo': tinNo,
+        if (bank != null && bank.isNotEmpty) 'Bank': bank,
+        if (branch != null && branch.isNotEmpty) 'Branch': branch,
+        if (bankAdd != null && bankAdd.isNotEmpty) 'BankAdd': bankAdd,
+        if (ifsc != null && ifsc.isNotEmpty) 'IFSC': ifsc,
+        if (accNo != null && accNo.isNotEmpty) 'AccNo': accNo,
+        if (insurance != null && insurance.isNotEmpty) 'Insurance': insurance,
+        if (finalAmt != null && finalAmt.isNotEmpty) 'FinalAmt': finalAmt,
+        if (fromDate != null && fromDate.isNotEmpty) 'FromDate': fromDate,
+        if (toDate != null && toDate.isNotEmpty) 'ToDate': toDate,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Company Entry Updated Successfully',
+      onSuccess: () => getCompanyData(),
+      errorContext: 'updateCompanyData',
+    );
+  }
+
+  Future<void> deleteCompanyData({required dynamic id}) async {
+    await _masterService.delete(
+      endpoint: 'rough-entry/company/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Company Entry Deleted Successfully',
+      onSuccess: () => getCompanyData(),
+      errorContext: 'deleteCompanyData',
+    );
+  }
+
+  // ==================== BRANCH MASTER APIS ====================
+  Future<void> getBranchData({int? companyCodeParam}) async {
+    final code = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
+    final data = await _masterService.fetchList<BranchModel>(
+      endpoint: 'rough-entry/branch',
+      fromJson: (j) => BranchModel.fromJson(j),
+      companyCode: code,
+      errorContext: 'getBranchData',
+    );
+    if (data != null) branchModelList.value = data;
+  }
+
+  Future<BranchModel?> getBranchById(dynamic id) async {
+    return await _masterService.fetchById<BranchModel>(
+      endpoint: 'rough-entry/branch',
+      id: id,
+      fromJson: (j) => BranchModel.fromJson(j),
+      errorContext: 'getBranchById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextBranchCode({int? companyCodeParam}) async {
+    final code = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    return await _masterService.fetchNextCode(
+      endpoint: 'rough-entry/branch/nextCode?CompanyCode=$code',
+      errorContext: 'getNextBranchCode',
+    );
+  }
+
+  Future<void> addBranchData({
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.create(
+      endpoint: 'rough-entry/branch/add',
+      payload: {
+        'Name': name,
+        'CompanyCode': codeToUse,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Branch Entry Saved Successfully',
+      onSuccess: () => getBranchData(companyCodeParam: codeToUse),
+      errorContext: 'addBranchData',
+    );
+  }
+
+  Future<void> updateBranchData({
+    required dynamic id,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.update(
+      endpoint: 'rough-entry/branch/$id',
+      payload: {
+        'Name': name,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Branch Entry Updated Successfully',
+      onSuccess: () => getBranchData(companyCodeParam: codeToUse),
+      errorContext: 'updateBranchData',
+    );
+  }
+
+  Future<void> deleteBranchData({
+    required dynamic id,
+    int? companyCodeParam,
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 1);
+    await _masterService.delete(
+      endpoint: 'rough-entry/branch/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Branch Entry Deleted Successfully',
+      onSuccess: () => getBranchData(companyCodeParam: codeToUse),
+      errorContext: 'deleteBranchData',
+    );
+  }
+
+  // ==================== USER MASTER & 4 MODULES APIS ====================
+
+  // --- Module 1: Basic Details & User CRUD ---
+  Future<void> getUserData({
+    int? branchCode,
+    bool? active,
+    String? search,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (branchCode != null && branchCode != 0) {
+        queryParams['BranchCode'] = branchCode;
+      }
+      if (active != null) {
+        queryParams['active'] = active;
+      }
+      if (search != null && search.trim().isNotEmpty) {
+        queryParams['search'] = search.trim();
+      }
+
+      final response = await ApiService.to.get(
+        'rough-entry/user',
+        queryParameters: queryParams.isEmpty ? null : queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> list = [];
+        if (response.data is List) {
+          list = response.data as List<dynamic>;
+        } else if (response.data is Map && response.data['data'] is List) {
+          list = response.data['data'] as List<dynamic>;
+        }
+        userModelList.value = list
+            .map((j) => UserModel.fromJson(j as Map<String, dynamic>))
             .toList();
-      } else {
-        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
-    } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.getPartyTypeData');
-      if (kDebugMode) {
-        log('$error');
-      }
+    } catch (e) {
+      log('getUserData error: $e');
     }
   }
 
-  Future<void> getRoughData() async {
+  Future<UserModel?> getUserById(dynamic id) async {
     try {
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final response = await ApiService.to.get('rough-entry/user/$id');
+      if (response.statusCode == 200 && response.data != null) {
+        final raw = response.data;
+        if (raw is List && raw.isNotEmpty && raw.first is Map) {
+          return UserModel.fromJson(raw.first as Map<String, dynamic>);
+        } else if (raw is Map<String, dynamic> &&
+            raw['data'] != null &&
+            raw['data'] is Map<String, dynamic>) {
+          return UserModel.fromJson(raw['data'] as Map<String, dynamic>);
+        } else if (raw is Map<String, dynamic>) {
+          return UserModel.fromJson(raw);
+        }
+      }
+    } catch (e) {
+      log('getUserById error: $e');
+    }
+    return null;
+  }
 
-      final response = await dio.get(
-        '${baseUrl}rough-entry/rough',
-      );
+  Future<Map<String, dynamic>?> getNextUserCode() async {
+    try {
+      final response = await ApiService.to.get('rough-entry/user/nextCode');
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map<String, dynamic>) {
+          return response.data as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      log('getNextUserCode error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> addUserData({
+    required String loginName,
+    required String password,
+    required String userName,
+    String userGrp = 'USER',
+    int? branchCode,
+    double? stockLimit,
+    String? loginTimeFrom,
+    String? loginTimeTo,
+    int? sortId,
+    bool active = true,
+  }) async {
+    try {
+      isLoading.value = true;
+      final payload = <String, dynamic>{
+        'LoginName': loginName,
+        'Password': password,
+        'UserName': userName,
+        'UserGrp': userGrp,
+        if (branchCode != null) 'BranchCode': branchCode,
+        if (stockLimit != null) 'StockLimit': stockLimit,
+        if (loginTimeFrom != null && loginTimeFrom.isNotEmpty)
+          'LoginTimeFrom': loginTimeFrom,
+        if (loginTimeTo != null && loginTimeTo.isNotEmpty)
+          'LoginTimeTo': loginTimeTo,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+      };
+
+      final response =
+          await ApiService.to.post('rough-entry/user', data: payload);
+      isLoading.value = false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'User Registered Successfully';
+        successDialog(messageText: msg);
+        await getUserData();
+        return true;
+      } else {
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to add user';
+        errorDialog(messageText: err);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      errorDialog(messageText: 'Error registering user: $e');
+    }
+    return false;
+  }
+
+  Future<bool> updateUserData({
+    required dynamic id,
+    String? userName,
+    String? loginName,
+    String? password,
+    String? userGrp,
+    int? branchCode,
+    double? stockLimit,
+    String? loginTimeFrom,
+    String? loginTimeTo,
+    int? sortId,
+    bool? active,
+  }) async {
+    try {
+      isLoading.value = true;
+      final payload = <String, dynamic>{
+        if (userName != null) 'UserName': userName,
+        if (loginName != null) 'LoginName': loginName,
+        if (password != null && password.isNotEmpty) 'Password': password,
+        if (userGrp != null) 'UserGrp': userGrp,
+        if (branchCode != null) 'BranchCode': branchCode,
+        if (stockLimit != null) 'StockLimit': stockLimit,
+        if (loginTimeFrom != null) 'LoginTimeFrom': loginTimeFrom,
+        if (loginTimeTo != null) 'LoginTimeTo': loginTimeTo,
+        if (sortId != null) 'SortID': sortId,
+        if (active != null) 'Active': active,
+      };
+
+      final response =
+          await ApiService.to.put('rough-entry/user/$id', data: payload);
+      isLoading.value = false;
 
       if (response.statusCode == 200) {
-        // Assuming the response.data is a List of JSON objects
-        final List<dynamic> data = response.data;
-
-        // Mapping each JSON object to a PartyMstModel
-        roughModel.value = data
-            .map((json) => RoughModel.fromJson(json))
-            .toList()
-            .reversed
-            .toList();
-
-        // for (int i = 0; i < roughModel.length; i++) {
-        //   print(roughModel[i].roughTypeName);
-        //   print(roughModel.length);
-        // }
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'User Updated Successfully';
+        successDialog(messageText: msg);
+        await getUserData();
+        return true;
       } else {
-        errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to update user';
+        errorDialog(messageText: err);
       }
-    } catch (error) {
-      errorDialog(messageText: 'An unexpected error occurred.getRoughData');
-      if (kDebugMode) {
-        log('$error');
-      }
+    } catch (e) {
+      isLoading.value = false;
+      errorDialog(messageText: 'Error updating user: $e');
     }
+    return false;
+  }
+
+  Future<bool> deleteUserData(dynamic id) async {
+    try {
+      isDeleteLoading.value = true;
+      final response = await ApiService.to.delete('rough-entry/user/$id');
+      isDeleteLoading.value = false;
+
+      if (response.statusCode == 200) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'User Deleted Successfully';
+        successDialog(messageText: msg);
+        await getUserData();
+        return true;
+      } else {
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to delete user';
+        errorDialog(messageText: err);
+      }
+    } catch (e) {
+      isDeleteLoading.value = false;
+      errorDialog(messageText: 'Error deleting user: $e');
+    }
+    return false;
+  }
+
+  // --- Module 2: Menu Rights Matrix ---
+  Future<UserMenuRightsResponse?> getUserMenuRights(dynamic userId) async {
+    try {
+      final response =
+          await ApiService.to.get('rough-entry/user/$userId/menu-rights');
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map<String, dynamic>) {
+          return UserMenuRightsResponse.fromJson(
+              response.data as Map<String, dynamic>);
+        }
+      }
+    } catch (e) {
+      log('getUserMenuRights error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> saveUserMenuRights(
+    dynamic userId,
+    List<Map<String, dynamic>> menuRights,
+  ) async {
+    try {
+      isLoading.value = true;
+      final payload = {'menuRights': menuRights};
+      final response = await ApiService.to.post(
+        'rough-entry/user/$userId/menu-rights',
+        data: payload,
+      );
+      isLoading.value = false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Menu rights saved successfully';
+        successDialog(messageText: msg);
+        return true;
+      } else {
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to save menu rights';
+        errorDialog(messageText: err);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      errorDialog(messageText: 'Error saving menu rights: $e');
+    }
+    return false;
+  }
+
+  // --- Module 3: Allow Issue (Transfer Screen Mapping) ---
+  Future<AllowIssueResponse?> getUserAllowIssue(dynamic userId) async {
+    try {
+      final response =
+          await ApiService.to.get('rough-entry/user/$userId/allow-issue');
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map<String, dynamic>) {
+          return AllowIssueResponse.fromJson(
+              response.data as Map<String, dynamic>);
+        }
+      }
+    } catch (e) {
+      log('getUserAllowIssue error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> saveUserAllowIssue(
+    dynamic userId,
+    List<int> allowedUserIds,
+  ) async {
+    try {
+      isLoading.value = true;
+      final payload = {'allowedUserIds': allowedUserIds};
+      final response = await ApiService.to.post(
+        'rough-entry/user/$userId/allow-issue',
+        data: payload,
+      );
+      isLoading.value = false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Allow Issue permissions saved successfully';
+        successDialog(messageText: msg);
+        return true;
+      } else {
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to save allow issue permissions';
+        errorDialog(messageText: err);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      errorDialog(messageText: 'Error saving allow issue permissions: $e');
+    }
+    return false;
+  }
+
+  Future<List<Map<String, dynamic>>?> getTransferTargets(
+      dynamic fromUserId) async {
+    try {
+      final response = await ApiService.to.get(
+        'rough-entry/user/transfer-targets',
+        queryParameters: {'fromUserId': fromUserId},
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List)
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+      }
+    } catch (e) {
+      log('getTransferTargets error: $e');
+    }
+    return null;
+  }
+
+  // --- Module 4: Report Rights ---
+  Future<UserReportRightsResponse?> getUserReportRights(dynamic userId) async {
+    try {
+      final response =
+          await ApiService.to.get('rough-entry/user/$userId/report-rights');
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map<String, dynamic>) {
+          return UserReportRightsResponse.fromJson(
+              response.data as Map<String, dynamic>);
+        }
+      }
+    } catch (e) {
+      log('getUserReportRights error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> saveUserReportRights(
+    dynamic userId,
+    List<int> reportCodes,
+  ) async {
+    try {
+      isLoading.value = true;
+      final payload = {'reportCodes': reportCodes};
+      final response = await ApiService.to.post(
+        'rough-entry/user/$userId/report-rights',
+        data: payload,
+      );
+      isLoading.value = false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Report rights saved successfully';
+        successDialog(messageText: msg);
+        return true;
+      } else {
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to save report rights';
+        errorDialog(messageText: err);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      errorDialog(messageText: 'Error saving report rights: $e');
+    }
+    return false;
+  }
+
+  Future<List<Map<String, dynamic>>?> getUserAllowedReports(
+      dynamic userId) async {
+    try {
+      final response = await ApiService.to
+          .get('rough-entry/user/$userId/allowed-reports');
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List)
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+      }
+    } catch (e) {
+      log('getUserAllowedReports error: $e');
+    }
+    return null;
   }
 
   Future<void> getPaymentMstData() async {
@@ -1745,16 +3596,38 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final headers = await _getAuthHeaders();
+      final dio = Dio(BaseOptions(
+        headers: headers,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
 
-      // Dynamically create the params map
+      // Resolve party type name if numeric typeCode is provided
+      String? resolvedTypeName = partyType;
+      if (resolvedTypeName == null && typeCode != null) {
+        final matchedType = partyTypeMstList.firstWhereOrNull(
+          (p) => p.typeCode.toString() == typeCode || p.typeName == typeCode,
+        );
+        resolvedTypeName = matchedType?.typeName ?? typeCode;
+      } else if (resolvedTypeName != null) {
+        final matchedType = partyTypeMstList.firstWhereOrNull(
+          (p) => p.typeCode.toString() == resolvedTypeName || p.typeName == resolvedTypeName,
+        );
+        if (matchedType != null && matchedType.typeName != null) {
+          resolvedTypeName = matchedType.typeName;
+        }
+      }
+
+      // Dynamically create the params map matching the API specification
       var params = <String, dynamic>{
-        if (partyType != null) "PartyType": partyType,
+        if (resolvedTypeName != null) "Type": resolvedTypeName,
+        if (resolvedTypeName != null) "PartyType": resolvedTypeName,
+        if (partyName != null) "Name": partyName,
         if (partyName != null) "PartyName": partyName,
         if (contactPerson != null) "ContactPerson": contactPerson,
         if (address != null) "Address": address,
+        if (mobileNo != null) "MobileNo": mobileNo,
         if (mobileNo != null) "Mobileno": mobileNo,
         if (phNo != null) "PhNo": phNo,
         if (fax != null) "Fax": fax,
@@ -1764,6 +3637,7 @@ class DefaultController extends GetxController {
         if (adhar != null) "AdharNo": adhar,
         if (bankName != null) "BankName": bankName,
         if (branchName != null) "BranchName": branchName,
+        if (bankAdd != null) "BankAddress": bankAdd,
         if (bankAdd != null) "BankAdress": bankAdd,
         if (ifscCode != null) "IFSCCode": ifscCode,
         if (bankAcNo != null) "BankAcNo": bankAcNo,
@@ -1798,7 +3672,10 @@ class DefaultController extends GetxController {
 
       if (response.statusCode == 200) {
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message']
+            : 'Party Entry Saved Successfully';
+        successDialog(messageText: msg);
         await getPartyData();
       } else {
         isLoading.value = false;
@@ -1850,16 +3727,38 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final headers = await _getAuthHeaders();
+      final dio = Dio(BaseOptions(
+        headers: headers,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
 
-      // Dynamically create the params map
+      // Resolve party type name if numeric typeCode is provided
+      String? resolvedTypeName = partyType;
+      if (resolvedTypeName == null && typeCode != null) {
+        final matchedType = partyTypeMstList.firstWhereOrNull(
+          (p) => p.typeCode.toString() == typeCode || p.typeName == typeCode,
+        );
+        resolvedTypeName = matchedType?.typeName ?? typeCode;
+      } else if (resolvedTypeName != null) {
+        final matchedType = partyTypeMstList.firstWhereOrNull(
+          (p) => p.typeCode.toString() == resolvedTypeName || p.typeName == resolvedTypeName,
+        );
+        if (matchedType != null && matchedType.typeName != null) {
+          resolvedTypeName = matchedType.typeName;
+        }
+      }
+
+      // Dynamically create the params map matching the API specification
       var params = <String, dynamic>{
-        if (partyType != null) "PartyType": partyType,
+        if (resolvedTypeName != null) "Type": resolvedTypeName,
+        if (resolvedTypeName != null) "PartyType": resolvedTypeName,
+        if (partyName != null) "Name": partyName,
         if (partyName != null) "PartyName": partyName,
         if (contactPerson != null) "ContactPerson": contactPerson,
         if (address != null) "Address": address,
+        if (mobileNo != null) "MobileNo": mobileNo,
         if (mobileNo != null) "Mobileno": mobileNo,
         if (phNo != null) "PhNo": phNo,
         if (fax != null) "Fax": fax,
@@ -1869,6 +3768,7 @@ class DefaultController extends GetxController {
         if (adhar != null) "AdharNo": adhar,
         if (bankName != null) "BankName": bankName,
         if (branchName != null) "BranchName": branchName,
+        if (bankAdd != null) "BankAddress": bankAdd,
         if (bankAdd != null) "BankAdress": bankAdd,
         if (ifscCode != null) "IFSCCode": ifscCode,
         if (bankAcNo != null) "BankAcNo": bankAcNo,
@@ -1904,7 +3804,10 @@ class DefaultController extends GetxController {
       if (response.statusCode == 200) {
         await getPartyData();
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message']
+            : 'Party Entry Updated Successfully';
+        successDialog(messageText: msg);
       } else {
         isLoading.value = false;
         errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
@@ -3902,10 +5805,12 @@ class DefaultController extends GetxController {
   Future<void> deletePartyData({required id}) async {
     try {
       isDeleteLoading.value = true;
-
-      final dio = Dio(BaseOptions(headers: {
-        'content-type': 'application/json',
-      }));
+      final headers = await _getAuthHeaders();
+      final dio = Dio(BaseOptions(
+        headers: headers,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
 
       final response = await dio.delete('${baseUrl}rough-entry/party/$id');
 
@@ -3915,16 +5820,17 @@ class DefaultController extends GetxController {
         }
         await getPartyData();
         isDeleteLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message']
+            : 'Party Entry Deleted Successfully';
+        successDialog(messageText: msg);
       } else {
         isDeleteLoading.value = false;
-
         errorDialog(
             messageText: 'Failed to Delete Data: ${response.statusCode}');
       }
     } catch (error) {
       isDeleteLoading.value = false;
-
       errorDialog(messageText: 'An unexpected error occurred.');
       if (kDebugMode) {
         log('$error');
@@ -4788,10 +6694,14 @@ class DefaultController extends GetxController {
   @override
   Future<void> onInit() async {
     super.onInit();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    authToken.value = prefs.getString('token') ?? '';
+    await restoreUserSession();
     if (!enableAutoFetchOnInit ||
         WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
       return;
     }
+    await getMenuList();
     await getCompanies();
     // await getIpAddress();
     await getDeviceInfo();
@@ -4813,6 +6723,21 @@ class DefaultController extends GetxController {
     await getMemoRecDetailsData();
     await getSaleData();
     await getRoughData();
+    await getQualityData();
+    await getCharniRptGroups();
+    await getCharniData();
+    await getClarityData();
+    await getColorData();
+    await getShapeData();
+    await getExpenseGroupData();
+    await getExpenseGroupsDropdownData();
+    await getExpenseData();
+    await getAccTypeData();
+    await getTypeGroupsDropdownData();
+    await getPolishTypeData();
+    await getCompanyData();
+    await getBranchData();
+    await getUserData();
     await getPaymentMstData();
     await getPaymentDetData();
     await getPaymentDetAccData();

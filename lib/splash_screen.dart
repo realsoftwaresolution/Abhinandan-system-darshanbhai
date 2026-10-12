@@ -26,7 +26,11 @@ class SplashScreenState extends State<SplashScreen> {
       final int? storedCompanyCode = prefs.getInt('companyCode');
 
       if (isLoggedIn && storedCompanyCode != null && storedCompanyCode > 0) {
+        await defaultController.restoreUserSession();
         defaultController.companyCode.value = storedCompanyCode;
+        if (defaultController.menuList.isEmpty) {
+          await defaultController.getMenuList();
+        }
         Get.offAllNamed('/MainScreen');
       } else {
         showLoginDialog();

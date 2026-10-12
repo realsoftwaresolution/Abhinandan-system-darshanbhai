@@ -1,2060 +1,653 @@
-// import 'package:flutter/cupertino.dart';
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
-// import 'package:get/get.dart';
-// import 'package:intl/intl.dart';
-// import 'package:pdf/pdf.dart';
-// import 'package:printing/printing.dart';
-// import 'package:real_web_rough_entry_system/common/widgets.dart';
-// import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
-// import 'package:real_web_rough_entry_system/header.dart';
-// import 'package:real_web_rough_entry_system/purchase/invoice_generator.dart';
-// import 'package:real_web_rough_entry_system/purchase/purchase_datagrid.dart';
-// import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
-// import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
-// import 'package:syncfusion_flutter_datagrid/datagrid.dart';
-//
-// class ExpenseFormScreen extends StatefulWidget {
-//   final bool showHeader;
-//   const ExpenseFormScreen({super.key, required this.showHeader});
-//
-//   @override
-//   ExpenseFormScreenState createState() => ExpenseFormScreenState();
-// }
-//
-// class ExpenseFormScreenState extends State<ExpenseFormScreen> {
-//   final TextEditingController partyController = TextEditingController();
-//   final TextEditingController invNoController =
-//       TextEditingController(text: ' ');
-//   final TextEditingController dateController = TextEditingController();
-//   final TextEditingController purIdController = TextEditingController();
-//   final TextEditingController dueDaysController = TextEditingController();
-//   final TextEditingController dueDateController = TextEditingController();
-//
-//   final TextEditingController roghController = TextEditingController();
-//   final TextEditingController descripController = TextEditingController();
-//   final TextEditingController wtController = TextEditingController();
-//   final TextEditingController rateController = TextEditingController();
-//   final TextEditingController amountController = TextEditingController();
-//   final FocusNode _partyFocNode = FocusNode();
-//   final FocusNode _roughFocNode = FocusNode();
-//   final FocusNode _invoiceFocus = FocusNode();
-//   final FocusNode _dueDaysFocus = FocusNode();
-//   final FocusNode _descFocus = FocusNode();
-//   final FocusNode _dateFocus = FocusNode();
-//   final FocusNode _brokerFocus = FocusNode();
-//   final FocusNode _wtFocus = FocusNode();
-//   final FocusNode _rateFocus = FocusNode();
-//   final FocusNode _formKeyBoardFocus = FocusNode();
-//   final FocusNode _searchKeyBoardFocus = FocusNode();
-//   final DataGridController _dataGridController = DataGridController();
-//   List<Map<String, String>> entries = [];
-//   final RxString _selectedType = ''.obs;
-//   final RxString _selectedTypeBroker = '22'.obs;
-//   final RxString _selectedTypeParty = ''.obs;
-//   final RxInt selectedRoughPurMstID = 0.obs;
-//   final RxString selectedRoughId = ''.obs;
-//
-//   DateTime? selectedDate;
-//   String? dueDate;
-//
-//   double get totalWt =>
-//       entries.fold(0.0, (prev, e) => prev + double.parse(e['wt']!));
-//
-//   double get totalRate => totalWt == 0 ? 0 : totalAmount / totalWt;
-//
-//   double get totalAmount =>
-//       entries.fold(0.0, (prev, e) => prev + double.parse(e['amount']!));
-//
-//   bool _isEnabled = false;
-//   bool _isSearch = false;
-//   bool _isFromEdit = false;
-//   final RxBool _isFiltered = false.obs;
-//   final _formKey = GlobalKey<FormState>();
-//   final RxString selectedTypeAccountParty = ''.obs;
-//   final RxString selectedTypeBookParty = ''.obs;
-//
-//   DateTime? fromDate;
-//   DateTime? toDate;
-//   final fromDateController = TextEditingController();
-//   final toDateController = TextEditingController();
-//
-//   final DefaultController defaultController = Get.find<DefaultController>();
-//
-//   RxList<PurchaseDetailsModel> purchaseDataGridSource =
-//       <PurchaseDetailsModel>[].obs;
-//   RxList<PurchaseDetailsModel> filteredDataGridSource =
-//       <PurchaseDetailsModel>[].obs;
-//
-//   void _enableFields({bool? needFocus}) {
-//     setState(() {
-//       if (needFocus == null || needFocus) {
-//         Future.delayed(const Duration(milliseconds: 100), () {
-//           _partyFocNode.requestFocus(); // Move focus to the first input field
-//         });
-//         _isEnabled = true;
-//       } else {
-//         _isEnabled = true;
-//       }
-//     });
-//   }
-//
-//   @override
-//   void initState() {
-//     wtController.addListener(_updateAmount);
-//     rateController.addListener(_updateAmount);
-//     // invNoController.text = defaultController.purchaseDataList.last.invoiceNo ?? '0';
-//     purchaseDataGridSource.value = defaultController.purchaseDataList;
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       _formKeyBoardFocus.requestFocus();
-//       if (_isSearch) {
-//         _searchKeyBoardFocus.requestFocus();
-//       }
-//     });
-//     super.initState();
-//   }
-//
-//   @override
-//   void dispose() {
-//     // Dispose controllers when the widget is removed
-//     wtController.dispose();
-//     rateController.dispose();
-//     amountController.dispose();
-//     _dateFocus.dispose();
-//     _partyFocNode.dispose();
-//     _descFocus.dispose();
-//     _wtFocus.dispose();
-//     _rateFocus.dispose();
-//     _roughFocNode.dispose();
-//     _brokerFocus.dispose();
-//     _invoiceFocus.dispose();
-//     _dueDaysFocus.dispose();
-//     _formKeyBoardFocus.dispose();
-//     _searchKeyBoardFocus.dispose();
-//     fromDateController.dispose();
-//     toDateController.dispose();
-//     super.dispose();
-//   }
-//
-//   void _updateAmount() {
-//     final double wt = double.tryParse(wtController.text) ?? 0;
-//     final double rate = double.tryParse(rateController.text) ?? 0;
-//     final double amount = wt * rate;
-//     amountController.text = amount.toStringAsFixed(2);
-//   }
-//
-//   void _scrollToSelectedRow(double index) {
-//     // Scroll to the currently selected row
-//     _dataGridController.scrollToRow(index);
-//   }
-//
-//   // void onSelectBookParty() {
-//   //   if (selectedTypeBookParty.isNotEmpty) {
-//   //     defaultController.bookPartyCreditDebitDataGridSource.value = defaultController
-//   //         .creditDebitDataList
-//   //         .where((e) => e.partyCode == int.parse(selectedTypeBookParty.value))
-//   //         .toList();
-//   //     print('BOOK PARTY${defaultController.bookPartyCreditDebitDataGridSource.length}');
-//   //   }
-//   // }
-//   //
-//   // void onSelectAccountParty() {
-//   //   if (selectedTypeAccountParty.isNotEmpty) {
-//   //     defaultController.accountPartyCreditDebitDataGridSource.value = defaultController
-//   //         .creditDebitDataList
-//   //         .where(
-//   //             (e) => e.partyCode == int.parse(selectedTypeAccountParty.value))
-//   //         .toList();
-//   //     print('ACCOUNT PARTY${defaultController.accountPartyCreditDebitDataGridSource.length}');
-//   //   }
-//   // }
-//   void _applyDateFilter() {
-//     if (fromDate != null && toDate != null) {
-//       _isFiltered.value = true;
-//       // setState(() {
-//       filteredDataGridSource.value =
-//           defaultController.purchaseDataList.where((purchase) {
-//         // Assuming invoiceDate is in 'yyyy-MM-dd' format; adjust as needed
-//         final invoiceDate = DateTime.parse(purchase.invoiceDate!);
-//
-//         // Include the boundaries
-//         return invoiceDate.isAfter(fromDate!) &&
-//             invoiceDate.isBefore(toDate!.add(const Duration(days: 1)));
-//       }).toList();
-//       // Update the data grid source with the filtered data
-//       purchaseDataGridSource.value = filteredDataGridSource;
-//       _searchKeyBoardFocus.requestFocus();
-//       // });
-//     } else {
-//       infoDialog(messageText: 'Please select both From Date and To Date');
-//     }
-//   }
-//
-//   void _removeDateFilter() {
-//     // Reset the data grid source to the full list
-//     purchaseDataGridSource.value = defaultController.purchaseDataList;
-//
-//     // Clear filter values
-//     toDateController.clear();
-//     fromDateController.clear();
-//     fromDate = null;
-//     toDate = null;
-//
-//     _isFiltered.value = false;
-//   }
-//
-//   void _openDatePicker() async {
-//     DateTime? pickedDate = await showDatePicker(
-//       context: context,
-//       initialDate: DateTime.now(),
-//       firstDate: DateTime(2000),
-//       lastDate: DateTime(2101),
-//     );
-//
-//     if (pickedDate != null) {
-//       setState(() {
-//         selectedDate = pickedDate;
-//         dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
-//         Future.delayed(const Duration(milliseconds: 100), () {
-//           _dueDaysFocus.requestFocus(); // Move focus to the first input field
-//         });
-//       });
-//       // _updateDueDate();
-//     }
-//   }
-//
-//   void addEntry() {
-//     setState(() {
-//       entries.add({
-//         if (selectedRoughId.value.isNotEmpty) 'id': selectedRoughId.value,
-//         'rough': _selectedType.value,
-//         'description': descripController.text,
-//         'wt': double.parse(wtController.text).toStringAsFixed(2),
-//         'rate': double.parse(rateController.text).toStringAsFixed(2),
-//         'amount': (double.parse(wtController.text) *
-//                 double.parse(rateController.text))
-//             .toStringAsFixed(2),
-//       });
-//
-//       // Clear the input fields
-//       _selectedType.value = '';
-//       descripController.clear();
-//       wtController.clear();
-//       rateController.clear();
-//       amountController.clear();
-//       Future.delayed(const Duration(milliseconds: 100), () {
-//         _roughFocNode.requestFocus(); // Move focus to the first input field
-//       });
-//     });
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return _isSearch == true
-//         ? KeyboardListener(
-//             focusNode: _searchKeyBoardFocus,
-//             autofocus: true,
-//             onKeyEvent: (KeyEvent event) {
-//               if (event is KeyDownEvent) {
-//                 final int currentIndex = _dataGridController.selectedIndex;
-//                 final int totalRows = defaultController.purchaseDataList
-//                     .length; // Use the length of your data source (MemoIssueDetailsDataGridSource)
-//
-//                 // Handle the Enter key
-//                 if (event.logicalKey == LogicalKeyboardKey.enter) {
-//                   final DataGridRow? selectedRow =
-//                       _dataGridController.selectedRow;
-//                   setState(() {
-//                     entries.length = 0;
-//                     _isFromEdit = true;
-//                   });
-//                   List<RoughDetailsModel> roughData =
-//                       defaultController.roughDetailsModel;
-//                   List<PurchaseDetailsModel> partyData =
-//                       defaultController.purchaseDataList;
-//
-//                   // Extract the selected polishSaleMstID from the selectedRow
-//                   selectedRoughPurMstID.value = selectedRow!
-//                       .getCells()[0]
-//                       .value; // Assuming the ID is in the first cell
-//
-//                   // Find the corresponding party data entry with the matching polishSaleMstID
-//                   PurchaseDetailsModel partyEntry = partyData.firstWhere(
-//                     (entry) =>
-//                         entry.roughPurMstID == selectedRoughPurMstID.value,
-//                     // orElse: () => null,
-//                   );
-//
-//                   // Collect rough data entries with the matching polishSaleMstID
-//                   List<RoughDetailsModel> roughEntries = roughData
-//                       .where((entry) =>
-//                           entry.roughPurMstID == selectedRoughPurMstID.value)
-//                       .toList();
-//
-//                   // if (kDebugMode) {
-//                   //   print(
-//                   //       "ROUGH ID:  ${roughEntries.first.roughPurMstID}  ${roughEntries.first.roughPurDetID}");
-//                   //   print(
-//                   //       "ROUGH ID:  ${roughEntries.last.roughPurMstID} ${roughEntries.last.roughPurDetID}");
-//                   // }
-//                   invNoController.text = partyEntry.invoiceNo!;
-//                   selectedDate = dateFormat(partyEntry.invoiceDate!);
-//                   dueDate = formatDateWithTime(partyEntry.dueDate!);
-//                   dateController.text = formatDate(partyEntry.invoiceDate!);
-//                   dueDateController.text = formatDate(partyEntry.dueDate!);
-//                   dueDaysController.text = partyEntry.dueDay.toString();
-//                   _selectedTypeParty.value = partyEntry.partyCode.toString();
-//                   _selectedTypeBroker.value = partyEntry.brokerCode.toString();
-//                   // _selectedTypeParty.value = partyEntry.partyCode;
-//                   setState(() {
-//                     for (var roughEntry in roughEntries) {
-//                       entries.add({
-//                         'id': roughEntry.roughPurDetID.toString(),
-//                         'rough': roughEntry.roughTypeCode.toString(),
-//                         'description': roughEntry.description.toString(),
-//                         'wt': roughEntry.wt.toString(),
-//                         'rate': roughEntry.rateRs.toString(),
-//                         'amount': (double.parse(roughEntry.wt.toString()) *
-//                                 double.parse(roughEntry.rateRs.toString()))
-//                             .toStringAsFixed(2),
-//                       });
-//                     }
-//                   });
-//
-//                   _enableFields();
-//                   setState(() {
-//                     _isSearch = false;
-//                   });
-//                 }
-//
-//                 // Handle the down arrow key to go to the next row
-//                 if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-//                   if (currentIndex < totalRows - 1) {
-//                     _dataGridController.selectedIndex =
-//                         currentIndex + 1; // Select the next row
-//                     _scrollToSelectedRow(double.parse(_dataGridController
-//                         .selectedIndex
-//                         .toString())); // Scroll to the selected row
-//                   }
-//                 }
-//
-//                 // Handle the up arrow key to go to the previous row
-//                 if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-//                   if (currentIndex > 0) {
-//                     _dataGridController.selectedIndex =
-//                         currentIndex - 1; // Select the previous row
-//                     _scrollToSelectedRow(double.parse(_dataGridController
-//                         .selectedIndex
-//                         .toString())); // Scroll to the selected row
-//                   }
-//                 }
-//
-//                 if (event.logicalKey == LogicalKeyboardKey.keyE) {
-//                   setState(() {
-//                     _isSearch = false;
-//                   });
-//                 }
-//                 if (event.logicalKey == LogicalKeyboardKey.keyR &&
-//                     _isFiltered.value) {
-//                   _removeDateFilter();
-//                 }
-//                 if (event.logicalKey == LogicalKeyboardKey.keyF) {
-//                   _applyDateFilter();
-//                 }
-//               }
-//             },
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.start,
-//               crossAxisAlignment: CrossAxisAlignment.center,
-//               children: [
-//                 widget.showHeader ? const Header(title: 'Purchase Search') : const SizedBox.shrink(),
-//                 Padding(
-//                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-//                   child: Row(
-//                     children: [
-//                       Expanded(
-//                         child: buildTextField(
-//                           'From Date',
-//                           excludeFieldValidation: false,
-//                           fromDateController,
-//                           readOnly: true,
-//                           onTap: () async {
-//                             DateTime? pickedDate = await showDatePicker(
-//                               context: context,
-//                               initialDate: DateTime.now(),
-//                               firstDate: DateTime(2000),
-//                               lastDate: DateTime(2100),
-//                             );
-//                             if (pickedDate != null) {
-//                               setState(() {
-//                                 fromDate = pickedDate;
-//                                 fromDateController.text =
-//                                     DateFormat('dd-MM-yyyy').format(fromDate!);
-//                                 if (toDateController.text.isNotEmpty) {
-//                                   _applyDateFilter();
-//                                 }
-//                               });
-//                             }
-//                           },
-//                         ),
-//                       ),
-//                       const SizedBox(width: 10),
-//                       Expanded(
-//                         child: buildTextField(
-//                           'To Date',
-//                           excludeFieldValidation: false,
-//                           toDateController,
-//                           readOnly: true,
-//                           onTap: () async {
-//                             DateTime? pickedDate = await showDatePicker(
-//                               context: context,
-//                               initialDate: DateTime.now(),
-//                               firstDate: DateTime(2000),
-//                               lastDate: DateTime(2100),
-//                             );
-//                             if (pickedDate != null) {
-//                               setState(() {
-//                                 toDate = pickedDate;
-//                                 toDateController.text =
-//                                     DateFormat('dd-MM-yyyy').format(toDate!);
-//                                 if (fromDateController.text.isNotEmpty) {
-//                                   _applyDateFilter();
-//                                 }
-//                               });
-//                             }
-//                           },
-//                         ),
-//                       ),
-//                       const SizedBox(width: 10),
-//                       OutlinedButton(
-//                         onPressed: _applyDateFilter,
-//                         // Method to filter data based on date
-//                         child: const Text.rich(
-//                           TextSpan(
-//                             children: [
-//                               TextSpan(
-//                                 text: 'F', // Underlined "A"
-//                                 style: TextStyle(
-//                                   decoration: TextDecoration.underline,
-//                                 ),
-//                               ),
-//                               TextSpan(
-//                                 text: 'ilter', // Normal "dd"
-//                               ),
-//                             ],
-//                           ),
-//                         ),
-//                       ),
-//                       const SizedBox(width: 10),
-//                       Obx(() => OutlinedButton(
-//                             onPressed:
-//                                 _isFiltered.value ? _removeDateFilter : null,
-//                             // Method to filter data based on date
-//                             child: const Text.rich(
-//                               TextSpan(
-//                                 children: [
-//                                   TextSpan(
-//                                     text: 'R', // Underlined "A"
-//                                     style: TextStyle(
-//                                       decoration: TextDecoration.underline,
-//                                     ),
-//                                   ),
-//                                   TextSpan(
-//                                     text: 'eset', // Normal "dd"
-//                                   ),
-//                                 ],
-//                               ),
-//                             ),
-//                           )),
-//                       const SizedBox(width: 10),
-//                       OutlinedButton(
-//                         onPressed: () {
-//                           setState(() {
-//                             _isSearch = false;
-//                           });
-//                         },
-//                         child: const Text.rich(
-//                           TextSpan(
-//                             children: [
-//                               TextSpan(
-//                                 text: 'E', // Underlined "A"
-//                                 style: TextStyle(
-//                                   decoration: TextDecoration.underline,
-//                                 ),
-//                               ),
-//                               TextSpan(
-//                                 text: 'xit', // Normal "dd"
-//                               ),
-//                             ],
-//                           ),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//                 const SizedBox(
-//                   height: 10,
-//                 ),
-//                 Expanded(
-//                   child: Padding(
-//                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
-//                     child: Obx(
-//                       () => SfDataGrid(
-//                         controller: _dataGridController,
-//                         source: PurchaseDataGridSource(purchaseDataGridSource),
-//                         columns: <GridColumn>[
-//                           GridColumn(
-//                             columnName: 'ID',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'ID',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                           GridColumn(
-//                             columnName: 'Invoice No',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'Invoice No',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                           GridColumn(
-//                             columnName: 'Invoice Date',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'Invoice Date',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                           GridColumn(
-//                             columnName: 'Party',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'Party',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                           GridColumn(
-//                             columnName: 'Broker',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'Broker',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                           GridColumn(
-//                             columnName: 'Tot Wt',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'Tot Wt',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                           GridColumn(
-//                             columnName: 'Tot Amt Rs',
-//                             label: Container(
-//                               padding: const EdgeInsets.all(8.0),
-//                               alignment: Alignment.center,
-//                               child: const Text(
-//                                 'Tot Amt Rs',
-//                                 style: TextStyle(
-//                                     fontWeight: FontWeight.bold, fontSize: 12),
-//                               ),
-//                             ),
-//                           ),
-//                         ],
-//                         rowHeight: 25,
-//                         headerRowHeight: 35,
-//                         gridLinesVisibility: GridLinesVisibility.both,
-//                         headerGridLinesVisibility: GridLinesVisibility.both,
-//                         showSortNumbers: true,
-//                         // allowSorting: true,
-//                         // allowMultiColumnSorting: true,
-//                         allowFiltering: true,
-//                         selectionMode: SelectionMode.single,
-//                         // onSelectionChanged: (List<DataGridRow> selectedRows) {
-//                         //   // Handle row selection change if needed
-//                         // },
-//                         onSelectionChanged: (List<DataGridRow> addedRows,
-//                             List<DataGridRow> removedRows) {
-//                           setState(() {
-//                             entries.length = 0;
-//                             _isFromEdit = true;
-//                           });
-//                           if (addedRows.isNotEmpty) {
-//                             final DataGridRow selectedRow = addedRows.first;
-//                             List<RoughDetailsModel> roughData =
-//                                 defaultController.roughDetailsModel;
-//                             List<PurchaseDetailsModel> partyData =
-//                                 defaultController.purchaseDataList;
-//
-//                             // Extract the selected polishSaleMstID from the selectedRow
-//                             selectedRoughPurMstID.value = selectedRow
-//                                 .getCells()[0]
-//                                 .value; // Assuming the ID is in the first cell
-//
-//                             // Find the corresponding party data entry with the matching polishSaleMstID
-//                             PurchaseDetailsModel partyEntry =
-//                                 partyData.firstWhere(
-//                               (entry) =>
-//                                   entry.roughPurMstID ==
-//                                   selectedRoughPurMstID.value,
-//                               // orElse: () => null,
-//                             );
-//
-//                             // Collect rough data entries with the matching polishSaleMstID
-//                             List<RoughDetailsModel> roughEntries = roughData
-//                                 .where((entry) =>
-//                                     entry.roughPurMstID ==
-//                                     selectedRoughPurMstID.value)
-//                                 .toList();
-//
-//                             // if (kDebugMode) {
-//                             //   print(
-//                             //       "ROUGH ID:  ${roughEntries.first.roughPurMstID}  ${roughEntries.first.roughPurDetID}");
-//                             //   print(
-//                             //       "ROUGH ID:  ${roughEntries.last.roughPurMstID} ${roughEntries.last.roughPurDetID}");
-//                             // }
-//                             invNoController.text = partyEntry.invoiceNo!;
-//                             selectedDate = dateFormat(partyEntry.invoiceDate!);
-//                             dueDate = formatDateWithTime(partyEntry.dueDate!);
-//                             dateController.text =
-//                                 formatDate(partyEntry.invoiceDate!);
-//                             dueDateController.text =
-//                                 formatDate(partyEntry.dueDate!);
-//                             dueDaysController.text =
-//                                 partyEntry.dueDay.toString();
-//                             _selectedTypeParty.value =
-//                                 partyEntry.partyCode.toString();
-//                             _selectedTypeBroker.value = _selectedTypeBroker
-//                                 .value = partyEntry.brokerCode.toString();
-//                             // _selectedTypeParty.value = partyEntry.partyCode;
-//                             setState(() {
-//                               for (var roughEntry in roughEntries) {
-//                                 entries.add({
-//                                   'id': roughEntry.roughPurDetID.toString(),
-//                                   'rough': roughEntry.roughTypeCode.toString(),
-//                                   'description':
-//                                       roughEntry.description.toString(),
-//                                   'wt': roughEntry.wt!.toStringAsFixed(2),
-//                                   'rate': roughEntry.rateRs!.toStringAsFixed(2),
-//                                   'amount':
-//                                       (double.parse(roughEntry.wt.toString()) *
-//                                               double.parse(
-//                                                   roughEntry.rateRs.toString()))
-//                                           .toStringAsFixed(2),
-//                                 });
-//                               }
-//                             });
-//
-//                             _enableFields();
-//                             setState(() {
-//                               _isSearch = false;
-//                             });
-//                           }
-//                         },
-//                         columnWidthMode: ColumnWidthMode.auto,
-//                         frozenColumnsCount: 1,
-//                         // gridLineStrokeWidth: 1.5,
-//                         // gridLineColor: Colors.grey.shade400,
-//                         // backgroundColor: Colors.white,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           )
-//         : SingleChildScrollView(
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.start,
-//               children: [
-//                 widget.showHeader ? const Header(title: 'Purchase') : const SizedBox.shrink(),
-//                 Row(
-//                   children: [
-//                     Expanded(
-//                       flex: 5,
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           Padding(
-//                             padding: const EdgeInsets.all(16.0),
-//                             child: KeyboardListener(
-//                               focusNode: _formKeyBoardFocus,
-//                               autofocus: true,
-//                               onKeyEvent: (KeyEvent event) {
-//                                 if (event is KeyDownEvent) {
-//                                   if (!_descFocus.hasFocus &&
-//                                       !_dueDaysFocus.hasFocus &&
-//                                       !_invoiceFocus.hasFocus) {
-//                                     if (!HardwareKeyboard
-//                                             .instance.isShiftPressed &&
-//                                         event.logicalKey ==
-//                                             LogicalKeyboardKey.keyS &&
-//                                         _isEnabled) {
-//                                       if (_isFromEdit) {
-//                                         if (entries.isNotEmpty) {
-//                                           defaultController
-//                                               .updatePurchaseData(
-//                                                   id: selectedRoughPurMstID
-//                                                       .value,
-//                                                   partyCode:
-//                                                       _selectedTypeParty.value,
-//                                                   invoiceNo:
-//                                                       invNoController.text,
-//                                                   invoiceDate: selectedDate,
-//                                                   brokerCode:
-//                                                       _selectedTypeBroker.value,
-//                                                   dueDays:
-//                                                       dueDaysController.text,
-//                                                   dueDate: dueDate,
-//                                                   onlyDueDate:
-//                                                       dueDateController.text,
-//                                                   entries: entries,
-//                                                   totalAmt: totalAmount,
-//                                                   totalWt: totalWt,
-//                                                   totalRate: totalRate)
-//                                               .then((onValue) {
-//                                             setState(() {
-//                                               entries.clear();
-//                                               _isEnabled = false;
-//                                               _isFromEdit = false;
-//                                             });
-//                                           });
-//
-//                                           dateController.clear();
-//                                           dueDateController.clear();
-//                                           dueDaysController.clear();
-//                                           dateController.clear();
-//                                           invNoController.clear();
-//                                           _selectedTypeParty.value = '';
-//                                           _selectedType.value = '';
-//                                           _selectedTypeBroker.value = '22';
-//                                         } else {
-//                                           infoDialog(
-//                                               messageText:
-//                                                   'Please Add Rough Data');
-//                                         }
-//                                       } else {
-//                                         if (entries.isNotEmpty) {
-//                                           defaultController
-//                                               .addPurchaseData(
-//                                                   partyCode:
-//                                                       _selectedTypeParty.value,
-//                                                   invoiceNo:
-//                                                       invNoController.text,
-//                                                   invoiceDate: selectedDate,
-//                                                   brokerCode:
-//                                                       _selectedTypeBroker.value,
-//                                                   dueDays:
-//                                                       dueDaysController.text,
-//                                                   dueDate: dueDate,
-//                                                   onlyDueDate:
-//                                                       dueDateController.text,
-//                                                   entries: entries,
-//                                                   totalRate: totalRate,
-//                                                   totalAmt: totalAmount,
-//                                                   totalWt: totalWt)
-//                                               .then((onValue) {
-//                                             setState(() {
-//                                               entries.clear();
-//                                               _isEnabled = false;
-//                                             });
-//                                           });
-//
-//                                           dateController.clear();
-//                                           dueDateController.clear();
-//                                           dueDaysController.clear();
-//                                           dateController.clear();
-//                                           invNoController.clear();
-//                                           _selectedTypeParty.value = '';
-//                                           _selectedType.value = '';
-//                                           _selectedTypeBroker.value = '22';
-//                                         } else {
-//                                           infoDialog(
-//                                               messageText:
-//                                                   'Please Add Rough Data');
-//                                         }
-//                                       }
-//                                     }
-//                                   }
-//                                   if (!_descFocus.hasFocus &&
-//                                       !_dueDaysFocus.hasFocus &&
-//                                       !_invoiceFocus.hasFocus) {
-//                                     if (event.logicalKey ==
-//                                             LogicalKeyboardKey.keyA &&
-//                                         !_isEnabled) {
-//                                       _enableFields();
-//                                     }
-//                                   }
-//                                   if (!_descFocus.hasFocus &&
-//                                       !_dueDaysFocus.hasFocus &&
-//                                       !_invoiceFocus.hasFocus) {
-//                                     if (event.logicalKey ==
-//                                             LogicalKeyboardKey.keyD &&
-//                                         _isEnabled &&
-//                                         _isFromEdit) {
-//                                       if (_isFromEdit) {
-//                                         defaultController
-//                                             .deletePurchaseData(
-//                                                 id: selectedRoughPurMstID.value,
-//                                                 entries: entries)
-//                                             .then((onValue) {
-//                                           dateController.clear();
-//                                           dueDateController.clear();
-//                                           dueDaysController.clear();
-//                                           dateController.clear();
-//                                           invNoController.clear();
-//                                           _selectedTypeParty.value = '';
-//                                           _selectedType.value = '';
-//                                           _selectedTypeBroker.value = '22';
-//                                           setState(() {
-//                                             _isFromEdit = false;
-//                                             entries.length = 0;
-//                                           });
-//                                         });
-//                                       } else {
-//                                         infoDialog(
-//                                             messageText:
-//                                                 'Please Select Purchase Entry to Delete.');
-//                                       }
-//                                     }
-//                                   }
-//                                   if (!_descFocus.hasFocus &&
-//                                       !_dueDaysFocus.hasFocus &&
-//                                       !_invoiceFocus.hasFocus) {
-//                                     if (event.logicalKey ==
-//                                             LogicalKeyboardKey.keyC &&
-//                                         _isEnabled) {
-//                                       dateController.clear();
-//                                       invNoController.clear();
-//                                       dueDateController.clear();
-//                                       dueDaysController.clear();
-//                                       dateController.clear();
-//                                       _selectedTypeParty.value = '';
-//                                       _selectedType.value = '';
-//                                       _selectedTypeBroker.value = '22';
-//                                       setState(() {
-//                                         entries.length = 0;
-//                                         _isFromEdit = false;
-//                                         _isEnabled = false;
-//                                       });
-//                                     }
-//                                   }
-//                                   if (!_descFocus.hasFocus &&
-//                                       !_dueDaysFocus.hasFocus &&
-//                                       !_invoiceFocus.hasFocus) {
-//                                     if (event.logicalKey ==
-//                                         LogicalKeyboardKey.keyE) {
-//                                       // menuController.selectedIndex.value = 0;
-//                                       tabController.removeTab(tabController.currentIndex.value);
-//                                     }
-//                                   }
-//                                   if (!_descFocus.hasFocus &&
-//                                       !_dueDaysFocus.hasFocus &&
-//                                       !_invoiceFocus.hasFocus) {
-//                                     if (HardwareKeyboard
-//                                             .instance.isShiftPressed &&
-//                                         event.logicalKey ==
-//                                             LogicalKeyboardKey.keyS) {
-//                                       setState(() {
-//                                         _isSearch = true;
-//                                       });
-//                                     }
-//                                   }
-//                                 }
-//                               },
-//                               child: Form(
-//                                 key: _formKey,
-//                                 child: Column(
-//                                   crossAxisAlignment: CrossAxisAlignment.start,
-//                                   children: [
-//                                     Container(
-//                                         padding: const EdgeInsets.all(5),
-//                                         decoration: const BoxDecoration(
-//                                           border: Border(
-//                                             top: BorderSide(color: Colors.grey),
-//                                             left:
-//                                                 BorderSide(color: Colors.grey),
-//                                             right:
-//                                                 BorderSide(color: Colors.grey),
-//                                           ),
-//                                         ),
-//                                         child: Column(
-//                                           children: [
-//                                             _buildRow([
-//                                               Row(
-//                                                 children: [
-//                                                   const Text(
-//                                                     'PARTY',
-//                                                     style: TextStyle(
-//                                                       color: Colors.black,
-//                                                       fontWeight:
-//                                                           FontWeight.w900,
-//                                                       fontSize:
-//                                                           12, // Font size for the label
-//                                                     ),
-//                                                   ),
-//                                                   const SizedBox(width: 8),
-//                                                   Expanded(
-//                                                     child: Obx(() {
-//                                                       return DropdownButtonFormField<
-//                                                           String>(
-//                                                         focusNode:
-//                                                             _partyFocNode,
-//                                                         style: const TextStyle(
-//                                                             fontSize: 12),
-//                                                         value: _selectedTypeParty
-//                                                                 .value.isEmpty
-//                                                             ? null
-//                                                             : _selectedTypeParty
-//                                                                 .value,
-//                                                         decoration:
-//                                                             const InputDecoration(
-//                                                           errorStyle: TextStyle(
-//                                                             height: 0,
-//                                                             // Hides the error message
-//                                                             fontSize:
-//                                                                 0, // Ensures no space is taken by the error message
-//                                                           ),
-//                                                           focusedErrorBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color: Colors.red,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           errorBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color: Colors.red,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           focusedBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color:
-//                                                                   Colors.blue,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           enabledBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color:
-//                                                                   Colors.grey,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           isDense: true,
-//                                                           contentPadding:
-//                                                               EdgeInsets
-//                                                                   .symmetric(
-//                                                             vertical: 8,
-//                                                             horizontal: 8,
-//                                                           ),
-//                                                         ),
-//                                                         items:
-//                                                             dropdownItemsParty,
-//                                                         onChanged: _isEnabled
-//                                                             ? (value) {
-//                                                                 _selectedTypeParty
-//                                                                         .value =
-//                                                                     value ?? '';
-//                                                                 Future.delayed(
-//                                                                     const Duration(
-//                                                                         milliseconds:
-//                                                                             100),
-//                                                                     () {
-//                                                                   _dateFocus
-//                                                                       .requestFocus(); // Move focus to the first input field
-//                                                                 }); // Handle null case
-//                                                               }
-//                                                             : null,
-//                                                       );
-//                                                     }),
-//                                                   ),
-//                                                 ],
-//                                               ),
-//                                               buildTextField(
-//                                                   'INVOICE NO.',
-//                                                   excludeFieldValidation: true,
-//                                                   invNoController,
-//                                                   isEnabled: false,
-//                                                   focusNode: _invoiceFocus,
-//                                                   onEditingComplete: () {
-//                                                 Future.delayed(
-//                                                     const Duration(
-//                                                         milliseconds: 100), () {
-//                                                   _dateFocus
-//                                                       .requestFocus(); // Move focus to the first input field
-//                                                 });
-//                                               }, onChanged: (value) {}),
-//                                               Focus(
-//                                                 onKeyEvent: (node, event) {
-//                                                   if (HardwareKeyboard.instance
-//                                                       .isLogicalKeyPressed(
-//                                                           LogicalKeyboardKey
-//                                                               .enter)) {
-//                                                     _openDatePicker(); // Open date picker when Enter key is pressed
-//                                                     return KeyEventResult
-//                                                         .handled;
-//                                                   }
-//                                                   return KeyEventResult.ignored;
-//                                                 },
-//                                                 child: buildTextField(
-//                                                   excludeFieldValidation: false,
-//                                                   'DATE',
-//                                                   dateController,
-//                                                   isEnabled: _isEnabled,
-//                                                   focusNode: _dateFocus,
-//                                                   onTap: () {
-//                                                     _openDatePicker();
-//                                                   },
-//                                                 ),
-//                                               ),
-//
-//                                               // _buildTextField('PURID', 'AUTO', purIdController),
-//                                             ]),
-//                                             const SizedBox(height: 10),
-//                                             _buildRow([
-//                                               Row(
-//                                                 children: [
-//                                                   const Text(
-//                                                     'BROKER',
-//                                                     style: TextStyle(
-//                                                       color: Colors.black,
-//                                                       fontWeight:
-//                                                           FontWeight.w900,
-//                                                       fontSize:
-//                                                           12, // Font size for the label
-//                                                     ),
-//                                                   ),
-//                                                   const SizedBox(width: 8),
-//                                                   Expanded(
-//                                                     child: Obx(() {
-//                                                       return DropdownButtonFormField<
-//                                                           String>(
-//                                                         focusNode: _brokerFocus,
-//                                                         style: const TextStyle(
-//                                                             fontSize: 12),
-//                                                         value: _selectedTypeBroker
-//                                                                 .value
-//                                                                 .toString()
-//                                                                 .isEmpty
-//                                                             ? null
-//                                                             : _selectedTypeBroker
-//                                                                 .value
-//                                                                 .toString(),
-//                                                         decoration:
-//                                                             const InputDecoration(
-//                                                           errorStyle: TextStyle(
-//                                                             height: 0,
-//                                                             // Hides the error message
-//                                                             fontSize:
-//                                                                 0, // Ensures no space is taken by the error message
-//                                                           ),
-//                                                           focusedErrorBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color: Colors.red,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           errorBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color: Colors.red,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           focusedBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color:
-//                                                                   Colors.blue,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           enabledBorder:
-//                                                               UnderlineInputBorder(
-//                                                             borderSide:
-//                                                                 BorderSide(
-//                                                               color:
-//                                                                   Colors.grey,
-//                                                               width:
-//                                                                   1.0, // Thin border width
-//                                                             ),
-//                                                             borderRadius:
-//                                                                 BorderRadius
-//                                                                     .zero, // Squared corners
-//                                                           ),
-//                                                           isDense: true,
-//                                                           contentPadding:
-//                                                               EdgeInsets
-//                                                                   .symmetric(
-//                                                             vertical: 8,
-//                                                             horizontal: 8,
-//                                                           ),
-//                                                         ),
-//                                                         items:
-//                                                             dropdownItemsBroker,
-//                                                         onChanged: /*_isEnabled
-//                                                             ? (value) {
-//                                                                 _selectedTypeBroker
-//                                                                         .value =
-//                                                                     value ?? '';
-//                                                                 Future.delayed(
-//                                                                     const Duration(
-//                                                                         milliseconds:
-//                                                                             100),
-//                                                                     () {
-//                                                                   _dueDaysFocus
-//                                                                       .requestFocus(); // Move focus to the first input field
-//                                                                 }); // Handle null case
-//                                                               }
-//                                                             :*/
-//                                                             null,
-//                                                       );
-//                                                     }),
-//                                                   ),
-//                                                 ],
-//                                               ),
-//                                               buildTextField(
-//                                                   excludeFieldValidation: false,
-//                                                   'DUE DAYS',
-//                                                   dueDaysController,
-//                                                   focusNode: _dueDaysFocus,
-//                                                   inputFormatterList: [
-//                                                     FilteringTextInputFormatter
-//                                                         .digitsOnly
-//                                                   ], onEditingComplete: () {
-//                                                 Future.delayed(
-//                                                     const Duration(
-//                                                         milliseconds: 100), () {
-//                                                   _roughFocNode
-//                                                       .requestFocus(); // Move focus to the first input field
-//                                                 });
-//                                               }, onChanged: (value) {
-//                                                 _updateDueDate();
-//                                               }, isEnabled: _isEnabled),
-//                                               buildTextField(
-//                                                 excludeFieldValidation: false,
-//
-//                                                 'DUE DATE',
-//                                                 dueDateController,
-//                                                 isEnabled:
-//                                                     false, // Disable input since it's auto-filled
-//                                               ),
-//                                             ]),
-//                                           ],
-//                                         )),
-//                                     // const SizedBox(height: 10),
-//                                     Table(
-//                                       border:
-//                                           TableBorder.all(color: Colors.grey),
-//                                       columnWidths: const {
-//                                         0: FlexColumnWidth(
-//                                             1), // ROUGH Type column
-//                                         1: FlexColumnWidth(
-//                                             3), // DESCRIPTION column
-//                                         2: FlexColumnWidth(1), // WT column
-//                                         3: FlexColumnWidth(1), // RATE column
-//                                         4: FlexColumnWidth(1), // AMOUNT column
-//                                         5: FlexColumnWidth(
-//                                             0.25), // AMOUNT column
-//                                       },
-//                                       children: [
-//                                         // Header Row
-//                                         const TableRow(
-//                                           // decoration: BoxDecoration(
-//                                           //     color: Colors.grey.shade200),
-//                                           children: [
-//                                             TableCell(
-//                                                 child: Padding(
-//                                               padding: EdgeInsets.all(3.0),
-//                                               child: Text('ROUGH',
-//                                                   style: TextStyle(
-//                                                     color: Colors.black,
-//                                                     fontWeight: FontWeight.w900,
-//                                                     fontSize:
-//                                                         12, // Font size for the label
-//                                                   ),
-//                                                   textAlign: TextAlign.start),
-//                                             )),
-//                                             TableCell(
-//                                                 child: Padding(
-//                                               padding: EdgeInsets.all(3.0),
-//                                               child: Text('DESCRIPTION',
-//                                                   style: TextStyle(
-//                                                     color: Colors.black,
-//                                                     fontWeight: FontWeight.w900,
-//                                                     fontSize:
-//                                                         12, // Font size for the label
-//                                                   ),
-//                                                   textAlign: TextAlign.start),
-//                                             )),
-//                                             TableCell(
-//                                                 child: Padding(
-//                                               padding: EdgeInsets.all(3.0),
-//                                               child: Text('WT',
-//                                                   style: TextStyle(
-//                                                     color: Colors.black,
-//                                                     fontWeight: FontWeight.w900,
-//                                                     fontSize:
-//                                                         12, // Font size for the label
-//                                                   ),
-//                                                   textAlign: TextAlign.start),
-//                                             )),
-//                                             TableCell(
-//                                                 child: Padding(
-//                                               padding: EdgeInsets.all(3.0),
-//                                               child: Text('RATE',
-//                                                   style: TextStyle(
-//                                                     color: Colors.black,
-//                                                     fontWeight: FontWeight.w900,
-//                                                     fontSize:
-//                                                         12, // Font size for the label
-//                                                   ),
-//                                                   textAlign: TextAlign.start),
-//                                             )),
-//                                             TableCell(
-//                                                 child: Padding(
-//                                               padding: EdgeInsets.all(3.0),
-//                                               child: Text('AMOUNT',
-//                                                   style: TextStyle(
-//                                                     color: Colors.black,
-//                                                     fontWeight: FontWeight.w900,
-//                                                     fontSize:
-//                                                         12, // Font size for the label
-//                                                   ),
-//                                                   textAlign: TextAlign.start),
-//                                             )),
-//                                             TableCell(
-//                                                 child: Padding(
-//                                               padding: EdgeInsets.all(3.0),
-//                                               child: Text('',
-//                                                   style: TextStyle(
-//                                                     color: Colors.black,
-//                                                     fontWeight: FontWeight.w900,
-//                                                     fontSize:
-//                                                         12, // Font size for the label
-//                                                   ),
-//                                                   textAlign: TextAlign.start),
-//                                             )),
-//                                           ],
-//                                         ),
-//
-//                                         // Input Row
-//                                         TableRow(
-//                                           children: [
-//                                             TableCell(
-//                                               child: Obx(() {
-//                                                 return DropdownButtonFormField<
-//                                                     String>(
-//                                                   focusNode: _roughFocNode,
-//                                                   style: const TextStyle(
-//                                                       fontSize: 12),
-//                                                   value: _selectedType
-//                                                           .value.isEmpty
-//                                                       ? null
-//                                                       : _selectedType.value,
-//                                                   decoration:
-//                                                       const InputDecoration(
-//                                                     border: InputBorder.none,
-//                                                     errorStyle: TextStyle(
-//                                                       height: 0,
-//                                                       // Hides the error message
-//                                                       fontSize:
-//                                                           0, // Ensures no space is taken by the error message
-//                                                     ),
-//                                                     isDense: true,
-//                                                     contentPadding:
-//                                                         EdgeInsets.symmetric(
-//                                                       vertical: 8,
-//                                                       horizontal: 8,
-//                                                     ),
-//                                                   ),
-//                                                   items: dropdownItems,
-//                                                   onChanged: _isEnabled
-//                                                       ? (value) {
-//                                                           _selectedType.value =
-//                                                               value ?? '';
-//                                                           Future.delayed(
-//                                                               const Duration(
-//                                                                   milliseconds:
-//                                                                       100), () {
-//                                                             _descFocus
-//                                                                 .requestFocus(); // Move focus to the first input field
-//                                                           }); // Handle null case
-//                                                         }
-//                                                       : null,
-//                                                 );
-//                                               }),
-//                                             ),
-//                                             TableCell(
-//                                               child: buildTextField2(
-//                                                   'DESCRIPTION',
-//                                                   descripController,
-//                                                   focusNode: _descFocus,
-//                                                   isEnabled: _isEnabled),
-//                                             ),
-//                                             TableCell(
-//                                               child: buildTextField2(
-//                                                   'WT', wtController,
-//                                                   focusNode: _wtFocus,
-//                                                   inputFormatterList: [
-//                                                     FilteringTextInputFormatter
-//                                                         .allow(RegExp(
-//                                                             r'^\d+\.?\d{0,3}')),
-//                                                   ],
-//                                                   isEnabled: _isEnabled),
-//                                             ),
-//                                             TableCell(
-//                                               child: buildTextField2(
-//                                                   focusNode: _rateFocus,
-//                                                   'RATE',
-//                                                   rateController,
-//                                                   inputFormatterList: [
-//                                                     FilteringTextInputFormatter
-//                                                         .allow(RegExp(
-//                                                             r'^\d+\.?\d{0,3}')),
-//                                                   ],
-//                                                   isEnabled: _isEnabled),
-//                                             ),
-//                                             TableCell(
-//                                               child: buildTextField2(
-//                                                   'AMOUNT', amountController,
-//                                                   isEnabled: false),
-//                                             ),
-//                                             TableCell(
-//                                                 child: InkWell(
-//                                               onTap: () {
-//                                                 if (_formKey.currentState!
-//                                                     .validate()) {
-//                                                   addEntry();
-//                                                 }
-//                                               },
-//                                               child: const Text(
-//                                                 '...',
-//                                                 textAlign: TextAlign.center,
-//                                               ),
-//                                             )),
-//                                           ],
-//                                         ),
-//                                       ],
-//                                     ),
-//                                   ],
-//                                 ),
-//                               ),
-//                             ),
-//                           ),
-//                           Padding(
-//                             padding: const EdgeInsets.all(16.0),
-//                             child: Container(
-//                                 decoration: BoxDecoration(
-//                                     border: Border.all(color: Colors.grey)),
-//                                 // padding: const EdgeInsets.all(8.0),
-//                                 child: _buildRoughTable()),
-//                           ),
-//                           // const SizedBox(height: 16),
-//                           // RecentFiles(),
-//                           // if (Responsive.isMobile(context)) const SizedBox(height: 16),
-//                           // if (Responsive.isMobile(context)) StorageDetails(),
-//                           Row(
-//                             mainAxisAlignment: MainAxisAlignment.center,
-//                             children: [
-//                               OutlinedButton(
-//                                 // onPressed: _enableFields,
-//                                 onPressed: !_isEnabled ? _enableFields : null,
-//                                 child: const Text.rich(
-//                                   TextSpan(
-//                                     children: [
-//                                       TextSpan(
-//                                         text: 'A', // Underlined "A"
-//                                         style: TextStyle(
-//                                           decoration: TextDecoration.underline,
-//                                         ),
-//                                       ),
-//                                       TextSpan(
-//                                         text: 'dd', // Normal "dd"
-//                                       ),
-//                                     ],
-//                                   ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               OutlinedButton(
-//                                 onPressed: _isFromEdit
-//                                     ? () async {
-//                                         if (entries.isNotEmpty) {
-//                                           defaultController
-//                                               .updatePurchaseData(
-//                                                   id: selectedRoughPurMstID
-//                                                       .value,
-//                                                   partyCode:
-//                                                       _selectedTypeParty.value,
-//                                                   invoiceNo:
-//                                                       invNoController.text,
-//                                                   invoiceDate: selectedDate,
-//                                                   brokerCode:
-//                                                       _selectedTypeBroker.value,
-//                                                   dueDays:
-//                                                       dueDaysController.text,
-//                                                   dueDate: dueDate,
-//                                                   onlyDueDate:
-//                                                       dueDateController.text,
-//                                                   entries: entries,
-//                                                   totalAmt: totalAmount,
-//                                                   totalWt: totalWt,
-//                                                   totalRate: totalRate)
-//                                               .then((onValue) {
-//                                             setState(() {
-//                                               entries.clear();
-//                                               _isEnabled = false;
-//                                               _isFromEdit = false;
-//                                             });
-//                                             dateController.clear();
-//                                             dueDateController.clear();
-//                                             dueDaysController.clear();
-//                                             dateController.clear();
-//                                             invNoController.clear();
-//                                             _selectedTypeParty.value = '';
-//                                             _selectedType.value = '';
-//                                             _selectedTypeBroker.value = '22';
-//                                           });
-//                                         } else {
-//                                           infoDialog(
-//                                               messageText:
-//                                                   'Please Add Rough Data');
-//                                         }
-//                                       }
-//                                     : _isEnabled
-//                                         ? () async {
-//                                             if (entries.isNotEmpty &&
-//                                                 _selectedTypeParty.isNotEmpty) {
-//                                               defaultController
-//                                                   .addPurchaseData(
-//                                                       partyCode:
-//                                                           _selectedTypeParty
-//                                                               .value,
-//                                                       invoiceNo:
-//                                                           invNoController.text,
-//                                                       invoiceDate: selectedDate,
-//                                                       brokerCode:
-//                                                           _selectedTypeBroker
-//                                                               .value,
-//                                                       dueDays: dueDaysController
-//                                                           .text,
-//                                                       dueDate: dueDate,
-//                                                       onlyDueDate:
-//                                                           dueDateController
-//                                                               .text,
-//                                                       entries: entries,
-//                                                       totalRate: totalRate,
-//                                                       totalAmt: totalAmount,
-//                                                       totalWt: totalWt)
-//                                                   .then((onValue) {
-//                                                 setState(() {
-//                                                   entries.clear();
-//                                                   _isEnabled = false;
-//                                                 });
-//                                               });
-//
-//                                               dateController.clear();
-//                                               dueDateController.clear();
-//                                               dueDaysController.clear();
-//                                               dateController.clear();
-//                                               invNoController.clear();
-//                                               _selectedTypeParty.value = '';
-//                                               _selectedType.value = '';
-//                                               _selectedTypeBroker.value = '22';
-//                                             } else {
-//                                               if (_selectedTypeParty
-//                                                   .isNotEmpty) {
-//                                                 infoDialog(
-//                                                     messageText:
-//                                                         'Please Add Rough Data');
-//                                               } else {
-//                                                 infoDialog(
-//                                                     messageText:
-//                                                         'Please Select Party');
-//                                               }
-//                                             }
-//                                           }
-//                                         : null,
-//                                 child: Obx(
-//                                   () => defaultController.isLoading.value
-//                                       ? const CupertinoActivityIndicator()
-//                                       : const Text.rich(
-//                                           TextSpan(
-//                                             children: [
-//                                               TextSpan(
-//                                                 text: 'S', // Underlined "A"
-//                                                 style: TextStyle(
-//                                                   decoration:
-//                                                       TextDecoration.underline,
-//                                                 ),
-//                                               ),
-//                                               TextSpan(
-//                                                 text: 'ave', // Normal "dd"
-//                                               ),
-//                                             ],
-//                                           ),
-//                                         ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               OutlinedButton(
-//                                 onPressed: _isFromEdit
-//                                     ? () {
-//                                         defaultController
-//                                             .deletePurchaseData(
-//                                                 id: selectedRoughPurMstID.value,
-//                                                 entries: entries)
-//                                             .then((onValue) {
-//                                           dateController.clear();
-//                                           dueDateController.clear();
-//                                           dueDaysController.clear();
-//                                           dateController.clear();
-//                                           invNoController.clear();
-//                                           _selectedTypeParty.value = '';
-//                                           _selectedType.value = '';
-//                                           _selectedTypeBroker.value = '22';
-//                                           setState(() {
-//                                             _isFromEdit = false;
-//                                             entries.length = 0;
-//                                           });
-//                                         });
-//                                       }
-//                                     : null,
-//                                 child: Obx(
-//                                   () => defaultController.isDeleteLoading.value
-//                                       ? const CupertinoActivityIndicator()
-//                                       : const Text.rich(
-//                                           TextSpan(
-//                                             children: [
-//                                               TextSpan(
-//                                                 text: 'D', // Underlined "A"
-//                                                 style: TextStyle(
-//                                                   decoration:
-//                                                       TextDecoration.underline,
-//                                                 ),
-//                                               ),
-//                                               TextSpan(
-//                                                 text: 'elete', // Normal "dd"
-//                                               ),
-//                                             ],
-//                                           ),
-//                                         ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               OutlinedButton(
-//                                 onPressed: _isEnabled
-//                                     ? () {
-//                                         dateController.clear();
-//                                         invNoController.clear();
-//                                         dueDateController.clear();
-//                                         dueDaysController.clear();
-//                                         dateController.clear();
-//                                         _selectedTypeParty.value = '';
-//                                         _selectedType.value = '';
-//                                         _selectedTypeBroker.value = '22';
-//                                         setState(() {
-//                                           entries.length = 0;
-//                                           _isFromEdit = false;
-//                                           _isEnabled = false;
-//                                         });
-//                                       }
-//                                     : null,
-//                                 child: const Text.rich(
-//                                   TextSpan(
-//                                     children: [
-//                                       TextSpan(
-//                                         text: 'C', // Underlined "A"
-//                                         style: TextStyle(
-//                                           decoration: TextDecoration.underline,
-//                                         ),
-//                                       ),
-//                                       TextSpan(
-//                                         text: 'ancel', // Normal "dd"
-//                                       ),
-//                                     ],
-//                                   ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               OutlinedButton(
-//                                 onPressed: () {
-//                                   // menuController.selectedIndex.value = 0;
-//                                   tabController.removeTab(tabController.currentIndex.value);
-//                                 },
-//                                 child: const Text.rich(
-//                                   TextSpan(
-//                                     children: [
-//                                       TextSpan(
-//                                         text: 'E', // Underlined "A"
-//                                         style: TextStyle(
-//                                           decoration: TextDecoration.underline,
-//                                         ),
-//                                       ),
-//                                       TextSpan(
-//                                         text: 'xit', // Normal "dd"
-//                                       ),
-//                                     ],
-//                                   ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               OutlinedButton(
-//                                 onPressed: () {
-//                                   setState(() {
-//                                     _isSearch = true;
-//                                   });
-//                                 },
-//                                 child: const Text.rich(
-//                                   TextSpan(
-//                                     children: [
-//                                       TextSpan(
-//                                         text: 'S', // Underlined "A"
-//                                         style: TextStyle(
-//                                           decoration: TextDecoration.underline,
-//                                         ),
-//                                       ),
-//                                       TextSpan(
-//                                         text: 'earch', // Normal "dd"
-//                                       ),
-//                                     ],
-//                                   ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               OutlinedButton(
-//                                 onPressed: _isFromEdit
-//                                     ? () async {
-//                                         final invoiceGenerator =
-//                                             PurchaseInvoiceGenerator();
-//                                         final pdfData = await invoiceGenerator
-//                                             .generateInvoice(
-//                                                 id: defaultController
-//                                                         .purchaseDataList
-//                                                         .length +
-//                                                     1,
-//                                                 invoiceDate: selectedDate!,
-//                                                 invoiceNo: invNoController.text,
-//                                                 partyCode:
-//                                                     _selectedTypeParty.value,
-//                                                 brokerCode:
-//                                                     _selectedTypeBroker.value,
-//                                                 dueDate: dueDateController.text,
-//                                                 dueDays: dueDaysController.text,
-//                                                 entries: entries,
-//                                                 totalWt: totalWt,
-//                                                 totalAmt: totalAmount,
-//                                                 totalRate: totalRate);
-//                                         await Printing.layoutPdf(
-//                                           onLayout:
-//                                               (PdfPageFormat format) async =>
-//                                                   pdfData,
-//                                         );
-//                                         if (!kDebugMode) {
-//                                           await Printing.sharePdf(
-//                                             bytes: pdfData,
-//                                             filename:
-//                                                 '${invNoController.text}.pdf', // Set the custom name here
-//                                           );
-//                                         }
-//                                       }
-//                                     : null,
-//                                 child: const Text.rich(
-//                                   TextSpan(
-//                                     children: [
-//                                       TextSpan(
-//                                         text: 'P', // Underlined "A"
-//                                         style: TextStyle(
-//                                           decoration: TextDecoration.underline,
-//                                         ),
-//                                       ),
-//                                       TextSpan(
-//                                         text: 'rint', // Normal "dd"
-//                                       ),
-//                                     ],
-//                                   ),
-//                                 ),
-//                               ),
-//                             ],
-//                           )
-//                         ],
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//           );
-//   }
-//
-//   Widget _buildRow(List<Widget> children) {
-//     return Row(
-//       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//       children: children
-//           .map(
-//             (child) => Expanded(
-//               child: Padding(
-//                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
-//                 child: child,
-//               ),
-//             ),
-//           )
-//           .toList(),
-//     );
-//   }
-//
-//   void _updateDueDate() {
-//     if (selectedDate != null) {
-//       int dueDays = int.tryParse(dueDaysController.text) ?? 0;
-//       DateTime temp = selectedDate!.add(Duration(days: dueDays));
-//       dueDateController.text = DateFormat('dd-MM-yyyy').format(temp);
-//       dueDate = DateFormat('yyyy-MM-dd HH:MM:SS').format(temp);
-//     }
-//   }
-//
-//   Widget _buildRoughTable() {
-//     return Table(
-//       border: TableBorder.all(color: Colors.grey, width: 0.25),
-//       columnWidths: const {
-//         0: FixedColumnWidth(50), // Adjust this based on your needs
-//         1: FlexColumnWidth(60),
-//         2: FlexColumnWidth(150),
-//         3: FixedColumnWidth(80),
-//         4: FixedColumnWidth(80),
-//         5: FixedColumnWidth(80),
-//         6: FixedColumnWidth(40),
-//         7: FixedColumnWidth(40),
-//         8: FixedColumnWidth(40),
-//       },
-//       children: [
-//         // Table Header Row
-//         const TableRow(
-//           children: [
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'SR.NO',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'ROUGH',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'DESCRIPTION',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'WT',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'RATE',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'AMOUNT',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 '',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 '',
-//                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ), // Placeholder for edit icon
-//           ],
-//         ),
-//         // Data Rows
-//         for (int index = 0; index < entries.length; index++)
-//           TableRow(
-//             children: [
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Text(
-//                   (index + 1).toString(),
-//                   style: const TextStyle(fontSize: 12),
-//                   textAlign: TextAlign.start,
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Text(
-//                   getRoughName(entries[index]['rough']!),
-//                   style: const TextStyle(fontSize: 12),
-//                   textAlign: TextAlign.start,
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Text(
-//                   entries[index]['description']!,
-//                   style: const TextStyle(fontSize: 12),
-//                   textAlign: TextAlign.start,
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Text(
-//                   entries[index]['wt']!,
-//                   style: const TextStyle(fontSize: 12),
-//                   textAlign: TextAlign.start,
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Text(
-//                   entries[index]['rate']!,
-//                   style: const TextStyle(fontSize: 12),
-//                   textAlign: TextAlign.start,
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Text(
-//                   entries[index]['amount']!,
-//                   style: const TextStyle(fontSize: 12),
-//                   textAlign: TextAlign.start,
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: Obx(
-//                   () => defaultController.isDeleteLoading.value
-//                       ? const CupertinoActivityIndicator(radius: 10)
-//                       : GestureDetector(
-//                           child: const Icon(
-//                             Icons.delete,
-//                             size: 15,
-//                           ),
-//                           onTap: () {
-//                             if (_isFromEdit) {
-//                               entries.length == 1
-//                                   ? infoDialog(
-//                                       messageText:
-//                                           'Can not delete Single Rough Entry')
-//                                   : defaultController
-//                                       .deletePurchaseRoughData(
-//                                           id: int.parse(entries[index]['id']!))
-//                                       .then((onValue) {
-//                                       setState(() {
-//                                         entries.removeAt(index);
-//                                       });
-//                                     });
-//                             } else {
-//                               setState(() {
-//                                 entries.removeAt(index);
-//                               });
-//                             }
-//                           },
-//                         ),
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(3.0),
-//                 child: GestureDetector(
-//                   child: const Icon(
-//                     Icons.edit,
-//                     size: 15,
-//                   ),
-//                   onTap: () {
-//                     if (_isFromEdit) {
-//                       selectedRoughId.value = entries[index]['id']!;
-//                     }
-//                     _selectedType.value = entries[index]['rough']!;
-//                     wtController.text = entries[index]['wt']!;
-//                     rateController.text = entries[index]['rate']!;
-//                     descripController.text = entries[index]['description']!;
-//                     // updateStockControllerBasedOnType(entries[index]['rough']!);
-//                     setState(() {
-//                       entries.removeAt(index);
-//                     });
-//                   },
-//                 ),
-//               ),
-//             ],
-//           ),
-//         // Total Row
-//         TableRow(
-//           children: [
-//             const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
-//             const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
-//             const Padding(
-//               padding: EdgeInsets.all(3.0),
-//               child: Text(
-//                 'TOTAL',
-//                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-//                 textAlign: TextAlign.end,
-//               ),
-//             ),
-//             Padding(
-//               padding: const EdgeInsets.all(3.0),
-//               child: Text(
-//                 totalWt.toStringAsFixed(2),
-//                 style:
-//                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: const EdgeInsets.all(3.0),
-//               child: Text(
-//                 totalRate.toStringAsFixed(2),
-//                 style:
-//                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             Padding(
-//               padding: const EdgeInsets.all(3.0),
-//               child: Text(
-//                 totalAmount.toStringAsFixed(2),
-//                 style:
-//                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-//                 textAlign: TextAlign.start,
-//               ),
-//             ),
-//             const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
-//             const Padding(padding: EdgeInsets.all(3.0), child: Text('')),
-//           ],
-//         ),
-//       ],
-//     );
-//   }
-//
-//   List<DropdownMenuItem<String>> get dropdownItems {
-//     return defaultController.roughModel.map((partyType) {
-//       return DropdownMenuItem<String>(
-//         value: partyType.roughTypeCode.toString(),
-//         child: Text(partyType.roughTypeName!),
-//       );
-//     }).toList();
-//   }
-//
-//   List<DropdownMenuItem<String>> get dropdownItemsParty {
-//     return defaultController.partyMstList
-//         .where((partyType) =>
-//             partyType.typeCode == 1 &&
-//             partyType.companyCode == defaultController.companyCode.value)
-//         .map((partyType) {
-//       return DropdownMenuItem<String>(
-//         value: partyType.partyCode.toString(),
-//         child: Text(partyType.partyName!),
-//       );
-//     }).toList().toSet().toList();
-//   }
-//
-//   List<DropdownMenuItem<String>> get dropdownItemsBroker {
-//     return defaultController.partyMstList
-//         .where((partyType) =>
-//             partyType.typeCode == 5 &&
-//             partyType.companyCode == defaultController.companyCode.value)
-//         .map((partyType) {
-//       return DropdownMenuItem<String>(
-//         value: partyType.partyCode.toString(),
-//         child: Text(partyType.partyName!),
-//       );
-//     }).toList();
-//   }
-// }
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
+import 'package:real_web_rough_entry_system/common/components/app_button.dart';
+import 'package:real_web_rough_entry_system/common/components/app_data_grid.dart';
+import 'package:real_web_rough_entry_system/common/components/app_dropdown.dart';
+import 'package:real_web_rough_entry_system/common/components/app_shortcuts.dart';
+import 'package:real_web_rough_entry_system/common/components/app_text_field.dart';
+import 'package:real_web_rough_entry_system/common/widgets.dart';
+import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
+import 'package:real_web_rough_entry_system/expense/expense_datagrid.dart';
+import 'package:real_web_rough_entry_system/expense/expense_model.dart';
+import 'package:real_web_rough_entry_system/header.dart';
+import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+
+class ExpenseFormScreen extends StatefulWidget {
+  final bool showHeader;
+
+  const ExpenseFormScreen({super.key, this.showHeader = false});
+
+  @override
+  ExpenseFormScreenState createState() => ExpenseFormScreenState();
+}
+
+class ExpenseFormScreenState extends State<ExpenseFormScreen> {
+  final DefaultController defaultController = Get.find<DefaultController>();
+  final DataGridController _dataGridController = DataGridController();
+
+  // Controllers
+  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _sortIdController = TextEditingController();
+
+  // Focus nodes
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _expGroupFocus = FocusNode();
+  final FocusNode _sortIdFocus = FocusNode();
+
+  // State
+  final RxInt _selectedExpCode = 0.obs;
+  final RxInt _selectedExpMstId = 0.obs;
+  final Rxn<int> _selectedExpGroupCode = Rxn<int>();
+  final RxBool _isActive = true.obs;
+  bool _isEnabled = false;
+  bool _isFromEdit = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (defaultController.expenseGroupDropdownList.isEmpty) {
+        defaultController.getExpenseGroupsDropdownData();
+      }
+      if (defaultController.expenseModelList.isEmpty) {
+        defaultController.getExpenseData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _nameController.dispose();
+    _sortIdController.dispose();
+    _nameFocus.dispose();
+    _expGroupFocus.dispose();
+    _sortIdFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _enableFields({bool needFocus = true}) async {
+    setState(() {
+      _isEnabled = true;
+      _isFromEdit = false;
+      _selectedExpCode.value = 0;
+      _selectedExpMstId.value = 0;
+      _selectedExpGroupCode.value = null;
+      _codeController.text = '';
+      _nameController.clear();
+      _sortIdController.clear();
+      _isActive.value = true;
+    });
+
+    if (defaultController.expenseGroupDropdownList.isEmpty) {
+      await defaultController.getExpenseGroupsDropdownData();
+    }
+
+    try {
+      final next = await defaultController.getNextExpenseCode();
+      if (next != null && mounted) {
+        final dynamic nextCode =
+            next['nextExpCode'] ?? next['ExpCode'] ?? next['code'];
+        final dynamic nextSort =
+            next['nextSortID'] ?? next['SortID'] ?? next['sortId'];
+        if (nextCode != null) {
+          _codeController.text = nextCode.toString();
+        }
+        if (nextSort != null) {
+          _sortIdController.text = nextSort.toString();
+        }
+      }
+    } catch (_) {}
+
+    if (needFocus && mounted) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _nameFocus.requestFocus();
+      });
+    }
+  }
+
+  void _clearFormFields() {
+    setState(() {
+      _isEnabled = false;
+      _isFromEdit = false;
+      _selectedExpCode.value = 0;
+      _selectedExpMstId.value = 0;
+      _selectedExpGroupCode.value = null;
+      _codeController.clear();
+      _nameController.clear();
+      _sortIdController.clear();
+      _isActive.value = true;
+    });
+  }
+
+  Future<void> _handleSave() async {
+    if (!_isEnabled) return;
+
+    final String name = _nameController.text.trim();
+    if (name.isEmpty) {
+      infoDialog(messageText: 'Please enter Expense Name');
+      _nameFocus.requestFocus();
+      return;
+    }
+
+    final int? expGroupCode = _selectedExpGroupCode.value;
+    if (expGroupCode == null || expGroupCode == 0) {
+      infoDialog(messageText: 'Please select Expense Group');
+      _expGroupFocus.requestFocus();
+      return;
+    }
+
+    final int? sortId = int.tryParse(_sortIdController.text.trim());
+
+    if (_isFromEdit) {
+      final dynamic targetId = _selectedExpMstId.value != 0
+          ? _selectedExpMstId.value
+          : _selectedExpCode.value;
+
+      if (targetId == 0 || targetId == null) {
+        errorDialog(messageText: 'Unable to identify Expense record to update');
+        return;
+      }
+
+      await defaultController.updateExpenseData(
+        id: targetId,
+        name: name,
+        expGroupCode: expGroupCode,
+        sortId: sortId,
+        active: _isActive.value,
+        companyCodeParam: defaultController.companyCode.value,
+      );
+    } else {
+      await defaultController.addExpenseData(
+        name: name,
+        expGroupCode: expGroupCode,
+        sortId: sortId,
+        active: _isActive.value,
+        companyCodeParam: defaultController.companyCode.value,
+      );
+    }
+
+    _clearFormFields();
+  }
+
+  Future<void> _handleDelete() async {
+    if (!_isFromEdit) return;
+
+    final dynamic targetId = _selectedExpMstId.value != 0
+        ? _selectedExpMstId.value
+        : _selectedExpCode.value;
+
+    if (targetId == 0 || targetId == null) return;
+
+    await defaultController.deleteExpenseData(id: targetId);
+    _clearFormFields();
+  }
+
+  void _loadFromRow(DataGridRow row) {
+    final dynamic cellVal = row.getCells()[0].value;
+    final item = defaultController.expenseModelList.firstWhere(
+      (entry) =>
+          entry.expCode == cellVal || entry.expMstId == cellVal,
+      orElse: () => ExpenseModel(),
+    );
+
+    final int code = item.expCode ??
+        item.expMstId ??
+        (cellVal is int ? cellVal : 0);
+    if (code != 0) {
+      _selectedExpCode.value = item.expCode ?? code;
+      _selectedExpMstId.value = item.expMstId ?? code;
+      _selectedExpGroupCode.value = item.expGroupCode;
+      _codeController.text = code.toString();
+      _nameController.text = item.expName ?? '';
+      _sortIdController.text =
+          item.sortID != null ? item.sortID.toString() : '';
+      _isActive.value = item.active ?? true;
+
+      setState(() {
+        _isFromEdit = true;
+        _isEnabled = true;
+      });
+
+      _nameFocus.requestFocus();
+    }
+  }
+
+  void _exitScreen() {
+    tabController.closeCurrentTab();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final isDark = AppColors.isDark;
+
+      return AppKeyboardShortcutHandler(
+        onAdd: !_isEnabled ? () => _enableFields() : null,
+        onSave: _isEnabled ? _handleSave : null,
+        onDelete: (_isEnabled && _isFromEdit) ? _handleDelete : null,
+        onCancel: (_isEnabled || _isFromEdit) ? _clearFormFields : null,
+        onExit: _exitScreen,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              if (widget.showHeader) const Header(title: 'Expense Master'),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 920),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildFormCard(isDark),
+                          const SizedBox(height: 12),
+                          _buildActionBar(isDark),
+                          const SizedBox(height: 14),
+                          _buildDirectoryCard(isDark),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildFormCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.receipt_long_rounded,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Expense Details',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              if (_isFromEdit)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.warning),
+                  ),
+                  child: Text(
+                    'EDIT MODE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Divider(height: 24, color: AppColors.borderLight),
+
+          // Fields: Code, Name, Exp Group, Sort ID, Active
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isWide = constraints.maxWidth >= 650;
+
+              final codeWidget = SizedBox(
+                width: isWide ? 90 : null,
+                child: AppTextField(
+                  label: 'Code',
+                  controller: _codeController,
+                  enabled: false,
+                  hintText: 'Auto',
+                ),
+              );
+
+              final nameWidget = AppTextField(
+                label: 'Expense Name *',
+                controller: _nameController,
+                focusNode: _nameFocus,
+                enabled: _isEnabled,
+                hintText: 'e.g. RAJESH DHILAKIY, JANAK',
+                onFieldSubmitted: (_) => _expGroupFocus.requestFocus(),
+              );
+
+              final expGroupWidget = Obx(
+                () => AppDropdown<int?>(
+                  label: 'Exp Group *',
+                  value: _selectedExpGroupCode.value,
+                  focusNode: _expGroupFocus,
+                  isEnabled: _isEnabled,
+                  hintText: 'Select Expense Group...',
+                  dropdownItems:
+                      defaultController.expenseGroupDropdownList.map((g) {
+                    final int? code = g.expGroupCode ?? g.expGroupMstId;
+                    final String name = g.expGroupName ?? (code?.toString() ?? '-');
+                    return AppDropdownItem<int?>(
+                      value: code,
+                      label: name,
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    _selectedExpGroupCode.value = val;
+                    _sortIdFocus.requestFocus();
+                  },
+                ),
+              );
+
+              final sortIdWidget = SizedBox(
+                width: isWide ? 120 : null,
+                child: AppTextField(
+                  label: 'Sort ID',
+                  controller: _sortIdController,
+                  focusNode: _sortIdFocus,
+                  enabled: _isEnabled,
+                  hintText: 'e.g. 1',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onFieldSubmitted: (_) => _handleSave(),
+                ),
+              );
+
+              final activeWidget = Obx(
+                () => InkWell(
+                  onTap: _isEnabled
+                      ? () => _isActive.value = !_isActive.value
+                      : null,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: _isActive.value,
+                        onChanged: _isEnabled
+                            ? (val) => _isActive.value = val ?? true
+                            : null,
+                        activeColor: AppColors.primary,
+                      ),
+                      Text(
+                        'Active',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _isEnabled
+                              ? AppColors.textPrimary
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+
+              if (isWide) {
+                return Column(
+                  children: [
+                    // Row 1: Code, Expense Name, Exp Group
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        codeWidget,
+                        const SizedBox(width: 14),
+                        Expanded(flex: 3, child: nameWidget),
+                        const SizedBox(width: 14),
+                        Expanded(flex: 2, child: expGroupWidget),
+                        const SizedBox(width: 14),
+                        sortIdWidget,
+                        const SizedBox(width: 14),
+                        activeWidget,
+                      ],
+                    ),
+
+                  ],
+                );
+              } else {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    codeWidget,
+                    const SizedBox(height: 12),
+                    nameWidget,
+                    const SizedBox(height: 12),
+                    expGroupWidget,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: sortIdWidget),
+                        const SizedBox(width: 10),
+                        Expanded(child: activeWidget),
+                      ],
+                    ),
+                  ],
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          if (!_isEnabled)
+            AppButton(
+              text: 'Add',
+              icon: Icons.add_rounded,
+              variant: AppButtonVariant.primary,
+              onPressed: () => _enableFields(),
+            ),
+          const SizedBox(width: 8),
+          if (_isEnabled) ...[
+            AppButton(
+              text: _isFromEdit ? 'Update' : 'Save',
+              icon: Icons.save_rounded,
+              variant: AppButtonVariant.primary,
+              onPressed: _handleSave,
+            ),
+            const SizedBox(width: 8),
+            if (_isFromEdit) ...[
+              AppButton(
+                text: 'Delete',
+                icon: Icons.delete_outline_rounded,
+                variant: AppButtonVariant.danger,
+                onPressed: _handleDelete,
+              ),
+              const SizedBox(width: 8),
+            ],
+            AppButton(
+              text: 'Cancel',
+              icon: Icons.clear_rounded,
+              variant: AppButtonVariant.secondary,
+              onPressed: _clearFormFields,
+            ),
+            const SizedBox(width: 8),
+          ],
+          AppButton(
+            text: 'Exit',
+            icon: Icons.close_rounded,
+            variant: AppButtonVariant.danger,
+            onPressed: _exitScreen,
+          ),
+          const Spacer(),
+          Obx(() {
+            final isLoading = defaultController.isLoading.value ||
+                defaultController.isDeleteLoading.value;
+            if (isLoading) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CupertinoActivityIndicator(radius: 8),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Processing...',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDirectoryCard(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.list_alt_rounded,
+                    size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Existing Expenses',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Obx(
+                  () => Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Total: ${defaultController.expenseModelList.length}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: AppColors.borderLight),
+          SizedBox(
+            height: 380,
+            child: Obx(
+              () => AppDataGrid(
+                controller: _dataGridController,
+                source:
+                    ExpenseDataGridSource(defaultController.expenseModelList),
+                columnWidthMode: ColumnWidthMode.fill,
+                rowHeight: 30,
+                headerRowHeight: 34,
+                allowSorting: true,
+                allowMultiColumnSorting: true,
+                showSortNumbers: true,
+                allowFiltering: true,
+                allowColumnsResizing: true,
+                selectionMode: SelectionMode.single,
+                onSelectionChanged: (addedRows, _) {
+                  if (addedRows.isNotEmpty) {
+                    _loadFromRow(addedRows.first);
+                  }
+                },
+                columns: <GridColumn>[
+                  GridColumn(
+                    columnName: 'Code',
+                    width: 90,
+                    label: _gridHeader('Code', alignment: Alignment.center),
+                  ),
+                  GridColumn(
+                    columnName: 'Name',
+                    label: _gridHeader('Expense Name',
+                        alignment: Alignment.centerLeft),
+                  ),
+                  GridColumn(
+                    columnName: 'Exp Group',
+                    width: 140,
+                    label: _gridHeader('Exp Group',
+                        alignment: Alignment.centerLeft),
+                  ),
+                  GridColumn(
+                    columnName: 'Sort ID',
+                    width: 100,
+                    label: _gridHeader('Sort ID', alignment: Alignment.center),
+                  ),
+                  GridColumn(
+                    columnName: 'Active',
+                    width: 90,
+                    label: _gridHeader('Active', alignment: Alignment.center),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gridHeader(String text, {Alignment alignment = Alignment.center}) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
+}

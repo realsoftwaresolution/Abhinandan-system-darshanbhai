@@ -68,6 +68,10 @@ class _CompanySelectionDialogState extends State<CompanySelectionDialog> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setInt('companyCode', codeToSave);
 
+    if (_controller.menuList.isEmpty) {
+      await _controller.getMenuList();
+    }
+
     if (widget.isSwitchCompany) {
       Get.back();
     } else {

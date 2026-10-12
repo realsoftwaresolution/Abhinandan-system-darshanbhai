@@ -25,9 +25,9 @@ class RoughModel {
         this.active});
 
   RoughModel.fromJson(Map<String, dynamic> json) {
-    roughTypeMstID = json['RoughTypeMstID'];
-    roughTypeCode = json['RoughTypeCode'];
-    roughTypeName = json['RoughTypeName'];
+    roughTypeMstID = json['RoughTypeMstID'] ?? json['RoughTypeCode'];
+    roughTypeCode = json['RoughTypeCode'] ?? json['RoughTypeMstID'];
+    roughTypeName = json['RoughTypeName'] ?? json['Name'];
     sflag = json['Sflag'];
     sdate = json['Sdate'];
     logID = json['LogID'];
@@ -41,8 +41,9 @@ class RoughModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['RoughTypeMstID'] = roughTypeMstID;
-    data['RoughTypeCode'] = roughTypeCode;
+    data['RoughTypeCode'] = roughTypeCode ?? roughTypeMstID;
     data['RoughTypeName'] = roughTypeName;
+    data['Name'] = roughTypeName;
     data['Sflag'] = sflag;
     data['Sdate'] = sdate;
     data['LogID'] = logID;
@@ -54,3 +55,6 @@ class RoughModel {
     return data;
   }
 }
+
+typedef RoughTypeMstModel = RoughModel;
+
