@@ -82,9 +82,17 @@ class PurchaseDetailsModel {
   dynamic lessFixRs;
   dynamic finalNetAmtDollar;
   dynamic finalNetAmtRs;
+  dynamic finalAmtRs;
+  dynamic finalAmtD;
+  dynamic roundOfRs;
+  dynamic roundOfD;
 
   PurchaseDetailsModel(
       {this.roughPurMstID,
+        this.finalAmtRs,
+        this.finalAmtD,
+        this.roundOfRs,
+        this.roundOfD,
         this.rPType,
         this.dayBookCode,
         this.invoiceNo,
@@ -217,7 +225,10 @@ class PurchaseDetailsModel {
     pCID = json['PCID'];
     ever = json['Ever'];
     sDate = json['SDate'];
-    companyCode = json['CompanyCode'];
+    companyCode = json['CompanyCode'] is int
+        ? json['CompanyCode']
+        : (int.tryParse(json['CompanyCode']?.toString() ?? '') ??
+            int.tryParse(json['companyCode']?.toString() ?? ''));
     vPartyCode = json['VPartyCode'];
     idBookNo = json['IdBookNo'];
     chkAdd = json['ChkAdd'];
@@ -252,6 +263,10 @@ class PurchaseDetailsModel {
     lessFixRs = json['LessFixRs'];
     finalNetAmtDollar = json['FinalNetAmtDollar'];
     finalNetAmtRs = json['FinalNetAmtRs'];
+    finalAmtRs = json['FinalAmtRs'];
+    finalAmtD = json['FinalAmtD'];
+    roundOfRs = json['RoundOfRs'];
+    roundOfD = json['RoundOfD'];
   }
 
   Map<String, dynamic> toJson() {
@@ -339,6 +354,10 @@ class PurchaseDetailsModel {
     data['LessFixRs'] = lessFixRs;
     data['FinalNetAmtDollar'] = finalNetAmtDollar;
     data['FinalNetAmtRs'] = finalNetAmtRs;
+    data['FinalAmtRs'] = finalAmtRs;
+    data['FinalAmtD'] = finalAmtD;
+    data['RoundOfRs'] = roundOfRs;
+    data['RoundOfD'] = roundOfD;
     return data;
   }
 }

@@ -75,7 +75,7 @@ class AppTextField extends StatelessWidget {
           TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+            color: AppColors.textPrimary,
           ),
       decoration: InputDecoration(
         hintText: hintText,

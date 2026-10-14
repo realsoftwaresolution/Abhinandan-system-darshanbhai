@@ -687,7 +687,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: widget.isEnabled ? AppColors.textPrimary : AppColors.textMuted,
+              color: AppColors.textPrimary,
             ),
           );
         } else {
@@ -727,7 +727,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: widget.isEnabled ? AppColors.textPrimary : AppColors.textMuted,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),

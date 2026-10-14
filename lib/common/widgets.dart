@@ -19,6 +19,8 @@ import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
+import 'package:real_web_rough_entry_system/charni/charni_model.dart';
+import 'package:real_web_rough_entry_system/quality/quality_model.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_controller.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -330,6 +332,22 @@ String getPartyName(int? partyCode) {
   return party.partyName ?? 'Unknown';
 }
 
+String getQualityName(dynamic qualityCode) {
+  if (qualityCode == null || qualityCode.toString().isEmpty) return '-';
+  final item = defaultController.qualityModelList.firstWhereOrNull(
+      (q) => q.qualityCode.toString() == qualityCode.toString() ||
+             q.qualityMstID.toString() == qualityCode.toString());
+  return item?.qualityName ?? qualityCode.toString();
+}
+
+String getCharniName(dynamic charniCode) {
+  if (charniCode == null || charniCode.toString().isEmpty) return '-';
+  final item = defaultController.charniModelList.firstWhereOrNull(
+      (c) => c.charniCode.toString() == charniCode.toString() ||
+             c.charniMstID.toString() == charniCode.toString());
+  return item?.charniName ?? charniCode.toString();
+}
+
 String getPartyType(int? typeCode) {
   final partyType = defaultController.partyTypeMstList.firstWhere(
       (pt) => pt.typeCode == typeCode,
@@ -374,28 +392,48 @@ Future<String?> getUsername() async {
   return prefs.getString('username'); // Get the saved username
 }
 
-String formatDate(String date, {bool showDayOfWeek = false}) {
-  // Parse the date string into a DateTime object
-  DateTime parsedDate = DateTime.parse(date);
+String formatDate(dynamic date, {bool showDayOfWeek = false}) {
+  if (date == null) return '';
+  final str = date.toString().trim();
+  if (str.isEmpty) return '';
+  DateTime? parsedDate = DateTime.tryParse(str);
+  if (parsedDate == null) {
+    try {
+      parsedDate = DateFormat('yyyy-MM-dd').parse(str);
+    } catch (_) {
+      try {
+        parsedDate = DateFormat('dd-MM-yyyy').parse(str);
+      } catch (_) {
+        return str;
+      }
+    }
+  }
   String formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
   if (showDayOfWeek) {
     String dayOfWeek = DateFormat('EEEE').format(parsedDate);
     String formattedDateWithDay = '$formattedDate     $dayOfWeek';
     return formattedDateWithDay;
   }
-
-  // Format the DateTime object into the desired format
   return formattedDate;
 }
 
-String formatDateWithTime(String date) {
-  // Parse the date string into a DateTime object
-  DateTime parsedDate = DateTime.parse(date);
-
-  // Format the DateTime object into the desired format
-  String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
-
-  return formattedDate;
+String formatDateWithTime(dynamic date) {
+  if (date == null) return '';
+  final str = date.toString().trim();
+  if (str.isEmpty) return '';
+  DateTime? parsedDate = DateTime.tryParse(str);
+  if (parsedDate == null) {
+    try {
+      parsedDate = DateFormat('dd-MM-yyyy').parse(str);
+    } catch (_) {
+      try {
+        parsedDate = DateFormat('yyyy-MM-dd').parse(str);
+      } catch (_) {
+        return str;
+      }
+    }
+  }
+  return DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedDate);
 }
 
 String formatDateFromString(String date) {
@@ -421,6 +459,70 @@ String formatDateToddMMMyyyy(String date) {
 String formatDateFromDateTime(DateTime date) {
   String formattedDate = DateFormat('dd-MM-yyyy').format(date);
   return formattedDate;
+}
+
+String? formatToIsoUtc(dynamic date) {
+  if (date == null) return null;
+  DateTime? dt;
+  if (date is DateTime) {
+    dt = date;
+  } else if (date is String) {
+    final str = date.trim();
+    if (str.isEmpty) return null;
+    dt = DateTime.tryParse(str);
+    if (dt == null) {
+      try {
+        dt = DateFormat('dd-MM-yyyy').parse(str);
+      } catch (_) {
+        try {
+          dt = DateFormat('yyyy-MM-dd').parse(str);
+        } catch (_) {
+          try {
+            dt = DateFormat('yyyy-MM-dd HH:mm:ss').parse(str);
+          } catch (_) {
+            return str;
+          }
+        }
+      }
+    }
+  } else {
+    dt = DateTime.tryParse(date.toString());
+  }
+
+  if (dt == null) return date.toString();
+
+  // If local date has zero time component (midnight local: 00:00:00.000),
+  // attaching current local time preserves the calendar date when converting to UTC.
+  if (!dt.isUtc &&
+      dt.hour == 0 &&
+      dt.minute == 0 &&
+      dt.second == 0 &&
+      dt.millisecond == 0 &&
+      dt.microsecond == 0) {
+    final now = DateTime.now();
+    dt = DateTime(
+      dt.year,
+      dt.month,
+      dt.day,
+      now.hour,
+      now.minute,
+      now.second,
+      now.millisecond,
+    );
+  }
+
+  final utc = dt.toUtc();
+  // Ensure exactly 3 digits for milliseconds and 'Z' suffix (no microseconds)
+  final cleanUtc = DateTime.utc(
+    utc.year,
+    utc.month,
+    utc.day,
+    utc.hour,
+    utc.minute,
+    utc.second,
+    utc.millisecond,
+  );
+  return cleanUtc.toIso8601String();
 }
 
 double getTotalAssortWt(String invoiceNo, bool isFromEdit, int id) {
@@ -515,9 +617,21 @@ void showLoginDialog() {
   );
 }
 
-DateTime dateFormat(String date) {
-  DateTime parsedDate = DateTime.parse(date);
-  return parsedDate;
+DateTime dateFormat(dynamic date) {
+  if (date == null) return DateTime.now();
+  final str = date.toString().trim();
+  if (str.isEmpty) return DateTime.now();
+  DateTime? parsedDate = DateTime.tryParse(str);
+  if (parsedDate != null) return parsedDate;
+  try {
+    return DateFormat('yyyy-MM-dd').parse(str);
+  } catch (_) {
+    try {
+      return DateFormat('dd-MM-yyyy').parse(str);
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
 }
 
 List<String> reportList = [

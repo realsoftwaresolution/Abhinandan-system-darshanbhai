@@ -3855,115 +3855,178 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> addPurchaseData(
-      {String? partyCode,
-      invoiceNo,
-      invoiceDate,
-      brokerCode,
-      dueDays,
-      dueDate,
-      onlyDueDate,
-      double? totalAmt,
-      totalWt,
-      totalRate,
-      required List entries}) async {
+  Future<bool> addPurchaseData({
+    String? partyCode,
+    invoiceNo,
+    invoiceDate,
+    recDate,
+    brokerCode,
+    dueDays,
+    dueDate,
+    onlyDueDate,
+    pSite,
+    billType,
+    rdType,
+    exchange,
+    int? totalPc,
+    double? totalAmt,
+    totalWt,
+    totalRate,
+    totalAmtRs,
+    totalAmtDollar,
+    totalRateRs,
+    totalRateDollar,
+    expPer,
+    expFix,
+    expFixRs,
+    linPer,
+    linFix,
+    linFixRs,
+    totExpPer,
+    totExpFix,
+    totExpFixRs,
+    broPer,
+    broFix,
+    broRs,
+    addPer,
+    addFix,
+    addFixRs,
+    lessPer,
+    lessFix,
+    lessFixRs,
+    invCharge,
+    invChargePer,
+    invChargeRs,
+    comPer,
+    comFix,
+    comFixRs,
+    gstPer,
+    gstAmtRs,
+    gstAmtDollar,
+    netAmtDollar,
+    netAmtRs,
+    roundOfDollar,
+    roundOfRs,
+    finalNetAmtDollar,
+    finalNetAmtRs,
+    finalAmtRs,
+    finalAmtD,
+    totNetAmtDollar,
+    totNetAmtRs,
+    chkExp,
+    chkLin,
+    chkBro,
+    chkAdd,
+    chkLess,
+    chkInv,
+    chkCom,
+    remarks,
+    required List entries,
+  }) async {
     try {
       isLoading.value = true;
       final dio = ApiService.to.dio;
 
+      final String? formattedInvDate = formatToIsoUtc(invoiceDate);
+
+      final String? formattedRecDate = recDate != null
+          ? formatToIsoUtc(recDate)
+          : formattedInvDate;
+
+      final dynamic formattedDueDate = dueDate != null
+          ? formatToIsoUtc(dueDate)
+          : formattedInvDate;
+
+      final dynamic formattedPSite = (pSite != null && pSite.toString().trim().isNotEmpty)
+          ? formatToIsoUtc(pSite)
+          : null;
+
       var params = {
-        // "RPType": "12",
-        // "DayBookCode": 10,
         "InvoiceNo": "$invoiceNo",
-        "InvoiceDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
-        // "Recdate": "2024-08-28 00:00:00",
-        "PartyCode": partyCode,
-        "BrokerCode": brokerCode,
-        "DueDay": dueDays,
-        "DueDate": dueDate,
-        // "RDType": "dsf",
-        // "Exchange": 45.2,
-        // "TPc": 5,
+        "InvoiceDate": formattedInvDate,
+        if (formattedRecDate != null) "Recdate": formattedRecDate,
+        "PartyCode": int.tryParse(partyCode.toString()) ?? partyCode,
+        "BrokerCode": int.tryParse(brokerCode.toString()) ?? brokerCode,
+        "DueDay": int.tryParse(dueDays.toString()) ?? dueDays,
+        "DueDate": formattedDueDate,
+        if (formattedPSite != null && formattedPSite.toString().isNotEmpty) "PSite": formattedPSite,
+        "BillType": billType ?? "BILL",
+        if (rdType != null && rdType.toString().isNotEmpty) "RDType": rdType,
+        if (exchange != null) "Exchange": exchange,
+        if (totalPc != null) "TPc": totalPc,
         "TWeight": totalWt,
-        "TAmtRs": totalAmt,
-        "TAmtDollar": totalAmt,
-        "TRateRs": totalRate,
-        "TRateDollar": totalRate,
-        // "InvCharge": 5645.56,
-        // "InvChargePer": 5645.52,
-        // "AddPer": 575.57,
-        // "AddFix": 25.85,
-        // "AddPer1": 757.35,
-        // "AddFix1": 75.57,
-        // "LessPer": 10.27,
-        // "LessPer1": 13.27,
-        // "LessFix": 547.23,
-        // "LessFix1": 55.35,
-        // "ExpPer": 5447.52,
-        // "ExpFix": 2542.25,
-        // "LinPer": 254.55,
-        // "LinFix": 7574.52,
-        // "ComPer": 4725.75,
-        // "ComFix": 54.25,
-        // "TotExpPer": 254.57,
-        // "TotExpFix": 452.52,
-        // "BroPer": 425.52,
-        // "BroFix": 547.5,
-        // "BroRs": 57.57,
-        // "IntPer": 25.75,
-        "TotAmtDollar": totalAmt,
-        "TotNetAmtRs": totalAmt,
-        "TotAmtRs": totalAmt,
-        // "Rec": 10,
+        "TAmtRs": totalAmtRs ?? totalAmt,
+        "TAmtDollar": totalAmtDollar ?? totalAmt,
+        "TRateRs": totalRateRs ?? totalRate,
+        "TRateDollar": totalRateDollar ?? totalRate,
+        if (invCharge != null) "InvCharge": invCharge,
+        if (invChargePer != null) "InvChargePer": invChargePer,
+        if (invChargeRs != null) "InvChargeRs": invChargeRs,
+        if (addPer != null) "AddPer": addPer,
+        if (addFix != null) "AddFix": addFix,
+        if (addFixRs != null) "AddFixRs": addFixRs,
+        if (lessPer != null) "LessPer": lessPer,
+        if (lessFix != null) "LessFix": lessFix,
+        if (lessFixRs != null) "LessFixRs": lessFixRs,
+        if (expPer != null) "ExpPer": expPer,
+        if (expFix != null) "ExpFix": expFix,
+        if (expFixRs != null) "ExpFixRs": expFixRs,
+        if (linPer != null) "LinPer": linPer,
+        if (linFix != null) "LinFix": linFix,
+        if (linFixRs != null) "LinFixRs": linFixRs,
+        if (totExpPer != null) "TotExpPer": totExpPer,
+        if (totExpFix != null) "TotExpFix": totExpFix,
+        if (totExpFixRs != null) "TotExpFixRs": totExpFixRs,
+        if (broPer != null) "BroPer": broPer,
+        if (broFix != null) "BroFix": broFix,
+        if (broRs != null) "BroRs": broRs,
+        if (comPer != null) "ComPer": comPer,
+        if (comFix != null) "ComFix": comFix,
+        if (comFixRs != null) "ComFixRs": comFixRs,
+        "TotAmtDollar": totalAmtDollar ?? totalAmt,
+        "TotNetAmtRs": totNetAmtRs ?? totalAmt,
+        "TotAmtRs": totalAmtRs ?? totalAmt,
         "LogID": 0,
         "PCID": "TESTFROMWEB",
         "Ever": 0,
-        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "SDate": formatToIsoUtc(DateTime.now()),
         "CompanyCode": companyCode.value,
-        // "VPartyCode": 2,
-        // "IdBookNo": 2,
-        // "ChkAdd": "ADD",
-        // "ChkLess": "ADD",
-        // "ChkExp": "ADD",
-        // "ChkLin": "ADD",
-        // "ChkCom": "ADD",
-        // "ChkBro": "ADD",
-        // "AvgRate": 4725.25,
-        "NetAmtDollar": totalAmt,
-        "NetAmtRs": totalAmt,
-        "TotNetAmtDollar": totalAmt,
-        // "PSite": "2024-08-28 00:00:00",
-        // "LessType": "ADD",
-        // "Remarks": "ADD",
-        // "BIllType": "ADD",
-        // "LabAmtRs": 542.558,
-        // "LabAmtDollar": 4528.58,
-        // "GstPer": 12.25,
-        // "GstAmtRs": 758.36,
-        // "GstAmtDollar": 452.32,
-        // "AssRec": "I",
-        // "EntryForm": 2,
+        if (chkAdd != null) "ChkAdd": chkAdd,
+        if (chkLess != null) "ChkLess": chkLess,
+        if (chkExp != null) "ChkExp": chkExp,
+        if (chkLin != null) "ChkLin": chkLin,
+        if (chkCom != null) "ChkCom": chkCom,
+        if (chkBro != null) "ChkBro": chkBro,
+        if (chkInv != null) "ChkInv": chkInv,
+        if (totalRateRs != null) "AvgRate": totalRateRs,
+        "NetAmtDollar": netAmtDollar ?? totalAmtDollar ?? totalAmt,
+        "NetAmtRs": netAmtRs ?? totalAmtRs ?? totalAmt,
+        "TotNetAmtDollar": totNetAmtDollar ?? totalAmtDollar ?? totalAmt,
+        if (remarks != null) "Remarks": remarks,
+        if (gstPer != null) "GstPer": gstPer,
+        if (gstAmtRs != null) "GstAmtRs": gstAmtRs,
+        if (gstAmtDollar != null) "GstAmtDollar": gstAmtDollar,
         "EntryType": "I",
-        // "InvChargeRs": 45.23,
-        // "ComFixRs": 45.23,
-        // "ChkInv": "FR",
-        // "ExpFixRs": 45.23,
-        // "LinFixRs": 45.23,
-        // "TotExpFixRs": 45.23,
-        // "AddFixRs": 45.23,
-        // "LessFixRs": 45.23,
-        "FinalNetAmtDollar": totalAmt,
-        "FinalNetAmtRs": totalAmt
+        "FinalNetAmtDollar": finalNetAmtDollar ?? totalAmtDollar ?? totalAmt,
+        "FinalNetAmtRs": finalNetAmtRs ?? totalAmtRs ?? totalAmt,
+        "FinalAmtRs": finalAmtRs ?? finalNetAmtRs ?? totalAmtRs ?? totalAmt,
+        "FinalAmtD": finalAmtD ?? finalNetAmtDollar ?? totalAmtDollar ?? totalAmt,
+        "RoundOfRs": roundOfRs ?? 0.0,
+        "RoundOfD": roundOfDollar ?? 0.0,
       };
 
       final response = await dio.post('${baseUrl}rough-entry/purchase/add',
           data: jsonEncode(params));
 
-      // if (kDebugMode) {
-      //   print(response.data['data']);
-      // }
+      if (response.statusCode == 200 && response.data != null && response.data['data'] != null) {
+        final dynamic mstId = response.data['data']?['RoughPurMstID'] ??
+            response.data['data']?['id'] ??
+            response.data['RoughPurMstID'] ??
+            response.data['id'];
+        final dynamic respInvoiceNo = response.data['data']?['InvoiceNo'] ??
+            response.data['InvoiceNo'] ??
+            invoiceNo;
 
-      if (response.statusCode == 200) {
         await Future.wait(entries.asMap().entries.map((entry) {
           int index = entry.key; // index of the current entry
           var value = entry.value;
@@ -3972,28 +4035,36 @@ class DefaultController extends GetxController {
               wt: value['wt'],
               rate: value['rate'],
               amount: value['amount'],
+              rateRs: value['rateRs'] ?? value['rate'],
+              amtRs: value['amtRs'] ?? value['amount'],
+              rateDollar: value['rateDollar'] ?? value['rate'],
+              amtDollar: value['amtDollar'] ?? value['amount'],
+              pc: value['pc'] != null ? int.tryParse(value['pc'].toString()) : null,
+              site: value['site'],
+              roughQualityCode: value['quality'] != null ? int.tryParse(value['quality'].toString()) : null,
+              roughCharniCode: value['charni'] != null ? int.tryParse(value['charni'].toString()) : null,
               roughName: value['rough'],
               description: value['description'],
-              roughPurMstID: response.data['data']['RoughPurMstID'],
+              roughPurMstID: mstId,
               srNo: index + 1 // incremented srNo
               );
         }));
         Future.wait(List.generate(2, (index) {
           return addCreditDebitData(
-            mstId: response.data['data']['RoughPurMstID'],
-            purMstId: response.data['data']['RoughPurMstID'],
+            mstId: mstId,
+            purMstId: mstId,
             saleMstId: 0,
             invoiceDate: invoiceDate,
-            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(invoiceDate),
+            orgInvoiceDate: formattedInvDate,
             paymentMstId: 0,
-            dueDate: dueDate,
+            dueDate: formattedDueDate,
             remarks1: ' ',
             remarks2: ' ',
             partyCode:
                 index == 0 ? companyPartyCode.value.toString() : partyCode,
-            creditRs: index == 0 ? 0.00 : totalAmt,
-            debitRs: index == 0 ? totalAmt : 0.00,
-            invAmtRs: totalAmt,
+            creditRs: index == 0 ? 0.00 : (totNetAmtRs ?? totalAmt),
+            debitRs: index == 0 ? (totNetAmtRs ?? totalAmt) : 0.00,
+            invAmtRs: (totNetAmtRs ?? totalAmt),
             drCr: index == 0 ? 'DR' : 'CR',
             formType: 'Purchase',
             entryType: index == 0 ? 'NIL' : 'PARTY',
@@ -4003,45 +4074,58 @@ class DefaultController extends GetxController {
                 index == 0 ? partyCode : companyPartyCode.value.toString(),
             orgCt: totalWt,
             dueDays: dueDays,
-            invoiceNo: response.data['data']['InvoiceNo'],
+            invoiceNo: respInvoiceNo,
             srNo: index + 1,
             brokerCode: brokerCode,
           );
         }));
-        await getPurchaseData();
-        await getPurchaseDetailsData();
+        await getPurchaseData(force: true);
+        await getPurchaseDetailsData(force: true);
         await getCreditDebitData();
         await getOutstandingPurchaseSaleDetails();
         await getPendingPaymentData();
-        isLoading.value = true;
-        final invoiceGenerator = PurchaseInvoiceGenerator();
-        final pdfData = await invoiceGenerator.generateInvoice(
-            id: purchaseDataList.length + 1,
-            invoiceDate: invoiceDate,
-            invoiceNo: response.data['data']['InvoiceNo'],
-            partyCode: partyCode.toString(),
-            brokerCode: brokerCode,
-            dueDate: onlyDueDate,
-            dueDays: dueDays,
-            entries: entries,
-            totalWt: totalWt,
-            totalAmt: totalAmt!,
-            totalRate: totalRate);
-        isLoading.value = false;
-        await Printing.layoutPdf(
-          onLayout: (PdfPageFormat format) async => pdfData,
-        ).then((value) => successDialog(messageText: response.data['message']));
-        if (!kDebugMode) {
-          await Printing.sharePdf(
-            bytes: pdfData,
-            filename:
-                '${response.data['data']['InvoiceNo']}.pdf', // Set the custom name here
-          );
+        try {
+          isLoading.value = true;
+          final invoiceGenerator = PurchaseInvoiceGenerator();
+          final DateTime invDateForPdf = invoiceDate is DateTime
+              ? invoiceDate
+              : (DateTime.tryParse(invoiceDate.toString()) ?? DateTime.now());
+          final pdfData = await invoiceGenerator.generateInvoice(
+              id: purchaseDataList.length + 1,
+              invoiceDate: invDateForPdf,
+              invoiceNo: respInvoiceNo,
+              partyCode: partyCode.toString(),
+              brokerCode: brokerCode,
+              dueDate: onlyDueDate,
+              dueDays: dueDays,
+              entries: entries,
+              totalWt: totalWt,
+              totalAmt: totalAmt!,
+              totalRate: totalRate);
+          isLoading.value = false;
+          await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => pdfData,
+          ).then((value) => successDialog(messageText: response.data['message']));
+          if (!kDebugMode) {
+            await Printing.sharePdf(
+              bytes: pdfData,
+              filename: '$respInvoiceNo.pdf',
+            );
+          }
+        } catch (printErr) {
+          isLoading.value = false;
+          successDialog(messageText: response.data['message'] ?? 'Purchase added successfully');
+          if (kDebugMode) {
+            print('Print error: $printErr');
+          }
         }
+        return true;
       } else {
         isLoading.value = false;
-
-        errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
+        final String errMsg = response.data?['message']?.toString() ??
+            'Failed to Add data: ${response.statusCode}';
+        errorDialog(messageText: errMsg);
+        return false;
       }
     } catch (error) {
       isLoading.value = false;
@@ -4050,6 +4134,7 @@ class DefaultController extends GetxController {
       if (kDebugMode) {
         log('$error');
       }
+      return false;
     }
   }
 
@@ -4086,6 +4171,28 @@ class DefaultController extends GetxController {
       isLoading.value = true;
       final dio = ApiService.to.dio;
 
+      final bool isPurchase = formType == 'Purchase';
+
+      final dynamic formattedInvDate = isPurchase
+          ? formatToIsoUtc(invoiceDate)
+          : (invoiceDate is DateTime
+              ? DateFormat('yyyy-MM-dd').format(invoiceDate)
+              : (DateTime.tryParse(invoiceDate.toString()) != null
+                  ? DateFormat('yyyy-MM-dd').format(DateTime.parse(invoiceDate.toString()))
+                  : invoiceDate.toString()));
+
+      final dynamic formattedDueDate = isPurchase
+          ? formatToIsoUtc(dueDate)
+          : dueDate;
+
+      final dynamic formattedOrgInvDate = isPurchase
+          ? formatToIsoUtc(orgInvoiceDate ?? invoiceDate)
+          : orgInvoiceDate;
+
+      final dynamic formattedSDateTime = isPurchase
+          ? formatToIsoUtc(DateTime.now())
+          : DateFormat('yyyy-MM-dd').format(DateTime.now());
+
       var params = {
         "MstID": mstId,
         // Purchase Sale Mst ID
@@ -4094,8 +4201,8 @@ class DefaultController extends GetxController {
         // "PolishPurMstID": polishPurMstId,
         // "PolishRecMstID": polishRecMstId,
         "PaymentMstID": paymentMstId,
-        "InvDate": DateFormat('yyyy-MM-dd').format(invoiceDate),
-        "DueDate": dueDate,
+        "InvDate": formattedInvDate,
+        "DueDate": formattedDueDate,
         "RateType": 'RS',
         "ExRate": 0.00,
         "PartyCode": partyCode,
@@ -4109,7 +4216,7 @@ class DefaultController extends GetxController {
         "FormType": formType,
         "EntryType": entryType,
         "Sflag": 'I',
-        "SDateTime": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        "SDateTime": formattedSDateTime,
         "LogID": "0",
         "PcID": 'TESTFROMWEB',
         "Ever": 0,
@@ -4121,7 +4228,7 @@ class DefaultController extends GetxController {
         "CompanyCode": companyCode.value,
         "TraType": traType,
         // "OrgInvDate": DateFormat('yyyy-MM-dd HH:mm:ss').parse(orgInvoiceDate),
-        "OrgInvDate": orgInvoiceDate,
+        "OrgInvDate": formattedOrgInvDate,
         "DueDays": dueDays,
         "OrgRateType": 'RS',
         "OrgExRate": 0.0,
@@ -4592,117 +4699,183 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> updatePurchaseData(
-      {required int id,
-      String? partyCode,
-      invoiceNo,
-      invoiceDate,
-      brokerCode,
-      dueDays,
-      dueDate,
-      onlyDueDate,
-      double? totalAmt,
-      totalWt,
-      totalRate,
-      required List entries}) async {
+  Future<bool> updatePurchaseData({
+    required int id,
+    String? partyCode,
+    invoiceNo,
+    invoiceDate,
+    recDate,
+    brokerCode,
+    dueDays,
+    dueDate,
+    onlyDueDate,
+    pSite,
+    billType,
+    rdType,
+    exchange,
+    int? totalPc,
+    double? totalAmt,
+    totalWt,
+    totalRate,
+    totalAmtRs,
+    totalAmtDollar,
+    totalRateRs,
+    totalRateDollar,
+    expPer,
+    expFix,
+    expFixRs,
+    linPer,
+    linFix,
+    linFixRs,
+    totExpPer,
+    totExpFix,
+    totExpFixRs,
+    broPer,
+    broFix,
+    broRs,
+    addPer,
+    addFix,
+    addFixRs,
+    lessPer,
+    lessFix,
+    lessFixRs,
+    invCharge,
+    invChargePer,
+    invChargeRs,
+    comPer,
+    comFix,
+    comFixRs,
+    gstPer,
+    gstAmtRs,
+    gstAmtDollar,
+    netAmtDollar,
+    netAmtRs,
+    roundOfDollar,
+    roundOfRs,
+    finalNetAmtDollar,
+    finalNetAmtRs,
+    finalAmtRs,
+    finalAmtD,
+    totNetAmtDollar,
+    totNetAmtRs,
+    chkExp,
+    chkLin,
+    chkBro,
+    chkAdd,
+    chkLess,
+    chkInv,
+    chkCom,
+    remarks,
+    required List entries,
+  }) async {
     try {
       isLoading.value = true;
       await deletePurchaseCreditDebitDetails(id: id);
       final dio = ApiService.to.dio;
 
+      final String? formattedInvDate = formatToIsoUtc(invoiceDate);
+
+      final String? formattedRecDate = recDate != null
+          ? formatToIsoUtc(recDate)
+          : formattedInvDate;
+
+      final dynamic formattedDueDate = dueDate != null
+          ? formatToIsoUtc(dueDate)
+          : formattedInvDate;
+
+      final dynamic formattedPSite = (pSite != null && pSite.toString().trim().isNotEmpty)
+          ? formatToIsoUtc(pSite)
+          : null;
+
       var params = {
-        // "RPType": "12",
-        // "DayBookCode": 10,
         "InvoiceNo": "$invoiceNo",
-        "InvoiceDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(invoiceDate),
-        // "Recdate": "2024-08-28 00:00:00",
-        "PartyCode": partyCode,
-        "BrokerCode": brokerCode,
-        "DueDay": dueDays,
-        "DueDate": dueDate,
-        // "RDType": "dsf",
-        // "Exchange": 45.2,
-        // "TPc": 5,
+        "InvoiceDate": formattedInvDate,
+        if (formattedRecDate != null) "Recdate": formattedRecDate,
+        "PartyCode": int.tryParse(partyCode.toString()) ?? partyCode,
+        "BrokerCode": int.tryParse(brokerCode.toString()) ?? brokerCode,
+        "DueDay": int.tryParse(dueDays.toString()) ?? dueDays,
+        "DueDate": formattedDueDate,
+        if (formattedPSite != null && formattedPSite.toString().isNotEmpty) "PSite": formattedPSite,
+        "BillType": billType ?? "BILL",
+        if (rdType != null && rdType.toString().isNotEmpty) "RDType": rdType,
+        if (exchange != null) "Exchange": exchange,
+        if (totalPc != null) "TPc": totalPc,
         "TWeight": totalWt,
-        "TAmtRs": totalAmt,
-        "TAmtDollar": totalAmt,
-        "TRateRs": totalRate,
-        "TRateDollar": totalRate,
-        // "InvCharge": 5645.56,
-        // "InvChargePer": 5645.52,
-        // "AddPer": 575.57,
-        // "AddFix": 25.85,
-        // "AddPer1": 757.35,
-        // "AddFix1": 75.57,
-        // "LessPer": 10.27,
-        // "LessPer1": 13.27,
-        // "LessFix": 547.23,
-        // "LessFix1": 55.35,
-        // "ExpPer": 5447.52,
-        // "ExpFix": 2542.25,
-        // "LinPer": 254.55,
-        // "LinFix": 7574.52,
-        // "ComPer": 4725.75,
-        // "ComFix": 54.25,
-        // "TotExpPer": 254.57,
-        // "TotExpFix": 452.52,
-        // "BroPer": 425.52,
-        // "BroFix": 547.5,
-        // "BroRs": 57.57,
-        // "IntPer": 25.75,
-        "TotAmtDollar": totalAmt,
-        "TotNetAmtRs": totalAmt,
-        "TotAmtRs": totalAmt,
-        // "Rec": 10,
+        "TAmtRs": totalAmtRs ?? totalAmt,
+        "TAmtDollar": totalAmtDollar ?? totalAmt,
+        "TRateRs": totalRateRs ?? totalRate,
+        "TRateDollar": totalRateDollar ?? totalRate,
+        if (invCharge != null) "InvCharge": invCharge,
+        if (invChargePer != null) "InvChargePer": invChargePer,
+        if (invChargeRs != null) "InvChargeRs": invChargeRs,
+        if (addPer != null) "AddPer": addPer,
+        if (addFix != null) "AddFix": addFix,
+        if (addFixRs != null) "AddFixRs": addFixRs,
+        if (lessPer != null) "LessPer": lessPer,
+        if (lessFix != null) "LessFix": lessFix,
+        if (lessFixRs != null) "LessFixRs": lessFixRs,
+        if (expPer != null) "ExpPer": expPer,
+        if (expFix != null) "ExpFix": expFix,
+        if (expFixRs != null) "ExpFixRs": expFixRs,
+        if (linPer != null) "LinPer": linPer,
+        if (linFix != null) "LinFix": linFix,
+        if (linFixRs != null) "LinFixRs": linFixRs,
+        if (totExpPer != null) "TotExpPer": totExpPer,
+        if (totExpFix != null) "TotExpFix": totExpFix,
+        if (totExpFixRs != null) "TotExpFixRs": totExpFixRs,
+        if (broPer != null) "BroPer": broPer,
+        if (broFix != null) "BroFix": broFix,
+        if (broRs != null) "BroRs": broRs,
+        if (comPer != null) "ComPer": comPer,
+        if (comFix != null) "ComFix": comFix,
+        if (comFixRs != null) "ComFixRs": comFixRs,
+        "TotAmtDollar": totalAmtDollar ?? totalAmt,
+        "TotNetAmtRs": totNetAmtRs ?? totalAmt,
+        "TotAmtRs": totalAmtRs ?? totalAmt,
         "LogID": 0,
         "PCID": "TESTFROMWEB",
         "Ever": 0,
-        "SDate": DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        "SDate": formatToIsoUtc(DateTime.now()),
         "CompanyCode": companyCode.value,
-        // "VPartyCode": 2,
-        // "IdBookNo": 2,
-        // "ChkAdd": "ADD",
-        // "ChkLess": "ADD",
-        // "ChkExp": "ADD",
-        // "ChkLin": "ADD",
-        // "ChkCom": "ADD",
-        // "ChkBro": "ADD",
-        // "AvgRate": 4725.25,
-        "NetAmtDollar": totalAmt,
-        "NetAmtRs": totalAmt,
-        "TotNetAmtDollar": totalAmt,
-        // "PSite": "2024-08-28 00:00:00",
-        // "LessType": "ADD",
-        // "Remarks": "ADD",
-        // "BIllType": "ADD",
-        // "LabAmtRs": 542.558,
-        // "LabAmtDollar": 4528.58,
-        // "GstPer": 12.25,
-        // "GstAmtRs": 758.36,
-        // "GstAmtDollar": 452.32,
-        // "AssRec": "I",
-        // "EntryForm": 2,
+        if (chkAdd != null) "ChkAdd": chkAdd,
+        if (chkLess != null) "ChkLess": chkLess,
+        if (chkExp != null) "ChkExp": chkExp,
+        if (chkLin != null) "ChkLin": chkLin,
+        if (chkCom != null) "ChkCom": chkCom,
+        if (chkBro != null) "ChkBro": chkBro,
+        if (chkInv != null) "ChkInv": chkInv,
+        if (totalRateRs != null) "AvgRate": totalRateRs,
+        "NetAmtDollar": netAmtDollar ?? totalAmtDollar ?? totalAmt,
+        "NetAmtRs": netAmtRs ?? totalAmtRs ?? totalAmt,
+        "TotNetAmtDollar": totNetAmtDollar ?? totalAmtDollar ?? totalAmt,
+        if (remarks != null) "Remarks": remarks,
+        if (gstPer != null) "GstPer": gstPer,
+        if (gstAmtRs != null) "GstAmtRs": gstAmtRs,
+        if (gstAmtDollar != null) "GstAmtDollar": gstAmtDollar,
         "EntryType": "U",
-        // "InvChargeRs": 45.23,
-        // "ComFixRs": 45.23,
-        // "ChkInv": "FR",
-        // "ExpFixRs": 45.23,
-        // "LinFixRs": 45.23,
-        // "TotExpFixRs": 45.23,
-        // "AddFixRs": 45.23,
-        // "LessFixRs": 45.23,
-        "FinalNetAmtDollar": totalAmt,
-        "FinalNetAmtRs": totalAmt
+        "FinalNetAmtDollar": finalNetAmtDollar ?? totalAmtDollar ?? totalAmt,
+        "FinalNetAmtRs": finalNetAmtRs ?? totalAmtRs ?? totalAmt,
+        "FinalAmtRs": finalAmtRs ?? finalNetAmtRs ?? totalAmtRs ?? totalAmt,
+        "FinalAmtD": finalAmtD ?? finalNetAmtDollar ?? totalAmtDollar ?? totalAmt,
+        "RoundOfRs": roundOfRs ?? 0.0,
+        "RoundOfD": roundOfDollar ?? 0.0,
       };
 
       final response = await dio.put('${baseUrl}rough-entry/purchase/$id',
           data: jsonEncode(params));
 
-      // if (kDebugMode) {
-      //   print(response.data['data']);
-      // }
+      if (response.statusCode == 200 &&
+          (response.data?['data'] != null ||
+              response.data?['message']?.toString().toLowerCase().contains('success') == true)) {
+        final dynamic mstId = response.data['data']?['RoughPurMstID'] ??
+            response.data['data']?['id'] ??
+            response.data['RoughPurMstID'] ??
+            response.data['id'] ??
+            id;
+        final dynamic respInvoiceNo = response.data['data']?['InvoiceNo'] ??
+            response.data['InvoiceNo'] ??
+            invoiceNo;
 
-      if (response.statusCode == 200) {
         await Future.wait(entries.asMap().entries.map((entry) {
           int index = entry.key; // index of the current entry
           var value = entry.value;
@@ -4715,9 +4888,17 @@ class DefaultController extends GetxController {
               wt: value['wt'],
               rate: value['rate'],
               amount: value['amount'],
+              rateRs: value['rateRs'] ?? value['rate'],
+              amtRs: value['amtRs'] ?? value['amount'],
+              rateDollar: value['rateDollar'] ?? value['rate'],
+              amtDollar: value['amtDollar'] ?? value['amount'],
+              pc: value['pc'] != null ? int.tryParse(value['pc'].toString()) : null,
+              site: value['site'],
+              roughQualityCode: value['quality'] != null ? int.tryParse(value['quality'].toString()) : null,
+              roughCharniCode: value['charni'] != null ? int.tryParse(value['charni'].toString()) : null,
               description: value['description'],
               roughName: value['rough'],
-              roughPurMstID: response.data['data']['RoughPurMstID'],
+              roughPurMstID: mstId,
               srNo: index + 1, // incremented srNo
             );
           } else {
@@ -4726,29 +4907,37 @@ class DefaultController extends GetxController {
               wt: value['wt'],
               rate: value['rate'],
               amount: value['amount'],
+              rateRs: value['rateRs'] ?? value['rate'],
+              amtRs: value['amtRs'] ?? value['amount'],
+              rateDollar: value['rateDollar'] ?? value['rate'],
+              amtDollar: value['amtDollar'] ?? value['amount'],
+              pc: value['pc'] != null ? int.tryParse(value['pc'].toString()) : null,
+              site: value['site'],
+              roughQualityCode: value['quality'] != null ? int.tryParse(value['quality'].toString()) : null,
+              roughCharniCode: value['charni'] != null ? int.tryParse(value['charni'].toString()) : null,
               description: value['description'],
               roughName: value['rough'],
-              roughPurMstID: response.data['data']['RoughPurMstID'],
+              roughPurMstID: mstId,
               srNo: index + 1, // incremented srNo
             );
           }
         }));
         Future.wait(List.generate(2, (index) {
           return addCreditDebitData(
-            mstId: response.data['data']['RoughPurMstID'],
-            purMstId: response.data['data']['RoughPurMstID'],
+            mstId: mstId,
+            purMstId: mstId,
             saleMstId: 0,
             invoiceDate: invoiceDate,
-            orgInvoiceDate: DateFormat('yyyy-MM-dd').format(invoiceDate),
+            orgInvoiceDate: formattedInvDate,
             paymentMstId: 0,
-            dueDate: dueDate,
+            dueDate: formattedDueDate,
             remarks1: ' ',
             remarks2: ' ',
             partyCode:
                 index == 0 ? companyPartyCode.value.toString() : partyCode,
-            creditRs: index == 0 ? 0.00 : totalAmt,
-            debitRs: index == 0 ? totalAmt : 0.00,
-            invAmtRs: totalAmt,
+            creditRs: index == 0 ? 0.00 : (totNetAmtRs ?? totalAmt),
+            debitRs: index == 0 ? (totNetAmtRs ?? totalAmt) : 0.00,
+            invAmtRs: (totNetAmtRs ?? totalAmt),
             drCr: index == 0 ? 'DR' : 'CR',
             formType: 'Purchase',
             entryType: index == 0 ? 'NIL' : 'PARTY',
@@ -4758,42 +4947,53 @@ class DefaultController extends GetxController {
                 index == 0 ? partyCode : companyPartyCode.value.toString(),
             orgCt: totalWt,
             dueDays: dueDays,
-            invoiceNo: response.data['data']['InvoiceNo'],
+            invoiceNo: respInvoiceNo,
             srNo: index + 1,
             brokerCode: brokerCode,
           );
         }));
         isLoading.value = false;
-        await getPurchaseData();
-        await getPurchaseDetailsData();
+        await getPurchaseData(force: true);
+        await getPurchaseDetailsData(force: true);
         await getCreditDebitData();
         await getOutstandingPurchaseSaleDetails();
         await getPendingPaymentData();
-        final invoiceGenerator = PurchaseInvoiceGenerator();
-        final pdfData = await invoiceGenerator.generateInvoice(
-            id: purchaseDataList.length + 1,
-            invoiceDate: invoiceDate,
-            invoiceNo: invoiceNo,
-            partyCode: partyCode.toString(),
-            brokerCode: brokerCode,
-            dueDate: onlyDueDate,
-            dueDays: dueDays,
-            entries: entries,
-            totalWt: totalWt,
-            totalAmt: totalAmt!,
-            totalRate: totalRate);
-        await Printing.layoutPdf(
-          onLayout: (PdfPageFormat format) async => pdfData,
-        ).then((value) => successDialog(messageText: response.data['message']));
-        await Printing.sharePdf(
-          bytes: pdfData,
-          filename: '$invoiceNo.pdf', // Set the custom name here
-        );
+        try {
+          final invoiceGenerator = PurchaseInvoiceGenerator();
+          final pdfData = await invoiceGenerator.generateInvoice(
+              id: purchaseDataList.length + 1,
+              invoiceDate: invoiceDate,
+              invoiceNo: respInvoiceNo,
+              partyCode: partyCode.toString(),
+              brokerCode: brokerCode,
+              dueDate: onlyDueDate,
+              dueDays: dueDays,
+              entries: entries,
+              totalWt: totalWt,
+              totalAmt: totalAmt!,
+              totalRate: totalRate);
+          await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => pdfData,
+          ).then((value) => successDialog(messageText: response.data['message']));
+          if (!kDebugMode) {
+            await Printing.sharePdf(
+              bytes: pdfData,
+              filename: '$respInvoiceNo.pdf',
+            );
+          }
+        } catch (printErr) {
+          successDialog(messageText: response.data['message'] ?? 'Purchase updated successfully');
+          if (kDebugMode) {
+            print('Print error: $printErr');
+          }
+        }
+        return true;
       } else {
         isLoading.value = false;
-
-        errorDialog(
-            messageText: 'Failed to Add data: : ${response.statusCode}');
+        final String errMsg = response.data?['message']?.toString() ??
+            'Failed to Update data: ${response.statusCode}';
+        errorDialog(messageText: errMsg);
+        return false;
       }
     } catch (error) {
       isLoading.value = false;
@@ -4802,6 +5002,7 @@ class DefaultController extends GetxController {
       if (kDebugMode) {
         log('$error');
       }
+      return false;
     }
   }
 
@@ -5271,28 +5472,40 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> _addPurchaseRoughData(
-      {roughName, roughPurMstID, wt, rate, amount, description, srNo}) async {
+  Future<void> _addPurchaseRoughData({
+    roughName,
+    roughPurMstID,
+    wt,
+    rate,
+    amount,
+    description,
+    srNo,
+    roughQualityCode,
+    roughCharniCode,
+    pc,
+    rateRs,
+    amtRs,
+    rateDollar,
+    amtDollar,
+    site,
+  }) async {
     try {
       final dio = ApiService.to.dio;
 
       var params = {
-        "RoughPurMstID": roughPurMstID,
-        "Srno": srNo,
-        "RoughTypeCode": int.parse(roughName),
-        // "RoughQualityCode": 3,
-        // "RoughCharniCode": 4,
-        // "Pc": 2,
-        "Wt": wt,
-        "RateRs": rate,
-        "AmtRs": amount,
-        "RateDollar": rate,
-        "AmtDollar": amount,
-        // "Site": "AUGUST",
-        // "Rec": 1,
-        // "OldInvoiceNo": "TEST",
-        // "OldRoughPurMstID": "TEST",
-        "Description": description
+        "RoughPurMstID": roughPurMstID is int ? roughPurMstID : (int.tryParse(roughPurMstID?.toString() ?? '') ?? roughPurMstID),
+        "Srno": srNo is int ? srNo : (int.tryParse(srNo?.toString() ?? '') ?? 1),
+        "RoughTypeCode": roughName is int ? roughName : (int.tryParse(roughName?.toString() ?? '') ?? 1),
+        if (roughQualityCode != null) "RoughQualityCode": roughQualityCode is int ? roughQualityCode : (int.tryParse(roughQualityCode.toString()) ?? roughQualityCode),
+        if (roughCharniCode != null) "RoughCharniCode": roughCharniCode is int ? roughCharniCode : (int.tryParse(roughCharniCode.toString()) ?? roughCharniCode),
+        if (pc != null) "Pc": pc is int ? pc : (int.tryParse(pc.toString()) ?? 0),
+        "Wt": wt is num ? wt : (double.tryParse(wt?.toString() ?? '0') ?? 0.0),
+        "RateRs": rateRs is num ? rateRs : (double.tryParse((rateRs ?? rate)?.toString() ?? '0') ?? 0.0),
+        "AmtRs": amtRs is num ? amtRs : (double.tryParse((amtRs ?? amount)?.toString() ?? '0') ?? 0.0),
+        "RateDollar": rateDollar is num ? rateDollar : (double.tryParse((rateDollar ?? rate)?.toString() ?? '0') ?? 0.0),
+        "AmtDollar": amtDollar is num ? amtDollar : (double.tryParse((amtDollar ?? amount)?.toString() ?? '0') ?? 0.0),
+        if (site != null && site.toString().isNotEmpty) "Site": site.toString(),
+        if (description != null && description.toString().isNotEmpty) "Description": description.toString(),
       };
 
       final response = await dio.post('${baseUrl}rough-entry/rough-details/add',
@@ -5621,35 +5834,41 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> _updatePurchaseRoughData(
-      {required id,
-      roughName,
-      wt,
-      description,
-      rate,
-      amount,
-      srNo,
-      roughPurMstID}) async {
+  Future<void> _updatePurchaseRoughData({
+    required id,
+    roughName,
+    wt,
+    description,
+    rate,
+    amount,
+    srNo,
+    roughPurMstID,
+    roughQualityCode,
+    roughCharniCode,
+    pc,
+    rateRs,
+    amtRs,
+    rateDollar,
+    amtDollar,
+    site,
+  }) async {
     try {
       final dio = ApiService.to.dio;
 
       var params = {
-        "RoughPurMstID": roughPurMstID,
-        "Srno": srNo,
-        "RoughTypeCode": int.parse(roughName),
-        // "RoughQualityCode": 3,
-        // "RoughCharniCode": 4,
-        // "Pc": 2,
-        "Wt": wt,
-        "RateRs": rate,
-        "AmtRs": amount,
-        "RateDollar": rate,
-        "AmtDollar": amount,
-        // "Site": "AUGUST",
-        // "Rec": 1,
-        // "OldInvoiceNo": "TEST",
-        // "OldRoughPurMstID": "TEST",
-        "Description": description
+        "RoughPurMstID": roughPurMstID is int ? roughPurMstID : (int.tryParse(roughPurMstID?.toString() ?? '') ?? roughPurMstID),
+        "Srno": srNo is int ? srNo : (int.tryParse(srNo?.toString() ?? '') ?? 1),
+        "RoughTypeCode": roughName is int ? roughName : (int.tryParse(roughName?.toString() ?? '') ?? 1),
+        if (roughQualityCode != null) "RoughQualityCode": roughQualityCode is int ? roughQualityCode : (int.tryParse(roughQualityCode.toString()) ?? roughQualityCode),
+        if (roughCharniCode != null) "RoughCharniCode": roughCharniCode is int ? roughCharniCode : (int.tryParse(roughCharniCode.toString()) ?? roughCharniCode),
+        if (pc != null) "Pc": pc is int ? pc : (int.tryParse(pc.toString()) ?? 0),
+        "Wt": wt is num ? wt : (double.tryParse(wt?.toString() ?? '0') ?? 0.0),
+        "RateRs": rateRs is num ? rateRs : (double.tryParse((rateRs ?? rate)?.toString() ?? '0') ?? 0.0),
+        "AmtRs": amtRs is num ? amtRs : (double.tryParse((amtRs ?? amount)?.toString() ?? '0') ?? 0.0),
+        "RateDollar": rateDollar is num ? rateDollar : (double.tryParse((rateDollar ?? rate)?.toString() ?? '0') ?? 0.0),
+        "AmtDollar": amtDollar is num ? amtDollar : (double.tryParse((amtDollar ?? amount)?.toString() ?? '0') ?? 0.0),
+        if (site != null && site.toString().isNotEmpty) "Site": site.toString(),
+        if (description != null && description.toString().isNotEmpty) "Description": description.toString(),
       };
 
       final response = await dio.put('${baseUrl}rough-entry/rough-details/$id',
@@ -5683,7 +5902,7 @@ class DefaultController extends GetxController {
         if (kDebugMode) {
           print('Deleted!');
         }
-        await getPurchaseDetailsData();
+        await getPurchaseDetailsData(force: true);
         isDeleteLoading.value = false;
       } else {
         isDeleteLoading.value = false;
@@ -5825,7 +6044,7 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<void> deletePurchaseData(
+  Future<bool> deletePurchaseData(
       {required int id, required List entries}) async {
     try {
       isDeleteLoading.value = true;
@@ -5850,18 +6069,20 @@ class DefaultController extends GetxController {
         }
 
         // After processing deletion, refresh data and stop loading
-        await getPurchaseDetailsData();
-        await getPurchaseData();
+        await getPurchaseDetailsData(force: true);
+        await getPurchaseData(force: true);
         await getCreditDebitData();
         await getOutstandingPurchaseSaleDetails();
         await getPendingPaymentData();
         isDeleteLoading.value = false;
 
         successDialog(messageText: response.data['message']);
+        return true;
       } else {
         isDeleteLoading.value = false;
         errorDialog(
             messageText: 'Failed to Delete Data: ${response.statusCode}');
+        return false;
       }
     } catch (error) {
       isDeleteLoading.value = false;
@@ -5869,6 +6090,7 @@ class DefaultController extends GetxController {
       if (kDebugMode) {
         log('$error');
       }
+      return false;
     }
   }
 

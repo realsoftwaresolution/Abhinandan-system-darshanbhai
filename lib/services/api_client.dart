@@ -18,7 +18,7 @@ class ApiClient {
   late Dio dio;
   Timer? _refreshTimer;
 
-  String baseUrl = 'https://adaptive-edited-raise-proceeding.trycloudflare.com/';
+  String baseUrl = 'https://beds-hartford-clusters-grammar.trycloudflare.com/';
 
   ApiClient._internal() {
     dio = Dio(
