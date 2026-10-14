@@ -758,23 +758,34 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   }
 
   void _addEntry() {
-    final double wt = double.tryParse(wtController.text) ?? 0;
-    final double rateRs = double.tryParse(rateRsController.text) ?? 0;
-    final double rateDollar = double.tryParse(rateDollarController.text) ?? 0;
+    final double wt = double.tryParse(wtController.text.trim()) ?? 0;
+    final double rateRs = double.tryParse(rateRsController.text.trim()) ?? 0;
+    final double rateDollar = double.tryParse(rateDollarController.text.trim()) ?? 0;
+    final bool isUsd = _selectedCurrency.value == 'USD';
 
-    if (_selectedType.value.isEmpty) {
-      infoDialog(messageText: 'Please select a Rough Type');
+    if (_selectedType.value.trim().isEmpty) {
+      infoDialog(messageText: 'Please select Rough Type');
       _roughFocus.requestFocus();
       return;
     }
-    if (wt <= 0) {
-      infoDialog(messageText: 'Please enter a valid weight');
+    if (_selectedQuality.value.trim().isEmpty) {
+      infoDialog(messageText: 'Please select Quality');
+      _qualityFocus.requestFocus();
+      return;
+    }
+    if (_selectedCharni.value.trim().isEmpty) {
+      infoDialog(messageText: 'Please select Charni');
+      _charniFocus.requestFocus();
+      return;
+    }
+    if (wtController.text.trim().isEmpty || wt <= 0) {
+      infoDialog(messageText: 'Please enter valid weight');
       _wtFocus.requestFocus();
       return;
     }
-    if (rateRs <= 0 && rateDollar <= 0) {
+    if (rateRs < 0 && rateDollar < 0) {
       infoDialog(messageText: 'Please enter a valid rate');
-      _rateRsFocus.requestFocus();
+      (isUsd ? _rateDollarFocus : _rateRsFocus).requestFocus();
       return;
     }
 
@@ -825,6 +836,26 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
       infoDialog(messageText: 'Please Add Rough Data');
       _roughFocus.requestFocus();
       return;
+    }
+    for (int i = 0; i < entries.length; i++) {
+      final e = entries[i];
+      if (e['rough'] == null || e['rough'].toString().trim().isEmpty) {
+        infoDialog(messageText: 'Row ${i + 1}: Please select Rough Type');
+        return;
+      }
+      if (e['quality'] == null || e['quality'].toString().trim().isEmpty) {
+        infoDialog(messageText: 'Row ${i + 1}: Please select Quality');
+        return;
+      }
+      if (e['charni'] == null || e['charni'].toString().trim().isEmpty) {
+        infoDialog(messageText: 'Row ${i + 1}: Please select Charni');
+        return;
+      }
+      final double entryWt = double.tryParse(e['wt']?.toString() ?? '') ?? 0.0;
+      if (entryWt <= 0) {
+        infoDialog(messageText: 'Row ${i + 1}: Please enter valid weight');
+        return;
+      }
     }
 
     final double dollarRate = double.tryParse(dollarRateController.text) ?? 80.0;
@@ -1076,6 +1107,15 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     expBrNetRsController.text = '0.000';
     totNetAmtDollarController.text = '0.000';
     totNetAmtRsController.text = '0.000';
+    _clearGridSelection();
+  }
+
+  void _clearGridSelection() {
+    try {
+      _dataGridController.selectedRow = null;
+      _dataGridController.selectedRows = [];
+      _dataGridController.selectedIndex = -1;
+    } catch (_) {}
   }
 
   Future<void> _handleDelete() async {
@@ -1225,6 +1265,9 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
           setState(() {
             _isSearch = !_isSearch;
           });
+          if (_isSearch) {
+            _clearGridSelection();
+          }
         },
         onPrint: _isFromEdit ? _handlePrint : null,
         child: Scaffold(
@@ -1324,6 +1367,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                       setState(() {
                         _isSearch = false;
                       });
+                      _clearGridSelection();
                     },
                   ),
                 ],
@@ -1360,10 +1404,11 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
           ),
         ),
         Expanded(
-          child: Obx(
-            () => AppDataGrid(
+          child: Obx(() {
+            final purchaseSource = PurchaseDataGridSource(purchaseDataGridSource);
+            return AppDataGrid(
               controller: _dataGridController,
-              source: PurchaseDataGridSource(purchaseDataGridSource),
+              source: purchaseSource,
               allowSorting: true,
               allowMultiColumnSorting: true,
               showSortNumbers: true,
@@ -1651,23 +1696,35 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                   position: GridTableSummaryRowPosition.bottom,
                 ),
               ],
+              onCellTap: (details) {
+                if (details.rowColumnIndex.rowIndex <= 0) return;
+                final int dataRowIndex = details.rowColumnIndex.rowIndex - 1;
+                final rows = purchaseSource.effectiveRows;
+                if (dataRowIndex >= 0 && dataRowIndex < rows.length) {
+                  _loadSelectedRowForEdit(rows[dataRowIndex]);
+                }
+              },
               onSelectionChanged: (addedRows, _) {
                 if (addedRows.isNotEmpty) {
                   _loadSelectedRowForEdit(addedRows.first);
                 }
               },
-            ),
-          ),
+            );
+          }),
         ),
       ],
     );
   }
 
+  bool _isLoadingRow = false;
   void _loadSelectedRowForEdit(DataGridRow row) {
-    setState(() {
-      entries.clear();
-      _isFromEdit = true;
-    });
+    if (_isLoadingRow) return;
+    _isLoadingRow = true;
+    try {
+      setState(() {
+        entries.clear();
+        _isFromEdit = true;
+      });
 
     final id = row.getCells()[0].value;
     selectedRoughPurMstID.value = id;
@@ -1802,9 +1859,13 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     _enableFields(needFocus: false);
     _updateCalculations();
 
-    setState(() {
-      _isSearch = false;
-    });
+      setState(() {
+        _isSearch = false;
+      });
+      _clearGridSelection();
+    } finally {
+      _isLoadingRow = false;
+    }
   }
 
   // ==================== MAIN DATA ENTRY FORM ====================
@@ -2149,7 +2210,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                       );
 
                       final qualityField = AppDropdown<String>(
-                        label: 'Quality',
+                        label: 'Quality *',
                         focusNode: _qualityFocus,
                         nextFocusNode: _charniFocus,
                         isEnabled: _isEnabled,
@@ -2162,7 +2223,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                       );
 
                       final charniField = AppDropdown<String>(
-                        label: 'Charni (+/-)',
+                        label: 'Charni (+/-) *',
                         focusNode: _charniFocus,
                         nextFocusNode: _pcsFocus,
                         isEnabled: _isEnabled,
@@ -2377,6 +2438,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                         setState(() {
                           _isSearch = true;
                         });
+                        _clearGridSelection();
                       },
                     ),
                     AppButton(

@@ -4049,6 +4049,7 @@ class DefaultController extends GetxController {
               srNo: index + 1 // incremented srNo
               );
         }));
+        /*
         Future.wait(List.generate(2, (index) {
           return addCreditDebitData(
             mstId: mstId,
@@ -4079,11 +4080,18 @@ class DefaultController extends GetxController {
             brokerCode: brokerCode,
           );
         }));
+        */
         await getPurchaseData(force: true);
         await getPurchaseDetailsData(force: true);
-        await getCreditDebitData();
-        await getOutstandingPurchaseSaleDetails();
-        await getPendingPaymentData();
+        // await getCreditDebitData();
+        // await getOutstandingPurchaseSaleDetails();
+        // await getPendingPaymentData();
+
+        isLoading.value = false;
+        successDialog(messageText: response.data['message'] ?? 'Purchase added successfully');
+
+        /*
+        // PDF auto-print commented out as requested
         try {
           isLoading.value = true;
           final invoiceGenerator = PurchaseInvoiceGenerator();
@@ -4119,6 +4127,7 @@ class DefaultController extends GetxController {
             print('Print error: $printErr');
           }
         }
+        */
         return true;
       } else {
         isLoading.value = false;
@@ -4770,7 +4779,7 @@ class DefaultController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      await deletePurchaseCreditDebitDetails(id: id);
+      // await deletePurchaseCreditDebitDetails(id: id);
       final dio = ApiService.to.dio;
 
       final String? formattedInvDate = formatToIsoUtc(invoiceDate);
@@ -4922,6 +4931,7 @@ class DefaultController extends GetxController {
             );
           }
         }));
+        /*
         Future.wait(List.generate(2, (index) {
           return addCreditDebitData(
             mstId: mstId,
@@ -4952,12 +4962,17 @@ class DefaultController extends GetxController {
             brokerCode: brokerCode,
           );
         }));
+        */
         isLoading.value = false;
         await getPurchaseData(force: true);
         await getPurchaseDetailsData(force: true);
-        await getCreditDebitData();
-        await getOutstandingPurchaseSaleDetails();
-        await getPendingPaymentData();
+        // await getCreditDebitData();
+        // await getOutstandingPurchaseSaleDetails();
+        // await getPendingPaymentData();
+        successDialog(messageText: response.data['message'] ?? 'Purchase updated successfully');
+
+        /*
+        // PDF auto-print commented out as requested
         try {
           final invoiceGenerator = PurchaseInvoiceGenerator();
           final pdfData = await invoiceGenerator.generateInvoice(
@@ -4987,6 +5002,7 @@ class DefaultController extends GetxController {
             print('Print error: $printErr');
           }
         }
+        */
         return true;
       } else {
         isLoading.value = false;
@@ -6048,7 +6064,7 @@ class DefaultController extends GetxController {
       {required int id, required List entries}) async {
     try {
       isDeleteLoading.value = true;
-      await deletePurchaseCreditDebitDetails(id: id);
+      // await deletePurchaseCreditDebitDetails(id: id);
       final dio = ApiService.to.dio;
 
       final response = await dio.delete('${baseUrl}rough-entry/purchase/$id');
@@ -6071,9 +6087,9 @@ class DefaultController extends GetxController {
         // After processing deletion, refresh data and stop loading
         await getPurchaseDetailsData(force: true);
         await getPurchaseData(force: true);
-        await getCreditDebitData();
-        await getOutstandingPurchaseSaleDetails();
-        await getPendingPaymentData();
+        // await getCreditDebitData();
+        // await getOutstandingPurchaseSaleDetails();
+        // await getPendingPaymentData();
         isDeleteLoading.value = false;
 
         successDialog(messageText: response.data['message']);
