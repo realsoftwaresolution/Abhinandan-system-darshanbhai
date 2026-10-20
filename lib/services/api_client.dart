@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' hide Response, FormData, MultipartFile;
@@ -18,7 +17,7 @@ class ApiClient {
   late Dio dio;
   Timer? _refreshTimer;
 
-  String baseUrl = 'https://beds-hartford-clusters-grammar.trycloudflare.com/';
+  String baseUrl = 'https://davis-individuals-night-conditions.trycloudflare.com/';
 
   ApiClient._internal() {
     dio = Dio(

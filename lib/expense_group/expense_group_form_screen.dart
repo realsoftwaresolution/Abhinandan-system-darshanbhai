@@ -47,9 +47,7 @@ class ExpenseGroupFormScreenState extends State<ExpenseGroupFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.expenseGroupModelList.isEmpty) {
-        defaultController.getExpenseGroupData();
-      }
+      defaultController.getExpenseGroupData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -150,7 +148,7 @@ class ExpenseGroupFormScreenState extends State<ExpenseGroupFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getExpenseGroupData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -163,7 +161,11 @@ class ExpenseGroupFormScreenState extends State<ExpenseGroupFormScreen> {
 
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deleteExpenseGroupData(id: targetId);
+    await defaultController.deleteExpenseGroupData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getExpenseGroupData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

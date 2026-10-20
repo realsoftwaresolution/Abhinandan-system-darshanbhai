@@ -46,11 +46,8 @@ class RoughTypeFormScreenState extends State<RoughTypeFormScreen> {
   @override
   void initState() {
     super.initState();
-    // Load latest rough types on open
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.roughModel.isEmpty) {
-        defaultController.getRoughData();
-      }
+      defaultController.getRoughData(force: true);
     });
   }
 
@@ -133,7 +130,7 @@ class RoughTypeFormScreenState extends State<RoughTypeFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getRoughData(force: true);
     _clearFormFields();
   }
 
@@ -147,6 +144,7 @@ class RoughTypeFormScreenState extends State<RoughTypeFormScreen> {
     if (targetId == 0 || targetId == null) return;
 
     await defaultController.deleteRoughTypeData(id: targetId);
+    await defaultController.getRoughData(force: true);
     _clearFormFields();
   }
 

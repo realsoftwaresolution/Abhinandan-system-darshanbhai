@@ -32,6 +32,23 @@ class UserDataGridSource extends DataGridSource {
         branchDisplay = b?.branchName ?? 'Branch #${item.branchCode}';
       }
 
+      // Find designation name
+      String desiDisplay = '';
+      if (item.desiCode != null && item.desiCode != 0) {
+        final d = defaultController.designationModelList.firstWhereOrNull(
+          (element) =>
+              element.desiCode == item.desiCode ||
+              element.desiMstID == item.desiCode ||
+              element.designationCode == item.desiCode,
+        );
+        desiDisplay = d?.desiName ??
+            d?.designationName ??
+            item.desiName ??
+            'Designation #${item.desiCode}';
+      } else if (item.desiName != null && item.desiName!.isNotEmpty) {
+        desiDisplay = item.desiName!;
+      }
+
       String permittedHours = '-';
       if ((item.loginTimeFrom != null && item.loginTimeFrom!.isNotEmpty) ||
           (item.loginTimeTo != null && item.loginTimeTo!.isNotEmpty)) {
@@ -59,6 +76,34 @@ class UserDataGridSource extends DataGridSource {
         DataGridCell<String>(
           columnName: 'Branch',
           value: branchDisplay,
+        ),
+        DataGridCell<String>(
+          columnName: 'Designation',
+          value: desiDisplay,
+        ),
+        DataGridCell<String>(
+          columnName: 'Auto Rec',
+          value: item.autoRec ?? 'N',
+        ),
+        DataGridCell<String>(
+          columnName: 'Allow Plus Type',
+          value: item.allowPlusType ?? '',
+        ),
+        DataGridCell<String>(
+          columnName: 'Allow Plus Value',
+          value: item.allowPlusValue != null
+              ? item.allowPlusValue!.toString()
+              : '',
+        ),
+        DataGridCell<String>(
+          columnName: 'Allow Minus Type',
+          value: item.allowMinusType ?? '',
+        ),
+        DataGridCell<String>(
+          columnName: 'Allow Minus Value',
+          value: item.allowMinusValue != null
+              ? item.allowMinusValue!.toString()
+              : '',
         ),
         DataGridCell<String>(
           columnName: 'Stock Limit',
@@ -155,9 +200,14 @@ class UserDataGridSource extends DataGridSource {
 
         final bool isCentered = dataGridCell.columnName == 'Code' ||
             dataGridCell.columnName == 'Sort ID' ||
-            dataGridCell.columnName == 'Role';
+            dataGridCell.columnName == 'Role' ||
+            dataGridCell.columnName == 'Auto Rec' ||
+            dataGridCell.columnName == 'Allow Plus Type' ||
+            dataGridCell.columnName == 'Allow Minus Type';
 
-        final bool isRightAligned = dataGridCell.columnName == 'Stock Limit';
+        final bool isRightAligned = dataGridCell.columnName == 'Stock Limit' ||
+            dataGridCell.columnName == 'Allow Plus Value' ||
+            dataGridCell.columnName == 'Allow Minus Value';
 
         final Alignment alignment = isCentered
             ? Alignment.center

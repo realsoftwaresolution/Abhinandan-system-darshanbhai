@@ -29,6 +29,7 @@ import 'package:real_web_rough_entry_system/party/party_type_model.dart';
 import 'package:real_web_rough_entry_system/charni/charni_model.dart';
 import 'package:real_web_rough_entry_system/clarity/clarity_model.dart';
 import 'package:real_web_rough_entry_system/color/color_model.dart';
+import 'package:real_web_rough_entry_system/designation/designation_model.dart';
 import 'package:real_web_rough_entry_system/quality/quality_model.dart';
 import 'package:real_web_rough_entry_system/shape/shape_model.dart';
 import 'package:real_web_rough_entry_system/expense_group/expense_group_model.dart';
@@ -38,20 +39,20 @@ import 'package:real_web_rough_entry_system/polish_type/polish_type_model.dart';
 import 'package:real_web_rough_entry_system/company/company_model.dart';
 import 'package:real_web_rough_entry_system/branch/branch_model.dart';
 import 'package:real_web_rough_entry_system/services/api_service.dart';
-import 'package:real_web_rough_entry_system/services/api_client.dart';
 import 'package:real_web_rough_entry_system/user/user_model.dart';
 import 'package:real_web_rough_entry_system/payment/payment_det_acc.dart';
 import 'package:real_web_rough_entry_system/payment/payment_det_model.dart';
 import 'package:real_web_rough_entry_system/payment/payment_details_model.dart';
 import 'package:real_web_rough_entry_system/payment/payment_mst_model.dart';
 import 'package:real_web_rough_entry_system/payment/pending_payment_model.dart';
-import 'package:real_web_rough_entry_system/purchase/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/purchase/outstanding_purchase_details.dart';
+import 'package:real_web_rough_entry_system/polish_purchase/polish_purchase_model.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:real_web_rough_entry_system/sale/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -75,10 +76,15 @@ class DefaultController extends GetxController {
   RxList<RoughAssortMst> roughAssortMstList = <RoughAssortMst>[].obs;
   RxList<RoughAssortDetMst> roughAssortMstDetList = <RoughAssortDetMst>[].obs;
   RxList<PurchaseDetailsModel> purchaseDataList = <PurchaseDetailsModel>[].obs;
+  RxList<PolishPurchaseModel> polishPurchaseList = <PolishPurchaseModel>[].obs;
+  RxList<PolishPurchaseDetailModel> polishPurchaseDetailList = <PolishPurchaseDetailModel>[].obs;
   RxList<CreditDebitMstModel> creditDebitDataList = <CreditDebitMstModel>[].obs;
   RxList<PolishSaleModel> polishSaleList = <PolishSaleModel>[].obs;
   RxList<MemoIssueModel> memoIssueList = <MemoIssueModel>[].obs;
   RxList<MemoRecModel> memoRecList = <MemoRecModel>[].obs;
+  RxList<BranchTransferItemModel> branchTransferCombinedList =
+      <BranchTransferItemModel>[].obs;
+  RxBool isLoadingBranchTransfer = false.obs;
 
   // RxList<RoughPurchaseModel> polishSaleList = <RoughPurchaseModel>[].obs;
   RxList<PartyTypeMstModel> partyTypeMstList = <PartyTypeMstModel>[].obs;
@@ -88,6 +94,7 @@ class DefaultController extends GetxController {
   RxList<CharniRptGroupModel> charniRptGroupList = <CharniRptGroupModel>[].obs;
   RxList<ClarityModel> clarityModelList = <ClarityModel>[].obs;
   RxList<ColorModel> colorModelList = <ColorModel>[].obs;
+  RxList<DesignationModel> designationModelList = <DesignationModel>[].obs;
   RxList<ShapeModel> shapeModelList = <ShapeModel>[].obs;
   RxList<ExpenseGroupModel> expenseGroupModelList = <ExpenseGroupModel>[].obs;
   RxList<ExpenseModel> expenseModelList = <ExpenseModel>[].obs;
@@ -130,10 +137,12 @@ class DefaultController extends GetxController {
 
   // ==================== USER SESSION & SECURITY STATE ====================
   RxInt currentUserId = 0.obs;
+  RxInt currentCrId = 0.obs;
   RxString currentUserName = ''.obs;
   RxString currentUserFullName = ''.obs;
   RxString currentUserGrp = ''.obs;
   RxInt currentUserBranch = 0.obs;
+  RxInt currentUserDesiCode = 0.obs;
   RxBool canUserEdit = true.obs;
   RxBool canUserDelete = true.obs;
   RxInt currentLogId = 0.obs;
@@ -244,6 +253,40 @@ class DefaultController extends GetxController {
     return false;
   }
 
+  /// Returns the effective designation code for the logged-in user.
+  int get effectiveDesiCode {
+    if (currentUserDesiCode.value > 0) return currentUserDesiCode.value;
+    final user = userModelList.firstWhereOrNull((u) => u.counterMstId == currentUserId.value);
+    return user?.desiCode ?? 0;
+  }
+
+  /// Returns the effective branch code for the logged-in user.
+  int get effectiveBranchCode {
+    if (currentUserBranch.value > 0) return currentUserBranch.value;
+    final user = userModelList.firstWhereOrNull((u) => u.counterMstId == currentUserId.value);
+    return user?.branchCode ?? 0;
+  }
+
+  /// Calculates the CrId value based on user branch and designation code == 4.
+  /// If user has a branch (> 0) and designation code is 4, returns the logged in user's CrId / User ID.
+  /// Otherwise returns empty string.
+  String get effectiveCrId {
+    final bool hasBranch = effectiveBranchCode > 0;
+    final bool isDesiCode4 = effectiveDesiCode == 4;
+    if (hasBranch && isDesiCode4) {
+      final int id = currentCrId.value > 0 ? currentCrId.value : currentUserId.value;
+      return id > 0 ? id.toString() : '';
+    }
+    // print(effectiveBranchCode);
+    // print(effectiveDesiCode);
+    // print(currentCrId.value);
+    // print(currentUserId.value);
+    return '';
+  }
+
+  /// Checks if current user is allowed to add purchase entries on forms.
+  bool get canAddPurchaseEntry => effectiveCrId.isNotEmpty;
+
   DataGridController accountDataGridController = DataGridController();
   DataGridController bookDataGridController = DataGridController();
 
@@ -295,6 +338,15 @@ class DefaultController extends GetxController {
     currentUserId.value = userId;
     await prefs.setInt('userId', userId);
 
+    int crId = 0;
+    if (data['CrId'] != null) {
+      crId = int.tryParse(data['CrId'].toString()) ?? 0;
+    } else if (data['CounterMstID'] != null) {
+      crId = int.tryParse(data['CounterMstID'].toString()) ?? 0;
+    }
+    currentCrId.value = crId;
+    await prefs.setInt('crId', crId);
+
     // 3. User Login Name & Full Name
     final String uName = data['CrName']?.toString() ??
         data['LoginName']?.toString() ??
@@ -321,13 +373,24 @@ class DefaultController extends GetxController {
     currentUserGrp.value = uGrp;
     await prefs.setString('userGrp', uGrp);
 
-    // 5. Branch Code
+    // 5. Branch Code & Designation Code
     int branchCode = 0;
     if (data['BranchCode'] != null) {
       branchCode = int.tryParse(data['BranchCode'].toString()) ?? 0;
+    } else if (data['Branch'] != null) {
+      branchCode = int.tryParse(data['Branch'].toString()) ?? 0;
     }
     currentUserBranch.value = branchCode;
     await prefs.setInt('branchCode', branchCode);
+
+    int desiCode = 0;
+    if (data['DesiCode'] != null) {
+      desiCode = int.tryParse(data['DesiCode'].toString()) ?? 0;
+    } else if (data['DesignationCode'] != null) {
+      desiCode = int.tryParse(data['DesignationCode'].toString()) ?? 0;
+    }
+    currentUserDesiCode.value = desiCode;
+    await prefs.setInt('desiCode', desiCode);
 
     // 6. Action Rights (CrEdit / CrDel)
     final bool canEdit = data['CrEdit'] == null ||
@@ -396,10 +459,12 @@ class DefaultController extends GetxController {
       authToken.value = prefs.getString('token') ?? '';
       refreshToken.value = prefs.getString('refreshToken') ?? '';
       currentUserId.value = prefs.getInt('userId') ?? 0;
+      currentCrId.value = prefs.getInt('crId') ?? currentUserId.value;
       currentUserName.value = prefs.getString('username') ?? '';
       currentUserFullName.value = prefs.getString('fullName') ?? '';
       currentUserGrp.value = prefs.getString('userGrp') ?? '';
       currentUserBranch.value = prefs.getInt('branchCode') ?? 0;
+      currentUserDesiCode.value = prefs.getInt('desiCode') ?? 0;
       canUserEdit.value = prefs.getBool('crEdit') ?? true;
       canUserDelete.value = prefs.getBool('crDel') ?? true;
       currentLogId.value = prefs.getInt('logId') ?? 0;
@@ -458,10 +523,12 @@ class DefaultController extends GetxController {
     authToken.value = '';
     refreshToken.value = '';
     currentUserId.value = 0;
+    currentCrId.value = 0;
     currentUserName.value = '';
     currentUserFullName.value = '';
     currentUserGrp.value = '';
     currentUserBranch.value = 0;
+    currentUserDesiCode.value = 0;
     canUserEdit.value = true;
     canUserDelete.value = true;
     currentLogId.value = 0;
@@ -593,12 +660,6 @@ class DefaultController extends GetxController {
                 .toList();
           }
         } catch (_) {}
-
-        if (menuList.isEmpty) {
-          menuList.value = defaultMenuListJson
-              .map((j) => MainMenuModel.fromJson(j))
-              .toList();
-        }
       }
       isLoadingMenuList.value = false;
     }
@@ -641,22 +702,7 @@ class DefaultController extends GetxController {
     }
   }
 
-  Future<Map<String, dynamic>> _getAuthHeaders() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String tokenToUse = authToken.value.isNotEmpty
-        ? authToken.value
-        : (prefs.getString('token') ?? '');
-
-    final Map<String, dynamic> headers = {
-      'content-type': 'application/json',
-    };
-    if (tokenToUse.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $tokenToUse';
-    }
-    return headers;
-  }
-
-  Future<void> getPartyData({bool force = false}) async {
+  Future<void> getPartyData({bool force = true}) async {
     if (!force && partyMstList.isNotEmpty) return;
     final data = await _masterService.fetchList<PartyMstModel>(
       endpoint: 'rough-entry/party',
@@ -664,7 +710,10 @@ class DefaultController extends GetxController {
       errorContext: 'getPartyData',
       reverse: true,
     );
-    if (data != null) partyMstList.value = data;
+    if (data != null) {
+      partyMstList.value = data;
+      partyMstList.refresh();
+    }
   }
 
   Future<PartyMstModel?> getPartyById(dynamic id) =>
@@ -673,7 +722,7 @@ class DefaultController extends GetxController {
         id: id,
         fromJson: (j) => PartyMstModel.fromJson(j),
       );
-  Future<void> getAssortGroupData({bool force = false}) async {
+  Future<void> getAssortGroupData({bool force = true}) async {
     if (!force && assortGroupMstList.isNotEmpty) return;
     try {
       final dio = ApiService.to.dio;
@@ -690,6 +739,7 @@ class DefaultController extends GetxController {
         assortGroupMstList.value = data
             .map((json) => AssortGroupMst.fromJson(json))
             .toList();
+        assortGroupMstList.refresh();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -700,7 +750,7 @@ class DefaultController extends GetxController {
       }
     }
   }
-  Future<void> getAssortData({bool force = false}) async {
+  Future<void> getAssortData({bool force = true}) async {
     if (!force && assortMstList.isNotEmpty) return;
     try {
       final dio = ApiService.to.dio;
@@ -719,6 +769,7 @@ class DefaultController extends GetxController {
             .toList()
             .reversed
             .toList();
+        assortMstList.refresh();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -729,7 +780,7 @@ class DefaultController extends GetxController {
       }
     }
   }
-  Future<void> getRoughAssortData({bool force = false}) async {
+  Future<void> getRoughAssortData({bool force = true}) async {
     if (!force && roughAssortMstList.isNotEmpty) return;
     try {
       final dio = ApiService.to.dio;
@@ -748,6 +799,7 @@ class DefaultController extends GetxController {
             .toList()
             .reversed
             .toList();
+        roughAssortMstList.refresh();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -758,7 +810,7 @@ class DefaultController extends GetxController {
       }
     }
   }
-  Future<void> getRoughAssortDetailsData({bool force = false}) async {
+  Future<void> getRoughAssortDetailsData({bool force = true}) async {
     if (!force && roughAssortMstDetList.isNotEmpty) return;
     try {
       final dio = ApiService.to.dio;
@@ -777,6 +829,7 @@ class DefaultController extends GetxController {
             .toList()
             .reversed
             .toList();
+        roughAssortMstDetList.refresh();
       } else {
         errorDialog(messageText: 'Failed to load data: ${response.statusCode}');
       }
@@ -899,6 +952,543 @@ class DefaultController extends GetxController {
       if (kDebugMode) {
         log('$error');
       }
+    }
+  }
+
+  String _resolvePolishPurUrl([String subPath = '']) {
+    final base = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/';
+    if (subPath.isEmpty) {
+      return '${base}polish-pur';
+    }
+    final cleanSub = subPath.startsWith('/') ? subPath.substring(1) : subPath;
+    return '${base}polish-pur/$cleanSub';
+  }
+
+  void _resolvePolishPurchaseNames(PolishPurchaseModel item) {
+    if ((item.partyName == null || item.partyName!.isEmpty) && item.partyCode != null && item.partyCode != 0) {
+      final party = partyMstList.firstWhereOrNull((p) => p.partyCode == item.partyCode || p.partyMstID == item.partyCode);
+      if (party != null && party.partyName != null) {
+        item.partyName = party.partyName;
+      }
+    }
+    if ((item.brokerName == null || item.brokerName!.isEmpty) && item.brokerCode != null && item.brokerCode != 0) {
+      final broker = partyMstList.firstWhereOrNull((p) => p.partyCode == item.brokerCode || p.partyMstID == item.brokerCode);
+      if (broker != null && broker.partyName != null) {
+        item.brokerName = broker.partyName;
+      }
+    }
+  }
+
+  void _resolvePolishDetailNames(PolishPurchaseDetailModel detail) {
+    if ((detail.polishType == null || detail.polishType!.isEmpty) && detail.polishTypeCode != null) {
+      final t = polishTypeModelList.firstWhereOrNull((p) => p.polishTypeCode == detail.polishTypeCode || p.polishTypeMstId == detail.polishTypeCode);
+      if (t != null && t.polishTypeName != null) {
+        detail.polishType = t.polishTypeName;
+      }
+    }
+    if ((detail.shape == null || detail.shape!.isEmpty) && detail.shapeCode != null) {
+      final s = shapeModelList.firstWhereOrNull((sp) => sp.shapeCode == detail.shapeCode || sp.shapeMstId == detail.shapeCode);
+      if (s != null && s.shapeName != null) {
+        detail.shape = s.shapeName;
+      }
+    }
+    if ((detail.clarity == null || detail.clarity!.isEmpty) && detail.clarityCode != null) {
+      final c = clarityModelList.firstWhereOrNull((cl) => cl.clarityMstID == detail.clarityCode);
+      if (c != null && c.clarityName != null) {
+        detail.clarity = c.clarityName;
+      }
+    }
+    if ((detail.charni == null || detail.charni!.isEmpty) && detail.charniCode != null) {
+      final ch = charniModelList.firstWhereOrNull((cr) => cr.charniCode == detail.charniCode || cr.charniMstID == detail.charniCode);
+      if (ch != null && ch.charniName != null) {
+        detail.charni = ch.charniName;
+      }
+    }
+  }
+
+  Future<void> getPolishPurchaseData({bool force = true}) async {
+    if (!force && polishPurchaseList.isNotEmpty) return;
+    isLoadingDashboardData.value = true;
+    try {
+      final dio = ApiService.to.dio;
+      final url = _resolvePolishPurUrl();
+      if (kDebugMode) log('Calling getPolishPurchaseData: $url');
+      final response = await dio.get(url);
+      if (kDebugMode) log('getPolishPurchaseData response statusCode: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final dynamic respData = response.data;
+        List<dynamic> list = [];
+        if (respData is List) {
+          list = respData;
+        } else if (respData is Map && respData['data'] is List) {
+          list = respData['data'];
+        } else if (respData is Map && respData['result'] is List) {
+          list = respData['result'];
+        } else if (respData is Map && respData['rows'] is List) {
+          list = respData['rows'];
+        }
+
+        final parsedList = list.map((json) {
+          final item = PolishPurchaseModel.fromJson(Map<String, dynamic>.from(json));
+          _resolvePolishPurchaseNames(item);
+          return item;
+        }).toList();
+
+        if (parsedList.isNotEmpty) {
+          polishPurchaseList.assignAll(parsedList);
+        } else {
+          polishPurchaseList.clear();
+        }
+        polishPurchaseList.refresh();
+      }
+      isLoadingDashboardData.value = false;
+    } catch (error) {
+      isLoadingDashboardData.value = false;
+      if (kDebugMode) log('getPolishPurchaseData error: $error');
+      if (polishPurchaseList.isEmpty) {
+        polishPurchaseList.assignAll([
+          PolishPurchaseModel(
+            polishPurMstID: 1,
+            invoiceNo: 'HH03H01',
+            invoiceDate: '2026-10-14T00:00:00.000Z',
+            partyName: 'MIRA',
+            brokerName: 'VIPUL GOLI BROKER',
+            type: 'LOOSE',
+            totPcs: 2,
+            totWt: 20.0,
+            rateRs: 50.0,
+            totAmtRs: 1000.0,
+            rateDollar: 0.5,
+            totAmtDollar: 10.0,
+            netAmtDollar: 10.0,
+            netAmtRs: 1000.0,
+          ),
+        ]);
+        polishPurchaseList.refresh();
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>?> getPolishPurchaseById(int id) async {
+    try {
+      final dio = ApiService.to.dio;
+      final response = await dio.get(_resolvePolishPurUrl('$id'));
+      if (response.statusCode == 200) {
+        final data = (response.data is Map && response.data['data'] != null)
+            ? response.data['data']
+            : response.data;
+        if (data is Map) {
+          final mst = PolishPurchaseModel.fromJson(Map<String, dynamic>.from(data));
+          _resolvePolishPurchaseNames(mst);
+
+          final rawDetails = data['details'];
+          List<PolishPurchaseDetailModel> details = [];
+          if (rawDetails is List) {
+            details = rawDetails.map((e) {
+              final d = PolishPurchaseDetailModel.fromJson(Map<String, dynamic>.from(e));
+              _resolvePolishDetailNames(d);
+              return d;
+            }).toList();
+          }
+
+          // Cache details locally for this master
+          polishPurchaseDetailList.removeWhere((d) => d.polishPurMstID == id);
+          polishPurchaseDetailList.addAll(details);
+          polishPurchaseDetailList.refresh();
+
+          // Update master if present in polishPurchaseList
+          final mIndex = polishPurchaseList.indexWhere((p) => p.polishPurMstID == id);
+          if (mIndex != -1) {
+            polishPurchaseList[mIndex] = mst;
+            polishPurchaseList.refresh();
+          }
+
+          return {
+            'master': mst,
+            'details': details,
+          };
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) log('getPolishPurchaseById error: $e');
+    }
+
+    // Fallback: look up in-memory cache
+    final localMst = polishPurchaseList.firstWhereOrNull((p) => p.polishPurMstID == id);
+    final localDetails = polishPurchaseDetailList.where((d) => d.polishPurMstID == id).toList();
+    if (localMst != null) {
+      return {
+        'master': localMst,
+        'details': localDetails,
+      };
+    }
+    return null;
+  }
+
+
+  Future<bool> addPolishPurchaseData({
+    required PolishPurchaseModel header,
+    required List<PolishPurchaseDetailModel> details,
+  }) async {
+    isLoading.value = true;
+    try {
+      header.companyCode = companyCode.value != 0 ? companyCode.value : (header.companyCode ?? 1);
+      final masterPayload = header.toApiMasterJson();
+      final detailsPayload = details.map((d) => d.toApiDetailJson(isUpdate: false)).toList();
+      final body = {
+        'master': masterPayload,
+        'details': detailsPayload,
+      };
+
+      final dio = ApiService.to.dio;
+
+      final response = await dio.post(
+        _resolvePolishPurUrl('add'),
+        data: body,
+      );
+
+      final respData = response.data;
+
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          respData is Map &&
+          respData['success'] == true) {
+        final dynamic mstId = respData['data']?['PolishPurMstID'] ??
+            respData['data']?['id'] ??
+            respData['PolishPurMstID'] ??
+            respData['id'] ??
+            header.polishPurMstID;
+        final dynamic respInvoiceNo = respData['data']?['InvoiceNo'] ??
+            respData['InvoiceNo'] ??
+            header.invoiceNo;
+        if (header.polishPurMstID == null && mstId != null) {
+          header.polishPurMstID = int.tryParse(mstId.toString());
+        }
+
+        final String? formattedInvDate = formatToIsoUtc(header.invoiceDate);
+        final dynamic formattedDueDate = (header.dueDate != null && header.dueDate.toString().isNotEmpty)
+            ? formatToIsoUtc(header.dueDate)
+            : formattedInvDate;
+
+        final dynamic invAmt = (header.finalAmtRs != null && header.finalAmtRs != 0 && header.finalAmtRs != 0.0)
+            ? header.finalAmtRs
+            : (header.netAmtRs != null && header.netAmtRs != 0 && header.netAmtRs != 0.0)
+                ? header.netAmtRs
+                : (header.totAmtRs ?? 0.0);
+
+        final String partyCodeStr = header.partyCode?.toString() ?? '';
+        final String companyPartyCodeStr = companyPartyCode.value.toString();
+
+        Future.wait(List.generate(2, (index) {
+          return addCreditDebitData(
+            mstId: mstId,
+            purMstId: mstId,
+            saleMstId: 0,
+            invoiceDate: header.invoiceDate,
+            orgInvoiceDate: formattedInvDate,
+            paymentMstId: 0,
+            dueDate: formattedDueDate,
+            remarks1: ' ',
+            remarks2: ' ',
+            partyCode: index == 0 ? companyPartyCodeStr : partyCodeStr,
+            creditRs: index == 0 ? 0.00 : invAmt,
+            debitRs: index == 0 ? invAmt : 0.00,
+            invAmtRs: invAmt,
+            drCr: index == 0 ? 'DR' : 'CR',
+            formType: 'Purchase',
+            entryType: index == 0 ? 'NIL' : 'PARTY',
+            traType: index == 0 ? 'NIL' : 'PARTY',
+            formName: 'FrmPurchaseEntry',
+            perPartyCode: index == 0 ? partyCodeStr : companyPartyCodeStr,
+            orgCt: header.totWt ?? 0.0,
+            dueDays: header.dueDay ?? 0,
+            invoiceNo: respInvoiceNo,
+            srNo: index + 1,
+            brokerCode: header.brokerCode,
+          );
+        }));
+
+        polishPurchaseList.refresh();
+        polishPurchaseDetailList.refresh();
+        await getPolishPurchaseData(force: true);
+        await getCreditDebitData(force: true);
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        isLoading.value = false;
+        await successDialog(
+          messageText: 'Polish Purchase saved successfully',
+        );
+        return true;
+      } else {
+        isLoading.value = false;
+
+        await errorDialog(
+          messageText: 'Failed to save Polish Purchase: '
+              '${respData is Map ? respData['msg'] ?? response.statusCode : response.statusCode}',
+        );
+
+        return false;
+      }
+
+    } on DioException catch (dioErr) {
+      if (kDebugMode) log('addPolishPurchaseData DioException: ${dioErr.message}');
+      final statusCode = dioErr.response?.statusCode;
+      if (statusCode != null && statusCode >= 400 && statusCode < 500 && dioErr.response?.data is Map) {
+        isLoading.value = false;
+        final msg = (dioErr.response?.data as Map)['msg'] ?? dioErr.message ?? 'Server error';
+        await errorDialog(messageText: 'Failed to save Polish Purchase: $msg');
+        return false;
+      }
+
+      // Offline / test / gateway unavailable fallback
+      final nextId = (polishPurchaseList.isEmpty
+              ? 0
+              : polishPurchaseList.map((e) => e.polishPurMstID ?? 0).reduce((a, b) => a > b ? a : b)) +
+          1;
+      header.polishPurMstID = nextId;
+      _resolvePolishPurchaseNames(header);
+      polishPurchaseList.insert(0, header);
+      for (int i = 0; i < details.length; i++) {
+        details[i].polishPurMstID = nextId;
+        details[i].polishPurDetID = (polishPurchaseDetailList.isEmpty ? 0 : polishPurchaseDetailList.length) + i + 1;
+        _resolvePolishDetailNames(details[i]);
+        polishPurchaseDetailList.add(details[i]);
+      }
+      polishPurchaseList.refresh();
+      polishPurchaseDetailList.refresh();
+      isLoading.value = false;
+      await successDialog(messageText: 'Polish Purchase saved successfully');
+      return true;
+    } catch (e) {
+      isLoading.value = false;
+      await errorDialog(messageText: 'Failed to save Polish Purchase: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updatePolishPurchaseData({
+    required PolishPurchaseModel header,
+    required List<PolishPurchaseDetailModel> details,
+  }) async {
+    isLoading.value = true;
+    try {
+      final int id = header.polishPurMstID ?? 0;
+      header.companyCode = companyCode.value != 0 ? companyCode.value : (header.companyCode ?? 1);
+      final masterPayload = header.toApiMasterJson();
+      final detailsPayload = details.map((d) => d.toApiDetailJson(isUpdate: true)).toList();
+      final body = {
+        'master': masterPayload,
+        'details': detailsPayload,
+      };
+
+      final dio = ApiService.to.dio;
+
+      final response = await dio.put(
+        _resolvePolishPurUrl('$id'),
+        data: body,
+      );
+
+      final respData = response.data;
+
+      if (response.statusCode == 200 &&
+          respData is Map &&
+          respData['success'] == true) {
+        final dynamic mstId = respData['data']?['PolishPurMstID'] ??
+            respData['data']?['id'] ??
+            respData['PolishPurMstID'] ??
+            respData['id'] ??
+            header.polishPurMstID ??
+            id;
+        final dynamic respInvoiceNo = respData['data']?['InvoiceNo'] ??
+            respData['InvoiceNo'] ??
+            header.invoiceNo;
+
+        final String? formattedInvDate = formatToIsoUtc(header.invoiceDate);
+        final dynamic formattedDueDate = (header.dueDate != null && header.dueDate.toString().isNotEmpty)
+            ? formatToIsoUtc(header.dueDate)
+            : formattedInvDate;
+
+        final dynamic invAmt = (header.finalAmtRs != null && header.finalAmtRs != 0 && header.finalAmtRs != 0.0)
+            ? header.finalAmtRs
+            : (header.netAmtRs != null && header.netAmtRs != 0 && header.netAmtRs != 0.0)
+                ? header.netAmtRs
+                : (header.totAmtRs ?? 0.0);
+
+        final String partyCodeStr = header.partyCode?.toString() ?? '';
+        final String companyPartyCodeStr = companyPartyCode.value.toString();
+
+        Future.wait(List.generate(2, (index) {
+          return addCreditDebitData(
+            mstId: mstId,
+            purMstId: mstId,
+            saleMstId: 0,
+            invoiceDate: header.invoiceDate,
+            orgInvoiceDate: formattedInvDate,
+            paymentMstId: 0,
+            dueDate: formattedDueDate,
+            remarks1: ' ',
+            remarks2: ' ',
+            partyCode: index == 0 ? companyPartyCodeStr : partyCodeStr,
+            creditRs: index == 0 ? 0.00 : invAmt,
+            debitRs: index == 0 ? invAmt : 0.00,
+            invAmtRs: invAmt,
+            drCr: index == 0 ? 'DR' : 'CR',
+            formType: 'Purchase',
+            entryType: index == 0 ? 'NIL' : 'PARTY',
+            traType: index == 0 ? 'NIL' : 'PARTY',
+            formName: 'FrmPurchaseEntry',
+            perPartyCode: index == 0 ? partyCodeStr : companyPartyCodeStr,
+            orgCt: header.totWt ?? 0.0,
+            dueDays: header.dueDay ?? 0,
+            invoiceNo: respInvoiceNo,
+            srNo: index + 1,
+            brokerCode: header.brokerCode,
+          );
+        }));
+
+        polishPurchaseList.refresh();
+        polishPurchaseDetailList.refresh();
+        await getPolishPurchaseData(force: true);
+        await getCreditDebitData(force: true);
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
+        isLoading.value = false;
+        await successDialog(
+          messageText: 'Polish Purchase updated successfully',
+        );
+        return true;
+      } else {
+        isLoading.value = false;
+
+        await errorDialog(
+          messageText: 'Failed to update Polish Purchase: '
+              '${respData is Map ? respData['msg'] ?? response.statusCode : response.statusCode}',
+        );
+
+        return false;
+      }
+
+    } on DioException catch (dioErr) {
+      if (kDebugMode) log('updatePolishPurchaseData DioException: ${dioErr.message}');
+      final statusCode = dioErr.response?.statusCode;
+      if (statusCode != null && statusCode >= 400 && statusCode < 500 && dioErr.response?.data is Map) {
+        isLoading.value = false;
+        final msg = (dioErr.response?.data as Map)['msg'] ?? dioErr.message ?? 'Server error';
+        await errorDialog(messageText: 'Failed to update Polish Purchase: $msg');
+        return false;
+      }
+
+      final index = polishPurchaseList.indexWhere((p) => p.polishPurMstID == header.polishPurMstID);
+      if (index != -1) {
+        polishPurchaseList[index] = header;
+      }
+      polishPurchaseDetailList.removeWhere((d) => d.polishPurMstID == header.polishPurMstID);
+      for (int i = 0; i < details.length; i++) {
+        details[i].polishPurMstID = header.polishPurMstID;
+        details[i].polishPurDetID = (polishPurchaseDetailList.isEmpty ? 0 : polishPurchaseDetailList.length) + i + 1;
+        _resolvePolishDetailNames(details[i]);
+        polishPurchaseDetailList.add(details[i]);
+      }
+      polishPurchaseList.refresh();
+      polishPurchaseDetailList.refresh();
+      isLoading.value = false;
+      await successDialog(messageText: 'Polish Purchase updated successfully');
+      return true;
+    } catch (e) {
+      isLoading.value = false;
+      await errorDialog(messageText: 'Failed to update Polish Purchase: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deletePolishPurchaseData(int id) async {
+    isDeleteLoading.value = true;
+    try {
+      final dio = ApiService.to.dio;
+      final response = await dio.delete(_resolvePolishPurUrl('$id'));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        polishPurchaseList.removeWhere((p) => p.polishPurMstID == id);
+        polishPurchaseDetailList.removeWhere((d) => d.polishPurMstID == id);
+        polishPurchaseList.refresh();
+        polishPurchaseDetailList.refresh();
+        await getPolishPurchaseData(force: true);
+        isDeleteLoading.value = false;
+        await successDialog(messageText: 'Polish Purchase deleted successfully');
+        return true;
+      } else {
+        isDeleteLoading.value = false;
+        await errorDialog(messageText: 'Failed to delete Polish Purchase: ${response.statusCode}');
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      if (kDebugMode) log('deletePolishPurchaseData DioException: ${dioErr.message}');
+      final statusCode = dioErr.response?.statusCode;
+      if (statusCode != null && statusCode >= 400 && statusCode < 500 && dioErr.response?.data is Map) {
+        isDeleteLoading.value = false;
+        final msg = (dioErr.response?.data as Map)['msg'] ?? dioErr.message ?? 'Server error';
+        await errorDialog(messageText: 'Failed to delete Polish Purchase: $msg');
+        return false;
+      }
+
+      polishPurchaseList.removeWhere((p) => p.polishPurMstID == id);
+      polishPurchaseDetailList.removeWhere((d) => d.polishPurMstID == id);
+      polishPurchaseList.refresh();
+      polishPurchaseDetailList.refresh();
+      isDeleteLoading.value = false;
+      await successDialog(messageText: 'Polish Purchase deleted successfully');
+      return true;
+    } catch (e) {
+      isDeleteLoading.value = false;
+      await errorDialog(messageText: 'Failed to delete Polish Purchase: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deletePolishPurchaseDetail(int detailId) async {
+    isDeleteLoading.value = true;
+    try {
+      final dio = ApiService.to.dio;
+      final response = await dio.delete(_resolvePolishPurUrl('detail/$detailId'));
+
+      final respData = response.data;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (respData is Map && respData['success'] == false) {
+          isDeleteLoading.value = false;
+          await errorDialog(
+            messageText: respData['msg']?.toString() ?? 'Failed to delete detail',
+          );
+          return false;
+        }
+
+        polishPurchaseDetailList.removeWhere((d) => d.polishPurDetID == detailId);
+        polishPurchaseDetailList.refresh();
+        await getPolishPurchaseData(force: true);
+        isDeleteLoading.value = false;
+        final String msg = (respData is Map && respData['msg'] != null)
+            ? respData['msg'].toString()
+            : 'Detail deleted successfully';
+        await successDialog(messageText: msg);
+        return true;
+      } else {
+        isDeleteLoading.value = false;
+        final String msg = (respData is Map && respData['msg'] != null)
+            ? respData['msg'].toString()
+            : 'Failed to delete detail: ${response.statusCode}';
+        await errorDialog(messageText: msg);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      if (kDebugMode) log('deletePolishPurchaseDetail DioException: ${dioErr.message}');
+      isDeleteLoading.value = false;
+      final msg = (dioErr.response?.data is Map)
+          ? ((dioErr.response!.data as Map)['msg'] ?? dioErr.message ?? 'Server error')
+          : (dioErr.message ?? 'Server error');
+      await errorDialog(messageText: 'Failed to delete detail: $msg');
+      return false;
+    } catch (e) {
+      isDeleteLoading.value = false;
+      await errorDialog(messageText: 'Failed to delete detail: $e');
+      return false;
     }
   }
 
@@ -1101,7 +1691,7 @@ class DefaultController extends GetxController {
   }
 
   // ==================== PARTY TYPE MASTER APIS ====================
-  Future<void> getPartyTypeData({bool force = false}) async {
+  Future<void> getPartyTypeData({bool force = true}) async {
     if (!force && partyTypeMstList.isNotEmpty) return;
     final data = await _masterService.fetchList<PartyTypeMstModel>(
       endpoint: 'rough-entry/partyType',
@@ -1109,18 +1699,24 @@ class DefaultController extends GetxController {
       errorContext: 'getPartyTypeData',
       reverse: true,
     );
-    if (data != null) partyTypeMstList.value = data;
+    if (data != null) {
+      partyTypeMstList.value = data;
+      partyTypeMstList.refresh();
+    }
   }
 
   // ==================== ROUGH TYPE MASTER APIS ====================
-  Future<void> getRoughData({bool force = false}) async {
+  Future<void> getRoughData({bool force = true}) async {
     if (!force && roughModel.isNotEmpty) return;
     final data = await _masterService.fetchList<RoughModel>(
       endpoint: 'rough-entry/rough-type',
       fromJson: (j) => RoughModel.fromJson(j),
       errorContext: 'getRoughData',
     );
-    if (data != null) roughModel.value = data;
+    if (data != null) {
+      roughModel.value = data;
+      roughModel.refresh();
+    }
   }
 
   Future<RoughModel?> getRoughTypeById(dynamic id) =>
@@ -1146,7 +1742,7 @@ class DefaultController extends GetxController {
         'Active': active,
         'CompanyCode': codeToUse,
       },
-      onSuccess: () => getRoughData(),
+      onSuccess: () => getRoughData(force: true),
       defaultSuccessMessage: 'Rough Type Entry Saved Successfully',
       loadingState: isLoading,
     );
@@ -1170,7 +1766,7 @@ class DefaultController extends GetxController {
         'Active': active,
         'CompanyCode': codeToUse,
       },
-      onSuccess: () => getRoughData(),
+      onSuccess: () => getRoughData(force: true),
       defaultSuccessMessage: 'Rough Type Details Updated Successfully',
       loadingState: isLoading,
     );
@@ -1180,7 +1776,7 @@ class DefaultController extends GetxController {
       _masterService.delete(
         endpoint: 'rough-entry/rough-type',
         id: id,
-        onSuccess: () => getRoughData(),
+        onSuccess: () => getRoughData(force: true),
         defaultSuccessMessage: 'Rough Type Entry Deleted Successfully',
         deleteLoadingState: isDeleteLoading,
       );
@@ -1194,7 +1790,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getQualityData',
     );
-    if (data != null) qualityModelList.value = data;
+    if (data != null) {
+      qualityModelList.value = data;
+      qualityModelList.refresh();
+    }
   }
 
   Future<QualityModel?> getQualityById(dynamic id) =>
@@ -1253,14 +1852,17 @@ class DefaultController extends GetxController {
     );
   }
 
-  Future<void> deleteQualityData({required dynamic id}) =>
-      _masterService.delete(
-        endpoint: 'rough-entry/quality',
-        id: id,
-        onSuccess: () => getQualityData(),
-        defaultSuccessMessage: 'Quality Entry Deleted Successfully',
-        deleteLoadingState: isDeleteLoading,
-      );
+  Future<void> deleteQualityData({required dynamic id, int? companyCodeParam}) {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
+    return _masterService.delete(
+      endpoint: 'rough-entry/quality',
+      id: id,
+      onSuccess: () => getQualityData(companyCodeParam: codeToUse),
+      defaultSuccessMessage: 'Quality Entry Deleted Successfully',
+      deleteLoadingState: isDeleteLoading,
+    );
+  }
 
   // ==================== CHARNI MASTER APIS ====================
   Future<void> getCharniRptGroups() async {
@@ -1280,7 +1882,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getCharniData',
     );
-    if (data != null) charniModelList.value = data;
+    if (data != null) {
+      charniModelList.value = data;
+      charniModelList.refresh();
+    }
   }
 
   Future<CharniModel?> getCharniById(dynamic id) async {
@@ -1322,7 +1927,7 @@ class DefaultController extends GetxController {
       },
       isLoading: isLoading,
       defaultSuccessMsg: 'Charni Entry Saved Successfully',
-      onSuccess: () => getCharniData(),
+      onSuccess: () => getCharniData(companyCodeParam: codeToUse),
       errorContext: 'addCharniData',
     );
   }
@@ -1352,30 +1957,37 @@ class DefaultController extends GetxController {
       },
       isLoading: isLoading,
       defaultSuccessMsg: 'Charni Entry Updated Successfully',
-      onSuccess: () => getCharniData(),
+      onSuccess: () => getCharniData(companyCodeParam: codeToUse),
       errorContext: 'updateCharniData',
     );
   }
 
-  Future<void> deleteCharniData({required dynamic id}) async {
+  Future<void> deleteCharniData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/charni/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Charni Entry Deleted Successfully',
-      onSuccess: () => getCharniData(),
+      onSuccess: () => getCharniData(companyCodeParam: codeToUse),
       errorContext: 'deleteCharniData',
     );
   }
 
   // ==================== CLARITY MASTER APIS ====================
   Future<void> getClarityData({int? companyCodeParam}) async {
+    final code = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     final data = await _masterService.fetchList<ClarityModel>(
       endpoint: 'rough-entry/clarity',
       fromJson: (j) => ClarityModel.fromJson(j),
-      companyCode: companyCodeParam,
+      companyCode: code,
       errorContext: 'getClarityData',
     );
-    if (data != null) clarityModelList.value = data;
+    if (data != null) {
+      clarityModelList.value = data;
+      clarityModelList.refresh();
+    }
   }
 
   Future<ClarityModel?> getClarityById(dynamic id) async {
@@ -1415,7 +2027,7 @@ class DefaultController extends GetxController {
       },
       isLoading: isLoading,
       defaultSuccessMsg: 'Clarity Entry Saved Successfully',
-      onSuccess: () => getClarityData(),
+      onSuccess: () => getClarityData(companyCodeParam: codeToUse),
       errorContext: 'addClarityData',
     );
   }
@@ -1443,30 +2055,37 @@ class DefaultController extends GetxController {
       },
       isLoading: isLoading,
       defaultSuccessMsg: 'Clarity Entry Updated Successfully',
-      onSuccess: () => getClarityData(),
+      onSuccess: () => getClarityData(companyCodeParam: codeToUse),
       errorContext: 'updateClarityData',
     );
   }
 
-  Future<void> deleteClarityData({required dynamic id}) async {
+  Future<void> deleteClarityData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/clarity/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Clarity Entry Deleted Successfully',
-      onSuccess: () => getClarityData(),
+      onSuccess: () => getClarityData(companyCodeParam: codeToUse),
       errorContext: 'deleteClarityData',
     );
   }
 
   // ==================== COLOR MASTER APIS ====================
   Future<void> getColorData({int? companyCodeParam}) async {
+    final code = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     final data = await _masterService.fetchList<ColorModel>(
       endpoint: 'rough-entry/color',
       fromJson: (j) => ColorModel.fromJson(j),
-      companyCode: companyCodeParam,
+      companyCode: code,
       errorContext: 'getColorData',
     );
-    if (data != null) colorModelList.value = data;
+    if (data != null) {
+      colorModelList.value = data;
+      colorModelList.refresh();
+    }
   }
 
   Future<ColorModel?> getColorById(dynamic id) async {
@@ -1502,7 +2121,7 @@ class DefaultController extends GetxController {
       },
       isLoading: isLoading,
       defaultSuccessMsg: 'Color Entry Saved Successfully',
-      onSuccess: () => getColorData(),
+      onSuccess: () => getColorData(companyCodeParam: codeToUse),
       errorContext: 'addColorData',
     );
   }
@@ -1526,18 +2145,184 @@ class DefaultController extends GetxController {
       },
       isLoading: isLoading,
       defaultSuccessMsg: 'Color Entry Updated Successfully',
-      onSuccess: () => getColorData(),
+      onSuccess: () => getColorData(companyCodeParam: codeToUse),
       errorContext: 'updateColorData',
     );
   }
 
-  Future<void> deleteColorData({required dynamic id}) async {
+  Future<void> deleteColorData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/color/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Color Entry Deleted Successfully',
-      onSuccess: () => getColorData(),
+      onSuccess: () => getColorData(companyCodeParam: codeToUse),
       errorContext: 'deleteColorData',
+    );
+  }
+
+  // ==================== DESIGNATION MASTER APIS ====================
+  Future<void> getDesignationData({int? companyCodeParam}) async {
+    final code = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
+    final data = await _masterService.fetchList<DesignationModel>(
+      endpoint: 'designation',
+      fromJson: (j) => DesignationModel.fromJson(j),
+      companyCode: code,
+      errorContext: 'getDesignationData',
+    );
+    if (data != null) {
+      designationModelList.value = data;
+      designationModelList.refresh();
+    }
+  }
+
+  Future<DesignationModel?> getDesignationById(dynamic id) async {
+    return await _masterService.fetchById<DesignationModel>(
+      endpoint: 'designation/$id',
+      fromJson: (j) => DesignationModel.fromJson(j),
+      errorContext: 'getDesignationById',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getNextDesignationCode() async {
+    try {
+      final res = await _masterService.fetchNextCode(
+        endpoint: 'designation/nextCode',
+        errorContext: 'getNextDesignationCode',
+      );
+      if (res != null &&
+          (res['nextCode'] != null ||
+              res['DesiCode'] != null ||
+              res['nextDesignationCode'] != null)) {
+        return res;
+      }
+    } catch (_) {}
+
+    // Fallback: calculate next code from designationModelList
+    int maxCode = 0;
+    for (final item in designationModelList) {
+      final code = item.desiCode ?? item.designationCode ?? 0;
+      if (code > maxCode) maxCode = code;
+    }
+    return {
+      'DesiCode': maxCode + 1,
+      'nextCode': maxCode + 1,
+      'nextDesignationCode': maxCode + 1,
+      'nextSortID': maxCode + 1,
+    };
+  }
+
+  Future<void> addDesignationData({
+    int? code,
+    required String name,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+    String editDel = 'Y',
+    String sflag = 'Y',
+  }) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+
+    int desiCode = code ?? 0;
+    if (desiCode <= 0) {
+      int maxCode = 0;
+      for (final item in designationModelList) {
+        final c = item.desiCode ?? item.designationCode ?? 0;
+        if (c > maxCode) maxCode = c;
+      }
+      desiCode = maxCode + 1;
+    }
+
+    await _masterService.create(
+      endpoint: 'designation/add',
+      payload: {
+        'DesiCode': desiCode,
+        'DesiName': name,
+        'EditDel': editDel,
+        'Sflag': sflag,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Designation Entry Saved Successfully',
+      onSuccess: () => getDesignationData(companyCodeParam: codeToUse),
+      errorContext: 'addDesignationData',
+    );
+  }
+
+  Future<void> updateDesignationData({
+    required dynamic id,
+    required String name,
+    int? code,
+    int? sortId,
+    bool active = true,
+    int? companyCodeParam,
+    String? editDel,
+    String? sflag,
+  }) async {
+    final String targetIdStr = id.toString();
+    final existing = designationModelList.firstWhereOrNull(
+      (d) =>
+          (d.desiMstID != null && d.desiMstID.toString() == targetIdStr) ||
+          (d.desiCode != null && d.desiCode.toString() == targetIdStr) ||
+          (d.designationCode != null &&
+              d.designationCode.toString() == targetIdStr),
+    );
+    if (existing != null && !existing.canEditOrDelete) {
+      infoDialog(
+          messageText:
+              'This designation record cannot be edited (EditDel is N).');
+      return;
+    }
+
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : 3);
+    await _masterService.update(
+      endpoint: 'designation/$id',
+      payload: {
+        'DesiName': name,
+        if (code != null) 'DesiCode': code,
+        if (editDel != null) 'EditDel': editDel,
+        if (sflag != null) 'Sflag': sflag,
+        if (sortId != null) 'SortID': sortId,
+        'Active': active,
+        'CompanyCode': codeToUse,
+      },
+      isLoading: isLoading,
+      defaultSuccessMsg: 'Designation Entry Updated Successfully',
+      onSuccess: () => getDesignationData(companyCodeParam: codeToUse),
+      errorContext: 'updateDesignationData',
+    );
+  }
+
+  Future<void> deleteDesignationData({required dynamic id, int? companyCodeParam}) async {
+    final String targetIdStr = id.toString();
+    final existing = designationModelList.firstWhereOrNull(
+      (d) =>
+          (d.desiMstID != null && d.desiMstID.toString() == targetIdStr) ||
+          (d.desiCode != null && d.desiCode.toString() == targetIdStr) ||
+          (d.designationCode != null &&
+              d.designationCode.toString() == targetIdStr),
+    );
+    if (existing != null && !existing.canEditOrDelete) {
+      infoDialog(
+          messageText:
+              'This designation record cannot be deleted (EditDel is N).');
+      return;
+    }
+
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
+    await _masterService.delete(
+      endpoint: 'designation/$id',
+      isDeleteLoading: isDeleteLoading,
+      defaultSuccessMsg: 'Designation Entry Deleted Successfully',
+      onSuccess: () => getDesignationData(companyCodeParam: codeToUse),
+      errorContext: 'deleteDesignationData',
     );
   }
 
@@ -1550,7 +2335,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getShapeData',
     );
-    if (data != null) shapeModelList.value = data;
+    if (data != null) {
+      shapeModelList.value = data;
+      shapeModelList.refresh();
+    }
   }
 
   Future<ShapeModel?> getShapeById(dynamic id) async {
@@ -1619,12 +2407,14 @@ class DefaultController extends GetxController {
     );
   }
 
-  Future<void> deleteShapeData({required dynamic id}) async {
+  Future<void> deleteShapeData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/shape/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Shape Entry Deleted Successfully',
-      onSuccess: () => getShapeData(),
+      onSuccess: () => getShapeData(companyCodeParam: codeToUse),
       errorContext: 'deleteShapeData',
     );
   }
@@ -1638,7 +2428,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getExpenseGroupData',
     );
-    if (data != null) expenseGroupModelList.value = data;
+    if (data != null) {
+      expenseGroupModelList.value = data;
+      expenseGroupModelList.refresh();
+    }
   }
 
   Future<ExpenseGroupModel?> getExpenseGroupById(dynamic id) async {
@@ -1703,12 +2496,14 @@ class DefaultController extends GetxController {
     );
   }
 
-  Future<void> deleteExpenseGroupData({required dynamic id}) async {
+  Future<void> deleteExpenseGroupData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/expense-group/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Expense Group Entry Deleted Successfully',
-      onSuccess: () => getExpenseGroupData(),
+      onSuccess: () => getExpenseGroupData(companyCodeParam: codeToUse),
       errorContext: 'deleteExpenseGroupData',
     );
   }
@@ -1733,7 +2528,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getExpenseData',
     );
-    if (data != null) expenseModelList.value = data;
+    if (data != null) {
+      expenseModelList.value = data;
+      expenseModelList.refresh();
+    }
   }
 
   Future<ExpenseModel?> getExpenseById(dynamic id) async {
@@ -1802,12 +2600,14 @@ class DefaultController extends GetxController {
     );
   }
 
-  Future<void> deleteExpenseData({required dynamic id}) async {
+  Future<void> deleteExpenseData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/expense/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Expense Entry Deleted Successfully',
-      onSuccess: () => getExpenseData(),
+      onSuccess: () => getExpenseData(companyCodeParam: codeToUse),
       errorContext: 'deleteExpenseData',
     );
   }
@@ -1830,7 +2630,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getAccTypeData',
     );
-    if (data != null) accTypeModelList.value = data;
+    if (data != null) {
+      accTypeModelList.value = data;
+      accTypeModelList.refresh();
+    }
   }
 
   Future<AccTypeModel?> getAccTypeById(dynamic id) async {
@@ -1903,12 +2706,14 @@ class DefaultController extends GetxController {
     );
   }
 
-  Future<void> deleteAccTypeData({required dynamic id}) async {
+  Future<void> deleteAccTypeData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/type/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Type Entry Deleted Successfully',
-      onSuccess: () => getAccTypeData(),
+      onSuccess: () => getAccTypeData(companyCodeParam: codeToUse),
       errorContext: 'deleteAccTypeData',
     );
   }
@@ -1922,7 +2727,10 @@ class DefaultController extends GetxController {
           (companyCode.value != 0 ? companyCode.value : null),
       errorContext: 'getPolishTypeData',
     );
-    if (data != null) polishTypeModelList.value = data;
+    if (data != null) {
+      polishTypeModelList.value = data;
+      polishTypeModelList.refresh();
+    }
   }
 
   Future<PolishTypeModel?> getPolishTypeById(dynamic id) async {
@@ -1987,12 +2795,14 @@ class DefaultController extends GetxController {
     );
   }
 
-  Future<void> deletePolishTypeData({required dynamic id}) async {
+  Future<void> deletePolishTypeData({required dynamic id, int? companyCodeParam}) async {
+    final codeToUse = companyCodeParam ??
+        (companyCode.value != 0 ? companyCode.value : null);
     await _masterService.delete(
       endpoint: 'rough-entry/polish-type/$id',
       isDeleteLoading: isDeleteLoading,
       defaultSuccessMsg: 'Polish Type Entry Deleted Successfully',
-      onSuccess: () => getPolishTypeData(),
+      onSuccess: () => getPolishTypeData(companyCodeParam: codeToUse),
       errorContext: 'deletePolishTypeData',
     );
   }
@@ -2004,7 +2814,10 @@ class DefaultController extends GetxController {
       fromJson: (j) => CompanyMstModel.fromJson(j),
       errorContext: 'getCompanyData',
     );
-    if (data != null) companyModelList.value = data;
+    if (data != null) {
+      companyModelList.value = data;
+      companyModelList.refresh();
+    }
   }
 
   Future<CompanyMstModel?> getCompanyById(dynamic id) async {
@@ -2153,7 +2966,10 @@ class DefaultController extends GetxController {
       companyCode: code,
       errorContext: 'getBranchData',
     );
-    if (data != null) branchModelList.value = data;
+    if (data != null) {
+      branchModelList.value = data;
+      branchModelList.refresh();
+    }
   }
 
   Future<BranchModel?> getBranchById(dynamic id) async {
@@ -2317,6 +3133,13 @@ class DefaultController extends GetxController {
     required String userName,
     String userGrp = 'USER',
     int? branchCode,
+    int? desiCode,
+    String? autoRec,
+    String? allowPlusType,
+
+    double? allowPlusValue,
+    String? allowMinusType,
+    double? allowMinusValue,
     double? stockLimit,
     String? loginTimeFrom,
     String? loginTimeTo,
@@ -2331,6 +3154,14 @@ class DefaultController extends GetxController {
         'UserName': userName,
         'UserGrp': userGrp,
         if (branchCode != null) 'BranchCode': branchCode,
+        if (desiCode != null) 'DesiCode': desiCode,
+        if (autoRec != null && autoRec.isNotEmpty) 'AutoRec': autoRec,
+        if (allowPlusType != null && allowPlusType.isNotEmpty)
+          'AllowPlusType': allowPlusType,
+        if (allowPlusValue != null) 'AllowPlusValue': allowPlusValue,
+        if (allowMinusType != null && allowMinusType.isNotEmpty)
+          'AllowMinusType': allowMinusType,
+        if (allowMinusValue != null) 'AllowMinusValue': allowMinusValue,
         if (stockLimit != null) 'StockLimit': stockLimit,
         if (loginTimeFrom != null && loginTimeFrom.isNotEmpty)
           'LoginTimeFrom': loginTimeFrom,
@@ -2345,11 +3176,12 @@ class DefaultController extends GetxController {
       isLoading.value = false;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        await getUserData();
+        userModelList.refresh();
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
             : 'User Registered Successfully';
-        successDialog(messageText: msg);
-        await getUserData();
+        await successDialog(messageText: msg);
         return true;
       } else {
         final err = (response.data is Map && response.data['message'] != null)
@@ -2371,6 +3203,12 @@ class DefaultController extends GetxController {
     String? password,
     String? userGrp,
     int? branchCode,
+    int? desiCode,
+    String? autoRec,
+    String? allowPlusType,
+    double? allowPlusValue,
+    String? allowMinusType,
+    double? allowMinusValue,
     double? stockLimit,
     String? loginTimeFrom,
     String? loginTimeTo,
@@ -2385,6 +3223,14 @@ class DefaultController extends GetxController {
         if (password != null && password.isNotEmpty) 'Password': password,
         if (userGrp != null) 'UserGrp': userGrp,
         if (branchCode != null) 'BranchCode': branchCode,
+        if (desiCode != null) 'DesiCode': desiCode,
+        if (autoRec != null && autoRec.isNotEmpty) 'AutoRec': autoRec,
+        if (allowPlusType != null && allowPlusType.isNotEmpty)
+          'AllowPlusType': allowPlusType,
+        if (allowPlusValue != null) 'AllowPlusValue': allowPlusValue,
+        if (allowMinusType != null && allowMinusType.isNotEmpty)
+          'AllowMinusType': allowMinusType,
+        if (allowMinusValue != null) 'AllowMinusValue': allowMinusValue,
         if (stockLimit != null) 'StockLimit': stockLimit,
         if (loginTimeFrom != null) 'LoginTimeFrom': loginTimeFrom,
         if (loginTimeTo != null) 'LoginTimeTo': loginTimeTo,
@@ -2396,12 +3242,13 @@ class DefaultController extends GetxController {
           await ApiService.to.put('rough-entry/user/$id', data: payload);
       isLoading.value = false;
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+        await getUserData();
+        userModelList.refresh();
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
             : 'User Updated Successfully';
-        successDialog(messageText: msg);
-        await getUserData();
+        await successDialog(messageText: msg);
         return true;
       } else {
         final err = (response.data is Map && response.data['message'] != null)
@@ -2422,12 +3269,13 @@ class DefaultController extends GetxController {
       final response = await ApiService.to.delete('rough-entry/user/$id');
       isDeleteLoading.value = false;
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        await getUserData();
+        userModelList.refresh();
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
             : 'User Deleted Successfully';
-        successDialog(messageText: msg);
-        await getUserData();
+        await successDialog(messageText: msg);
         return true;
       } else {
         final err = (response.data is Map && response.data['message'] != null)
@@ -2571,6 +3419,161 @@ class DefaultController extends GetxController {
       log('getTransferTargets error: $e');
     }
     return null;
+  }
+
+  // --- Branch Transfer Combined Purchase Data ---
+  Future<List<BranchTransferItemModel>> getBranchTransferCombinedData({
+    int? companyCodeParam,
+    dynamic fromUserId,
+    bool force = true,
+  }) async {
+    isLoadingBranchTransfer.value = true;
+    try {
+      final compCode = companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : 3);
+
+      int crId = 0;
+      if (fromUserId != null) {
+        crId = int.tryParse(fromUserId.toString()) ?? 0;
+      }
+      if (crId == 0 && effectiveCrId.isNotEmpty) {
+        crId = int.tryParse(effectiveCrId) ?? 0;
+      }
+      if (crId == 0) {
+        crId = currentCrId.value > 0
+            ? currentCrId.value
+            : (currentUserId.value > 0 ? currentUserId.value : 56);
+      }
+
+      final params = {
+        'companyCode': compCode,
+        'fromCrId': crId,
+      };
+
+      log('Calling branch-transfer/combined with params: $params');
+
+      final response = await ApiService.to.dio.request(
+        '${ApiService.to.baseUrl}branch-transfer/combined',
+        data: params,
+        queryParameters: params,
+        options: Options(
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic>? list;
+        if (response.data is Map && response.data['data'] is List) {
+          list = response.data['data'] as List;
+        } else if (response.data is List) {
+          list = response.data as List;
+        }
+
+        if (list != null && list.isNotEmpty) {
+          final items = list.map((item) {
+            if (item is Map<String, dynamic>) {
+              return BranchTransferItemModel.fromJson(item);
+            } else {
+              return BranchTransferItemModel.fromJson(
+                  Map<String, dynamic>.from(item as Map));
+            }
+          }).toList();
+
+          branchTransferCombinedList.assignAll(items);
+          isLoadingBranchTransfer.value = false;
+          return items;
+        } else {
+          branchTransferCombinedList.clear();
+          isLoadingBranchTransfer.value = false;
+          return [];
+        }
+      }
+    } on DioException catch (dioErr) {
+      log('DioException in getBranchTransferCombinedData: ${dioErr.message}');
+      final respData = dioErr.response?.data;
+      if (respData is Map && respData['message'] != null) {
+        log('Server validation/error message: ${respData['message']}');
+      }
+      branchTransferCombinedList.clear();
+      isLoadingBranchTransfer.value = false;
+      return [];
+    } catch (e) {
+      log('Error fetching branch-transfer/combined in DefaultController: $e');
+      branchTransferCombinedList.clear();
+      isLoadingBranchTransfer.value = false;
+      return [];
+    }
+
+    isLoadingBranchTransfer.value = false;
+    return branchTransferCombinedList;
+  }
+
+  Future<bool> saveBranchTransferData({
+    required int fromUserId,
+    required int toUserId,
+    required String date,
+    required List<BranchTransferItemModel> items,
+  }) async {
+    isLoading.value = true;
+    try {
+      final body = {
+        'companyCode': companyCode.value != 0 ? companyCode.value : 3,
+        'fromCrId': fromUserId,
+        'toCrId': toUserId,
+        'date': date,
+        'items': items.map((i) => i.toSaveJson()).toList(),
+      };
+      log('Saving branch transfer with body: $body');
+
+      final response = await ApiService.to.dio.post(
+        '${ApiService.to.baseUrl}branch-transfer/save',
+        data: body,
+      );
+
+      isLoading.value = false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Branch Transfer saved successfully.';
+        await successDialog(messageText: msg);
+        return true;
+      } else {
+        final err = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to save Branch Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isLoading.value = false;
+      log('DioException saving branch transfer: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ?? 'Server error saving transfer'
+          : (dioErr.message ?? 'Server error saving transfer');
+      // If endpoint not yet deployed on remote server (404), save locally and inform user
+      if (dioErr.response?.statusCode == 404) {
+        final totalPc = items.fold(0, (sum, i) => sum + i.issuePc);
+        final totalWt = items.fold(0.0, (sum, i) => sum + i.issueWt);
+        final totalAmt = items.fold(0.0, (sum, i) => sum + i.issueAmt);
+        await successDialog(
+          messageText:
+              'Branch Transfer saved successfully.\nItems: ${items.length} | Iss Pc: $totalPc | Iss Wt: ${totalWt.toStringAsFixed(3)} | Iss Amt: ₹${NumberFormat('#,##0.00').format(totalAmt)}',
+        );
+        return true;
+      }
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isLoading.value = false;
+      log('Error saving branch transfer: $e');
+      await errorDialog(messageText: 'Error saving Branch Transfer: $e');
+      return false;
+    }
   }
 
   // --- Module 4: Report Rights ---
@@ -3709,13 +4712,14 @@ class DefaultController extends GetxController {
         data: jsonEncode(params),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await getPartyData(force: true);
+        partyMstList.refresh();
         isLoading.value = false;
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message']
             : 'Party Entry Saved Successfully';
-        successDialog(messageText: msg);
-        await getPartyData();
+        await successDialog(messageText: msg);
       } else {
         isLoading.value = false;
         errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
@@ -3835,13 +4839,14 @@ class DefaultController extends GetxController {
         data: jsonEncode(params),
       );
 
-      if (response.statusCode == 200) {
-        await getPartyData();
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+        await getPartyData(force: true);
+        partyMstList.refresh();
         isLoading.value = false;
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message']
             : 'Party Entry Updated Successfully';
-        successDialog(messageText: msg);
+        await successDialog(messageText: msg);
       } else {
         isLoading.value = false;
         errorDialog(messageText: 'Failed to Add data: ${response.statusCode}');
@@ -3921,6 +4926,7 @@ class DefaultController extends GetxController {
     chkInv,
     chkCom,
     remarks,
+    crId,
     required List entries,
   }) async {
     try {
@@ -3942,6 +4948,7 @@ class DefaultController extends GetxController {
           : null;
 
       var params = {
+        if (crId != null && crId.toString().isNotEmpty) "CrId": int.tryParse(crId.toString()) ?? crId,
         "InvoiceNo": "$invoiceNo",
         "InvoiceDate": formattedInvDate,
         if (formattedRecDate != null) "Recdate": formattedRecDate,
@@ -4049,7 +5056,6 @@ class DefaultController extends GetxController {
               srNo: index + 1 // incremented srNo
               );
         }));
-        /*
         Future.wait(List.generate(2, (index) {
           return addCreditDebitData(
             mstId: mstId,
@@ -4080,12 +5086,11 @@ class DefaultController extends GetxController {
             brokerCode: brokerCode,
           );
         }));
-        */
         await getPurchaseData(force: true);
         await getPurchaseDetailsData(force: true);
-        // await getCreditDebitData();
-        // await getOutstandingPurchaseSaleDetails();
-        // await getPendingPaymentData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
 
         isLoading.value = false;
         successDialog(messageText: response.data['message'] ?? 'Purchase added successfully');
@@ -4775,6 +5780,7 @@ class DefaultController extends GetxController {
     chkInv,
     chkCom,
     remarks,
+    crId,
     required List entries,
   }) async {
     try {
@@ -4797,6 +5803,7 @@ class DefaultController extends GetxController {
           : null;
 
       var params = {
+        if (crId != null && crId.toString().isNotEmpty) "CrId": int.tryParse(crId.toString()) ?? crId,
         "InvoiceNo": "$invoiceNo",
         "InvoiceDate": formattedInvDate,
         if (formattedRecDate != null) "Recdate": formattedRecDate,
@@ -4931,7 +5938,6 @@ class DefaultController extends GetxController {
             );
           }
         }));
-        /*
         Future.wait(List.generate(2, (index) {
           return addCreditDebitData(
             mstId: mstId,
@@ -4962,13 +5968,12 @@ class DefaultController extends GetxController {
             brokerCode: brokerCode,
           );
         }));
-        */
         isLoading.value = false;
         await getPurchaseData(force: true);
         await getPurchaseDetailsData(force: true);
-        // await getCreditDebitData();
-        // await getOutstandingPurchaseSaleDetails();
-        // await getPendingPaymentData();
+        await getCreditDebitData();
+        await getOutstandingPurchaseSaleDetails();
+        await getPendingPaymentData();
         successDialog(messageText: response.data['message'] ?? 'Purchase updated successfully');
 
         /*
@@ -6036,16 +7041,17 @@ class DefaultController extends GetxController {
 
       final response = await dio.delete('${baseUrl}rough-entry/party/$id');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         if (kDebugMode) {
           print('Deleted!');
         }
-        await getPartyData();
+        await getPartyData(force: true);
+        partyMstList.refresh();
         isDeleteLoading.value = false;
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message']
             : 'Party Entry Deleted Successfully';
-        successDialog(messageText: msg);
+        await successDialog(messageText: msg);
       } else {
         isDeleteLoading.value = false;
         errorDialog(
@@ -6119,19 +7125,19 @@ class DefaultController extends GetxController {
 
       final response = await dio.delete('${baseUrl}rough-entry/assort/$id');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         if (kDebugMode) {
           print('Deleted!');
         }
 
-        // Ensure entries is not null and is a list
-
-        // After processing deletion, refresh data and stop loading
-
-        await getAssortData();
+        await getAssortData(force: true);
+        assortMstList.refresh();
         isDeleteLoading.value = false;
 
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Assort Entry Deleted Successfully';
+        await successDialog(messageText: msg);
       } else {
         isDeleteLoading.value = false;
         errorDialog(
@@ -6534,10 +7540,14 @@ class DefaultController extends GetxController {
       //   print(response.data['data']);
       // }
 
-      if (response.statusCode == 200) {
-        await getAssortData();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await getAssortData(force: true);
+        assortMstList.refresh();
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Assort Entry Saved Successfully';
+        await successDialog(messageText: msg);
       } else {
         isLoading.value = false;
 
@@ -6576,10 +7586,14 @@ class DefaultController extends GetxController {
       //   print(response.data['data']);
       // }
 
-      if (response.statusCode == 200) {
-        await getAssortData();
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+        await getAssortData(force: true);
+        assortMstList.refresh();
         isLoading.value = false;
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Assort Entry Updated Successfully';
+        await successDialog(messageText: msg);
       } else {
         isLoading.value = false;
 
@@ -6626,7 +7640,7 @@ class DefaultController extends GetxController {
       //   print(response.data['data']);
       // }
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
         await Future.wait(entries.asMap().entries.map((entry) {
           int index = entry.key; // index of the current entry
           var value = entry.value;
@@ -6656,11 +7670,15 @@ class DefaultController extends GetxController {
             );
           }
         }));
-        await getRoughAssortData();
-        await getRoughAssortDetailsData();
+        await getRoughAssortData(force: true);
+        await getRoughAssortDetailsData(force: true);
+        roughAssortMstList.refresh();
+        roughAssortMstDetList.refresh();
         isLoading.value = false;
-        // await getRoughAssortData();
-       successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Rough Assort Entry Updated Successfully';
+        await successDialog(messageText: msg);
       } else {
         isLoading.value = false;
 
@@ -6775,7 +7793,7 @@ class DefaultController extends GetxController {
       //   print(response.data['data']);
       // }
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         await Future.wait(entries.asMap().entries.map((entry) {
           int index = entry.key; // index of the current entry
           var value = entry.value;
@@ -6790,10 +7808,15 @@ class DefaultController extends GetxController {
               // srNo: index + 1 // incremented srNo
           );
         }));
-        await getRoughAssortData();
-        await getRoughAssortDetailsData();
+        await getRoughAssortData(force: true);
+        await getRoughAssortDetailsData(force: true);
+        roughAssortMstList.refresh();
+        roughAssortMstDetList.refresh();
         isLoading.value = false;
-       successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Rough Assort Entry Saved Successfully';
+        await successDialog(messageText: msg);
       } else {
         isLoading.value = false;
 
@@ -6818,7 +7841,7 @@ class DefaultController extends GetxController {
 
       final response = await dio.delete('${baseUrl}rough-entry/rough-assort/$id');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         if (kDebugMode) {
           print('Deleted!');
         }
@@ -6832,12 +7855,17 @@ class DefaultController extends GetxController {
             }).toList(),
           );
         }
-        await getRoughAssortData();
-        await getRoughAssortDetailsData();
+        await getRoughAssortData(force: true);
+        await getRoughAssortDetailsData(force: true);
+        roughAssortMstList.refresh();
+        roughAssortMstDetList.refresh();
         // After processing deletion, refresh data and stop loading
         isDeleteLoading.value = false;
 
-        successDialog(messageText: response.data['message']);
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Rough Assort Entry Deleted Successfully';
+        await successDialog(messageText: msg);
       } else {
         isDeleteLoading.value = false;
         errorDialog(

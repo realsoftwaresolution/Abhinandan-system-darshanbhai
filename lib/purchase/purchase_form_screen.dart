@@ -4,8 +4,6 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
-import 'package:real_web_rough_entry_system/app_theme.dart';
-import 'package:real_web_rough_entry_system/charni/charni_model.dart';
 import 'package:real_web_rough_entry_system/common/components/app_button.dart';
 import 'package:real_web_rough_entry_system/common/components/app_data_grid.dart';
 import 'package:real_web_rough_entry_system/common/components/app_dropdown.dart';
@@ -14,10 +12,10 @@ import 'package:real_web_rough_entry_system/common/components/app_text_field.dar
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/header.dart';
+import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/purchase/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_datagrid.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_details_model.dart';
-import 'package:real_web_rough_entry_system/quality/quality_model.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 class PurchaseFormScreen extends StatefulWidget {
@@ -32,6 +30,7 @@ class PurchaseFormScreen extends StatefulWidget {
 class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   // ==================== MASTER HEADER CONTROLLERS ====================
   final TextEditingController idController = TextEditingController();
+  final TextEditingController crIdController = TextEditingController();
   final TextEditingController invNoController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
   final TextEditingController recDateController = TextEditingController();
@@ -188,6 +187,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   @override
   void initState() {
     super.initState();
+    crIdController.text = defaultController.effectiveCrId;
     wtController.addListener(_updateItemAmount);
     purchaseDataGridSource.value = List<PurchaseDetailsModel>.from(defaultController.purchaseDataList);
 
@@ -229,6 +229,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     _listWorker?.dispose();
 
     idController.dispose();
+    crIdController.dispose();
     invNoController.dispose();
     dateController.dispose();
     recDateController.dispose();
@@ -607,6 +608,17 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   DateTime? selectedSiteDate;
 
   void _enableFields({bool needFocus = true}) {
+    if (_isFromEdit) {
+      _handleCancel();
+    }
+    final effectiveCrId = defaultController.effectiveCrId;
+    crIdController.text = effectiveCrId;
+    if (crIdController.text.trim().isEmpty) {
+      infoDialog(
+        messageText: 'Cannot add entry: Only users with a branch and designation code 4 are permitted to add entries.',
+      );
+      return;
+    }
     setState(() {
       _isEnabled = true;
       if (selectedDate == null) {
@@ -758,6 +770,12 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   }
 
   void _addEntry() {
+    if (crIdController.text.trim().isEmpty) {
+      infoDialog(
+        messageText: 'Cannot add entry: CrId is required.',
+      );
+      return;
+    }
     final double wt = double.tryParse(wtController.text.trim()) ?? 0;
     final double rateRs = double.tryParse(rateRsController.text.trim()) ?? 0;
     final double rateDollar = double.tryParse(rateDollarController.text.trim()) ?? 0;
@@ -827,6 +845,12 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
 
   Future<void> _handleSave() async {
     if (!_isEnabled) return;
+    if (crIdController.text.trim().isEmpty) {
+      infoDialog(
+        messageText: 'Cannot save entry: CrId is required.',
+      );
+      return;
+    }
     if (_selectedTypeParty.value.isEmpty) {
       infoDialog(messageText: 'Please Select Party');
       _partyFocus.requestFocus();
@@ -929,6 +953,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         chkInv: _chkInv.value ? 'FIX' : 'PER',
         chkCom: _chkCom.value ? 'FIX' : 'PER',
         remarks: remarksController.text.trim(),
+        crId: crIdController.text.trim(),
         entries: entries,
       );
     } else {
@@ -998,6 +1023,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
         chkInv: _chkInv.value ? 'FIX' : 'PER',
         chkCom: _chkCom.value ? 'FIX' : 'PER',
         remarks: remarksController.text.trim(),
+        crId: crIdController.text.trim(),
         entries: entries,
       );
     }
@@ -1013,6 +1039,13 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
   }
 
   void _handleCancel() {
+    if (_editingEntryIndex != null) {
+      setState(() {
+        _clearEntryInputs();
+      });
+      _roughFocus.requestFocus();
+      return;
+    }
     setState(() {
       entries.clear();
       _editingEntryIndex = null;
@@ -1034,11 +1067,12 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     });
 
     idController.clear();
+    crIdController.text = defaultController.effectiveCrId;
     invNoController.clear();
     dateController.clear();
     recDateController.clear();
     siteController.clear();
-    dueDaysController.clear();
+    dueDaysController.text = '0';
     dueDateController.clear();
     dollarRateController.text = '71.000';
 
@@ -1429,6 +1463,15 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                   ),
                 ),
                 GridColumn(
+                  columnName: 'CrId',
+                  width: 65,
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                    alignment: Alignment.center,
+                    child: const Text('CrId', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+                GridColumn(
                   columnName: 'Invoice No',
                   width: 90,
                   label: Container(
@@ -1704,6 +1747,14 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                   _loadSelectedRowForEdit(rows[dataRowIndex]);
                 }
               },
+              onCellDoubleTap: (details) {
+                if (details.rowColumnIndex.rowIndex <= 0) return;
+                final int dataRowIndex = details.rowColumnIndex.rowIndex - 1;
+                final rows = purchaseSource.effectiveRows;
+                if (dataRowIndex >= 0 && dataRowIndex < rows.length) {
+                  _loadSelectedRowForEdit(rows[dataRowIndex]);
+                }
+              },
               onSelectionChanged: (addedRows, _) {
                 if (addedRows.isNotEmpty) {
                   _loadSelectedRowForEdit(addedRows.first);
@@ -1724,6 +1775,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
       setState(() {
         entries.clear();
         _isFromEdit = true;
+        _isEnabled = false;
       });
 
     final id = row.getCells()[0].value;
@@ -1738,6 +1790,9 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
     ).toList();
 
     idController.text = id.toString();
+    crIdController.text = partyEntry.crId != null && partyEntry.crId != 0
+        ? partyEntry.crId.toString()
+        : defaultController.effectiveCrId;
     invNoController.text = partyEntry.invoiceNo ?? '';
     if (partyEntry.invoiceDate != null && partyEntry.invoiceDate!.isNotEmpty) {
       try {
@@ -1856,13 +1911,14 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
 
     gstPerController.text = partyEntry.gstPer?.toString() ?? '0.25';
 
-    _enableFields(needFocus: false);
     _updateCalculations();
 
-      setState(() {
-        _isSearch = false;
-      });
-      _clearGridSelection();
+    setState(() {
+      _isSearch = false;
+      _isFromEdit = true;
+      _isEnabled = false;
+    });
+    _clearGridSelection();
     } finally {
       _isLoadingRow = false;
     }
@@ -1903,6 +1959,14 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                           enabled: false,
                           readOnly: true,
                           hintText: 'Auto',
+                        );
+
+                        final crIdField = AppTextField(
+                          label: 'CrId',
+                          controller: crIdController,
+                          enabled: false,
+                          readOnly: true,
+                          hintText: '',
                         );
 
                         final invoiceNoField = AppTextField(
@@ -2065,6 +2129,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                 children: [
                                   Expanded(flex: 1, child: idField),
                                   const SizedBox(width: 12),
+                                  Expanded(flex: 1, child: crIdField),
+                                  const SizedBox(width: 12),
                                   Expanded(flex: 2, child: invoiceNoField),
                                   const SizedBox(width: 12),
                                   Expanded(flex: 2, child: dateField),
@@ -2101,6 +2167,8 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                               Row(
                                 children: [
                                   Expanded(flex: 1, child: idField),
+                                  const SizedBox(width: 10),
+                                  Expanded(flex: 1, child: crIdField),
                                   const SizedBox(width: 10),
                                   Expanded(flex: 2, child: invoiceNoField),
                                 ],
@@ -2401,6 +2469,13 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                         icon: Icons.add_circle_outline_rounded,
                         onPressed: () => _enableFields(),
                       ),
+                    if (_isFromEdit && !_isEnabled)
+                      AppButton(
+                        text: 'Edit',
+                        variant: AppButtonVariant.outline,
+                        icon: Icons.edit_note_rounded,
+                        onPressed: () => setState(() => _isEnabled = true),
+                      ),
                     if (_isEnabled)
                       AppButton(
                         text: 'Save',
@@ -2558,11 +2633,13 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                               icon: Icon(
                                 _editingEntryIndex == i ? Icons.edit : Icons.edit_outlined,
                                 size: 16,
-                                color: _editingEntryIndex == i ? AppColors.warning : AppColors.primary,
+                                color: _isEnabled
+                                    ? (_editingEntryIndex == i ? AppColors.warning : AppColors.primary)
+                                    : AppColors.textSecondary.withValues(alpha: 0.5),
                               ),
                               splashRadius: 14,
                               tooltip: 'Edit Item',
-                              onPressed: () {
+                              onPressed: _isEnabled ? () {
                                 selectedRoughId.value = entries[i]['id']?.toString() ?? '';
                                 _selectedType.value = entries[i]['rough']?.toString() ?? '';
                                 itemSiteController.text = entries[i]['site']?.toString() ?? '';
@@ -2579,13 +2656,17 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                   _editingEntryIndex = i;
                                 });
                                 _roughFocus.requestFocus();
-                              },
+                              } : null,
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                              icon: Icon(Icons.delete_outline_rounded,
+                                  size: 16,
+                                  color: _isEnabled
+                                      ? AppColors.danger
+                                      : AppColors.textSecondary.withValues(alpha: 0.5)),
                               splashRadius: 14,
                               tooltip: 'Delete Item',
-                              onPressed: () {
+                              onPressed: _isEnabled ? () {
                                 if (_isFromEdit) {
                                   if (entries.length == 1) {
                                     infoDialog(messageText: 'Cannot delete the only rough entry in edit mode.');
@@ -2618,7 +2699,7 @@ class PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                   entries.removeAt(i);
                                 });
                                 _updateCalculations();
-                              },
+                              } : null,
                             ),
                           ],
                         ),

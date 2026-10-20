@@ -47,9 +47,7 @@ class QualityFormScreenState extends State<QualityFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.qualityModelList.isEmpty) {
-        defaultController.getQualityData();
-      }
+      defaultController.getQualityData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -148,7 +146,7 @@ class QualityFormScreenState extends State<QualityFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getQualityData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -161,7 +159,11 @@ class QualityFormScreenState extends State<QualityFormScreen> {
 
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deleteQualityData(id: targetId);
+    await defaultController.deleteQualityData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getQualityData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

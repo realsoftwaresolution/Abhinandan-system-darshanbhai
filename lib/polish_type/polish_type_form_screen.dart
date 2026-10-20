@@ -58,9 +58,7 @@ class PolishTypeFormScreenState extends State<PolishTypeFormScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.polishTypeModelList.isEmpty) {
-        defaultController.getPolishTypeData();
-      }
+      defaultController.getPolishTypeData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -163,7 +161,7 @@ class PolishTypeFormScreenState extends State<PolishTypeFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getPolishTypeData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -176,7 +174,11 @@ class PolishTypeFormScreenState extends State<PolishTypeFormScreen> {
 
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deletePolishTypeData(id: targetId);
+    await defaultController.deletePolishTypeData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getPolishTypeData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

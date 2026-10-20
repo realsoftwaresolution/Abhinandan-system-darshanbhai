@@ -91,18 +91,10 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.roughAssortMstList.isEmpty) {
-        defaultController.getRoughAssortData();
-      }
-      if (defaultController.roughAssortMstDetList.isEmpty) {
-        defaultController.getRoughAssortDetailsData();
-      }
-      if (defaultController.partyMstList.isEmpty) {
-        defaultController.getPartyData();
-      }
-      if (defaultController.roughModel.isEmpty) {
-        defaultController.getRoughData();
-      }
+      defaultController.getRoughAssortData(force: true);
+      defaultController.getRoughAssortDetailsData(force: true);
+      defaultController.getPartyData(force: true);
+      defaultController.getRoughData(force: true);
     });
   }
 
@@ -217,6 +209,8 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
       );
     }
 
+    await defaultController.getRoughAssortData(force: true);
+    await defaultController.getRoughAssortDetailsData(force: true);
     setState(() {
       entries.clear();
       _selectedTypeParty.value = '';
@@ -232,6 +226,8 @@ class RoughAssortFormScreenState extends State<RoughAssortFormScreen> {
       id: selectedRoughAssortMstID.value,
       entries: entries,
     );
+    await defaultController.getRoughAssortData(force: true);
+    await defaultController.getRoughAssortDetailsData(force: true);
     setState(() {
       entries.clear();
       _selectedTypeParty.value = '';

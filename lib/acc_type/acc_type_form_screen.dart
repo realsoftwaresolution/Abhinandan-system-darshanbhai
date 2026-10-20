@@ -61,12 +61,8 @@ class AccTypeFormScreenState extends State<AccTypeFormScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.typeGroupDropdownList.isEmpty) {
-        defaultController.getTypeGroupsDropdownData();
-      }
-      if (defaultController.accTypeModelList.isEmpty) {
-        defaultController.getAccTypeData();
-      }
+      defaultController.getTypeGroupsDropdownData();
+      defaultController.getAccTypeData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -183,7 +179,7 @@ class AccTypeFormScreenState extends State<AccTypeFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getAccTypeData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -193,7 +189,11 @@ class AccTypeFormScreenState extends State<AccTypeFormScreen> {
     final int targetId = _selectedTypeCode.value;
     if (targetId == 0) return;
 
-    await defaultController.deleteAccTypeData(id: targetId);
+    await defaultController.deleteAccTypeData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getAccTypeData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

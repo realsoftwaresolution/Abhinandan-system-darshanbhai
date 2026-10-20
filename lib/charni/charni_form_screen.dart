@@ -54,12 +54,8 @@ class CharniFormScreenState extends State<CharniFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.charniRptGroupList.isEmpty) {
-        defaultController.getCharniRptGroups();
-      }
-      if (defaultController.charniModelList.isEmpty) {
-        defaultController.getCharniData();
-      }
+      defaultController.getCharniRptGroups();
+      defaultController.getCharniData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -183,7 +179,7 @@ class CharniFormScreenState extends State<CharniFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getCharniData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -196,7 +192,11 @@ class CharniFormScreenState extends State<CharniFormScreen> {
 
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deleteCharniData(id: targetId);
+    await defaultController.deleteCharniData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getCharniData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

@@ -59,12 +59,8 @@ class AssortFormScreenState extends State<AssortFormScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.assortGroupMstList.isEmpty) {
-        defaultController.getAssortGroupData();
-      }
-      if (defaultController.assortMstList.isEmpty) {
-        defaultController.getAssortData();
-      }
+      defaultController.getAssortGroupData(force: true);
+      defaultController.getAssortData(force: true);
     });
   }
 
@@ -123,6 +119,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
       );
     }
 
+    await defaultController.getAssortData(force: true);
     setState(() {
       _isEnabled = false;
       _isFromEdit = false;
@@ -136,6 +133,7 @@ class AssortFormScreenState extends State<AssortFormScreen> {
   Future<void> _deleteAssort() async {
     if (!_isFromEdit || selectedAssortMstID.value == 0) return;
     await defaultController.deleteAssortData(id: selectedAssortMstID.value);
+    await defaultController.getAssortData(force: true);
     setState(() {
       _isEnabled = false;
       _isFromEdit = false;

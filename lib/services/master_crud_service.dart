@@ -121,14 +121,16 @@ class MasterCrudService {
       loader?.value = true;
       final response = await _api.post(endpoint, data: payload);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final msg = (response.data is Map && response.data['message'] != null)
-            ? response.data['message'].toString()
-            : successMsg;
-        successDialog(messageText: msg);
         if (onSuccess != null) {
           await onSuccess();
         }
         loader?.value = false;
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : (response.data is Map && response.data['msg'] != null)
+                ? response.data['msg'].toString()
+                : successMsg;
+        await successDialog(messageText: msg);
         return true;
       } else {
         errorDialog(
@@ -163,15 +165,17 @@ class MasterCrudService {
       loader?.value = true;
       final url = id != null ? '$endpoint/$id' : endpoint;
       final response = await _api.put(url, data: payload);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
         if (onSuccess != null) {
           await onSuccess();
         }
         loader?.value = false;
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
-            : successMsg;
-        successDialog(messageText: msg);
+            : (response.data is Map && response.data['msg'] != null)
+                ? response.data['msg'].toString()
+                : successMsg;
+        await successDialog(messageText: msg);
         return true;
       } else {
         errorDialog(
@@ -205,15 +209,17 @@ class MasterCrudService {
       loader?.value = true;
       final url = id != null ? '$endpoint/$id' : endpoint;
       final response = await _api.delete(url);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         if (onSuccess != null) {
           await onSuccess();
         }
         loader?.value = false;
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
-            : successMsg;
-        successDialog(messageText: msg);
+            : (response.data is Map && response.data['msg'] != null)
+                ? response.data['msg'].toString()
+                : successMsg;
+        await successDialog(messageText: msg);
         return true;
       } else {
         errorDialog(

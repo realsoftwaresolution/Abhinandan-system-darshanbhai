@@ -49,9 +49,7 @@ class ShapeFormScreenState extends State<ShapeFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.shapeModelList.isEmpty) {
-        defaultController.getShapeData();
-      }
+      defaultController.getShapeData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -157,7 +155,7 @@ class ShapeFormScreenState extends State<ShapeFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getShapeData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -170,7 +168,11 @@ class ShapeFormScreenState extends State<ShapeFormScreen> {
 
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deleteShapeData(id: targetId);
+    await defaultController.deleteShapeData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getShapeData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

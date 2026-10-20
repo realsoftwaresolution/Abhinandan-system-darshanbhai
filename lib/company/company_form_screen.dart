@@ -110,9 +110,7 @@ class CompanyFormScreenState extends State<CompanyFormScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.companyModelList.isEmpty) {
-        defaultController.getCompanyData();
-      }
+      defaultController.getCompanyData();
     });
 
     // Auto capitalize GST
@@ -134,12 +132,6 @@ class CompanyFormScreenState extends State<CompanyFormScreen> {
           text: text,
           selection: TextSelection.collapsed(offset: text.length),
         );
-      }
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.companyModelList.isEmpty) {
-        defaultController.getCompanyData();
       }
     });
   }
@@ -421,6 +413,7 @@ class CompanyFormScreenState extends State<CompanyFormScreen> {
       );
     }
 
+    await defaultController.getCompanyData();
     _clearFormFields();
     _filterCompanies(_searchFilterController.text);
   }
@@ -435,6 +428,7 @@ class CompanyFormScreenState extends State<CompanyFormScreen> {
     if (targetId == 0 || targetId == null) return;
 
     await defaultController.deleteCompanyData(id: targetId);
+    await defaultController.getCompanyData();
     _clearFormFields();
     _filterCompanies(_searchFilterController.text);
   }

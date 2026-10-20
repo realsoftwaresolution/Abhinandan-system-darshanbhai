@@ -47,9 +47,7 @@ class ColorFormScreenState extends State<ColorFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.colorModelList.isEmpty) {
-        defaultController.getColorData();
-      }
+      defaultController.getColorData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -148,7 +146,7 @@ class ColorFormScreenState extends State<ColorFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getColorData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -161,7 +159,11 @@ class ColorFormScreenState extends State<ColorFormScreen> {
 
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deleteColorData(id: targetId);
+    await defaultController.deleteColorData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getColorData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

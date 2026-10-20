@@ -37,12 +37,17 @@ class UserFormScreenState extends State<UserFormScreen>
   late TabController _moduleTabController;
   late UserDataGridSource _userSource;
   Worker? _listWorker;
+  Worker? _desiWorker;
 
   // Controllers - Basic Information
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _loginNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _userNameController = TextEditingController();
+  final TextEditingController _allowPlusValueController =
+      TextEditingController();
+  final TextEditingController _allowMinusValueController =
+      TextEditingController();
   final TextEditingController _stockLimitController = TextEditingController();
   final TextEditingController _loginTimeFromController =
       TextEditingController(text: '09:00 AM');
@@ -60,6 +65,12 @@ class UserFormScreenState extends State<UserFormScreen>
   final FocusNode _userNameFocus = FocusNode();
   final FocusNode _roleFocus = FocusNode();
   final FocusNode _branchFocus = FocusNode();
+  final FocusNode _designationFocus = FocusNode();
+  final FocusNode _autoRecFocus = FocusNode();
+  final FocusNode _allowPlusTypeFocus = FocusNode();
+  final FocusNode _allowPlusValueFocus = FocusNode();
+  final FocusNode _allowMinusTypeFocus = FocusNode();
+  final FocusNode _allowMinusValueFocus = FocusNode();
   final FocusNode _stockLimitFocus = FocusNode();
   final FocusNode _loginTimeFromFocus = FocusNode();
   final FocusNode _loginTimeToFocus = FocusNode();
@@ -69,6 +80,10 @@ class UserFormScreenState extends State<UserFormScreen>
   final RxInt _selectedUserId = 0.obs;
   final RxString _selectedUserGrp = 'USER'.obs;
   final Rx<int?> _selectedBranchCode = Rx<int?>(null);
+  final Rx<int?> _selectedDesiCode = Rx<int?>(null);
+  final Rx<String?> _selectedAutoRec = Rx<String?>('N');
+  final Rx<String?> _selectedAllowPlusType = Rx<String?>(null);
+  final Rx<String?> _selectedAllowMinusType = Rx<String?>(null);
   final RxBool _obscurePassword = true.obs;
   bool _isActive = true;
   bool _isEnabled = false;
@@ -113,13 +128,17 @@ class UserFormScreenState extends State<UserFormScreen>
       }
     });
 
+    _desiWorker = ever(defaultController.designationModelList, (_) {
+      if (mounted) {
+        _userSource.updateDataSource(userGridList);
+        setState(() {});
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.userModelList.isEmpty) {
-        defaultController.getUserData();
-      }
-      if (defaultController.branchModelList.isEmpty) {
-        defaultController.getBranchData();
-      }
+      defaultController.getUserData();
+      defaultController.getBranchData(companyCodeParam: defaultController.companyCode.value);
+      defaultController.getDesignationData(companyCodeParam: defaultController.companyCode.value);
       if (defaultController.currentUserId.value > 0 && _selectedUserId.value == 0) {
         _selectedUserId.value = defaultController.currentUserId.value;
       }
@@ -129,6 +148,7 @@ class UserFormScreenState extends State<UserFormScreen>
   @override
   void dispose() {
     _listWorker?.dispose();
+    _desiWorker?.dispose();
     _moduleTabController.removeListener(_handleTabChange);
     _moduleTabController.dispose();
 
@@ -136,6 +156,8 @@ class UserFormScreenState extends State<UserFormScreen>
     _loginNameController.dispose();
     _passwordController.dispose();
     _userNameController.dispose();
+    _allowPlusValueController.dispose();
+    _allowMinusValueController.dispose();
     _stockLimitController.dispose();
     _loginTimeFromController.dispose();
     _loginTimeToController.dispose();
@@ -147,6 +169,12 @@ class UserFormScreenState extends State<UserFormScreen>
     _userNameFocus.dispose();
     _roleFocus.dispose();
     _branchFocus.dispose();
+    _designationFocus.dispose();
+    _autoRecFocus.dispose();
+    _allowPlusTypeFocus.dispose();
+    _allowPlusValueFocus.dispose();
+    _allowMinusTypeFocus.dispose();
+    _allowMinusValueFocus.dispose();
     _stockLimitFocus.dispose();
     _loginTimeFromFocus.dispose();
     _loginTimeToFocus.dispose();
@@ -184,10 +212,12 @@ class UserFormScreenState extends State<UserFormScreen>
         final name = (u.userName ?? '').toLowerCase();
         final code = (u.counterMstId ?? '').toString();
         final role = (u.userGrp ?? '').toLowerCase();
+        final desi = (u.desiName ?? '').toLowerCase();
         return login.contains(q) ||
             name.contains(q) ||
             code.contains(q) ||
-            role.contains(q);
+            role.contains(q) ||
+            desi.contains(q);
       }).toList();
     }
     _userSource.updateDataSource(userGridList);
@@ -208,6 +238,27 @@ class UserFormScreenState extends State<UserFormScreen>
     }).toList();
   }
 
+  List<DropdownMenuItem<int>> get designationDropdownItems {
+    return defaultController.designationModelList.map((d) {
+      final code = d.desiCode ?? d.desiMstID ?? d.designationCode ?? 0;
+      final name = d.desiName ?? d.designationName ?? 'Designation';
+      return DropdownMenuItem<int>(
+        value: code,
+        child: Text('$name (#$code)'),
+      );
+    }).toList();
+  }
+
+  List<DropdownMenuItem<String>> get autoRecDropdownItems => const [
+        DropdownMenuItem<String>(value: 'Y', child: Text('Y')),
+        DropdownMenuItem<String>(value: 'N', child: Text('N')),
+      ];
+
+  List<DropdownMenuItem<String>> get toleranceTypeDropdownItems => const [
+        DropdownMenuItem<String>(value: 'WT', child: Text('WT')),
+        DropdownMenuItem<String>(value: 'PER', child: Text('PER')),
+      ];
+
   // ==================== ACTIONS: MODULE 1 (USER CRUD) ====================
 
   Future<void> _enableFields({bool needFocus = true}) async {
@@ -219,6 +270,11 @@ class UserFormScreenState extends State<UserFormScreen>
       _loginNameController.clear();
       _passwordController.clear();
       _userNameController.clear();
+      _selectedAutoRec.value = 'N';
+      _selectedAllowPlusType.value = null;
+      _allowPlusValueController.clear();
+      _selectedAllowMinusType.value = null;
+      _allowMinusValueController.clear();
       _stockLimitController.clear();
       _loginTimeFromController.text = '09:00 AM';
       _loginTimeToController.text = '07:00 PM';
@@ -228,6 +284,7 @@ class UserFormScreenState extends State<UserFormScreen>
           ? (defaultController.branchModelList.first.branchCode ??
               defaultController.branchModelList.first.branchMstId)
           : null;
+      _selectedDesiCode.value = null;
       _isActive = true;
     });
 
@@ -256,12 +313,18 @@ class UserFormScreenState extends State<UserFormScreen>
       _loginNameController.clear();
       _passwordController.clear();
       _userNameController.clear();
+      _selectedAutoRec.value = 'N';
+      _selectedAllowPlusType.value = null;
+      _allowPlusValueController.clear();
+      _selectedAllowMinusType.value = null;
+      _allowMinusValueController.clear();
       _stockLimitController.clear();
       _loginTimeFromController.text = '09:00 AM';
       _loginTimeToController.text = '07:00 PM';
       _sortIdController.clear();
       _selectedUserGrp.value = 'USER';
       _selectedBranchCode.value = null;
+      _selectedDesiCode.value = null;
       _isActive = true;
     });
     _dataGridController.selectedIndex = -1;
@@ -295,6 +358,14 @@ class UserFormScreenState extends State<UserFormScreen>
         double.tryParse(_stockLimitController.text.trim());
     final int? sortId = int.tryParse(_sortIdController.text.trim());
     final int? branchCode = _selectedBranchCode.value;
+    final int? desiCode = _selectedDesiCode.value;
+    final String? autoRec = _selectedAutoRec.value;
+    final String? allowPlusType = _selectedAllowPlusType.value;
+    final double? allowPlusValue =
+        double.tryParse(_allowPlusValueController.text.trim());
+    final String? allowMinusType = _selectedAllowMinusType.value;
+    final double? allowMinusValue =
+        double.tryParse(_allowMinusValueController.text.trim());
 
     if (_isFromEdit) {
       final dynamic targetId = _selectedUserId.value;
@@ -310,6 +381,12 @@ class UserFormScreenState extends State<UserFormScreen>
         password: password.isNotEmpty ? password : null,
         userGrp: _selectedUserGrp.value,
         branchCode: branchCode,
+        desiCode: desiCode,
+        autoRec: autoRec,
+        allowPlusType: allowPlusType,
+        allowPlusValue: allowPlusValue,
+        allowMinusType: allowMinusType,
+        allowMinusValue: allowMinusValue,
         stockLimit: stockLimit,
         loginTimeFrom: _loginTimeFromController.text.trim(),
         loginTimeTo: _loginTimeToController.text.trim(),
@@ -328,6 +405,12 @@ class UserFormScreenState extends State<UserFormScreen>
         userName: userName,
         userGrp: _selectedUserGrp.value,
         branchCode: branchCode,
+        desiCode: desiCode,
+        autoRec: autoRec,
+        allowPlusType: allowPlusType,
+        allowPlusValue: allowPlusValue,
+        allowMinusType: allowMinusType,
+        allowMinusValue: allowMinusValue,
         stockLimit: stockLimit,
         loginTimeFrom: _loginTimeFromController.text.trim(),
         loginTimeTo: _loginTimeToController.text.trim(),
@@ -382,6 +465,16 @@ class UserFormScreenState extends State<UserFormScreen>
     _userNameController.text = item.userName ?? '';
     _selectedUserGrp.value = item.userGrp ?? 'USER';
     _selectedBranchCode.value = item.branchCode;
+    _selectedDesiCode.value = item.desiCode;
+    _selectedAutoRec.value = item.autoRec ?? 'N';
+    _selectedAllowPlusType.value = item.allowPlusType;
+    _allowPlusValueController.text = item.allowPlusValue != null
+        ? item.allowPlusValue.toString()
+        : '';
+    _selectedAllowMinusType.value = item.allowMinusType;
+    _allowMinusValueController.text = item.allowMinusValue != null
+        ? item.allowMinusValue.toString()
+        : '';
     _stockLimitController.text =
         item.stockLimit != null ? item.stockLimit.toString() : '';
     _loginTimeFromController.text = item.loginTimeFrom ?? '09:00 AM';
@@ -908,7 +1001,7 @@ class UserFormScreenState extends State<UserFormScreen>
                   () => AppDropdown<int>(
                     label: 'Branch',
                     focusNode: _branchFocus,
-                    nextFocusNode: _stockLimitFocus,
+                    nextFocusNode: _designationFocus,
                     isEnabled: _isEnabled,
                     value: _selectedBranchCode.value,
                     items: branchDropdownItems,
@@ -917,6 +1010,88 @@ class UserFormScreenState extends State<UserFormScreen>
                       _selectedBranchCode.value = val;
                     },
                   ),
+                );
+
+                final designationWidget = Obx(
+                  () => AppDropdown<int>(
+                    label: 'Designation',
+                    focusNode: _designationFocus,
+                    nextFocusNode: _autoRecFocus,
+                    isEnabled: _isEnabled,
+                    value: _selectedDesiCode.value,
+                    items: designationDropdownItems,
+                    hintText: 'Select Designation',
+                    onChanged: (val) {
+                      _selectedDesiCode.value = val;
+                    },
+                  ),
+                );
+
+                final autoRecWidget = Obx(
+                  () => AppDropdown<String>(
+                    label: 'Auto Rec (Y/N)',
+                    focusNode: _autoRecFocus,
+                    nextFocusNode: _allowPlusTypeFocus,
+                    isEnabled: _isEnabled,
+                    value: _selectedAutoRec.value,
+                    items: autoRecDropdownItems,
+                    hintText: 'Select Auto Rec',
+                    onChanged: (val) {
+                      _selectedAutoRec.value = val;
+                    },
+                  ),
+                );
+
+                final allowPlusTypeWidget = Obx(
+                  () => AppDropdown<String>(
+                    label: 'Allow Plus Type',
+                    focusNode: _allowPlusTypeFocus,
+                    nextFocusNode: _allowPlusValueFocus,
+                    isEnabled: _isEnabled,
+                    value: _selectedAllowPlusType.value,
+                    items: toleranceTypeDropdownItems,
+                    hintText: 'Select Type',
+                    onChanged: (val) {
+                      _selectedAllowPlusType.value = val;
+                    },
+                  ),
+                );
+
+                final allowPlusValueWidget = AppTextField(
+                  label: 'Allow Plus Value',
+                  controller: _allowPlusValueController,
+                  focusNode: _allowPlusValueFocus,
+                  nextFocusNode: _allowMinusTypeFocus,
+                  enabled: _isEnabled,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  hintText: 'e.g. 0.05',
+                );
+
+                final allowMinusTypeWidget = Obx(
+                  () => AppDropdown<String>(
+                    label: 'Allow Minus Type',
+                    focusNode: _allowMinusTypeFocus,
+                    nextFocusNode: _allowMinusValueFocus,
+                    isEnabled: _isEnabled,
+                    value: _selectedAllowMinusType.value,
+                    items: toleranceTypeDropdownItems,
+                    hintText: 'Select Type',
+                    onChanged: (val) {
+                      _selectedAllowMinusType.value = val;
+                    },
+                  ),
+                );
+
+                final allowMinusValueWidget = AppTextField(
+                  label: 'Allow Minus Value',
+                  controller: _allowMinusValueController,
+                  focusNode: _allowMinusValueFocus,
+                  nextFocusNode: _stockLimitFocus,
+                  enabled: _isEnabled,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  hintText: 'e.g. 0.05',
                 );
 
                 final activeWidget = Padding(
@@ -969,7 +1144,23 @@ class UserFormScreenState extends State<UserFormScreen>
                           Expanded(flex: 2, child: roleWidget),
                           const SizedBox(width: 12),
                           Expanded(flex: 3, child: branchWidget),
-                          const Spacer(flex: 4),
+                          const SizedBox(width: 12),
+                          Expanded(flex: 3, child: designationWidget),
+                          const SizedBox(width: 12),
+                          Expanded(flex: 2, child: autoRecWidget),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: allowPlusTypeWidget),
+                          const SizedBox(width: 12),
+                          Expanded(child: allowPlusValueWidget),
+                          const SizedBox(width: 12),
+                          Expanded(child: allowMinusTypeWidget),
+                          const SizedBox(width: 12),
+                          Expanded(child: allowMinusValueWidget),
                         ],
                       ),
                     ],
@@ -1006,6 +1197,33 @@ class UserFormScreenState extends State<UserFormScreen>
                           Expanded(child: branchWidget),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: designationWidget),
+                          const SizedBox(width: 12),
+                          Expanded(child: autoRecWidget),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: allowPlusTypeWidget),
+                          const SizedBox(width: 12),
+                          Expanded(child: allowPlusValueWidget),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: allowMinusTypeWidget),
+                          const SizedBox(width: 12),
+                          Expanded(child: allowMinusValueWidget),
+                        ],
+                      ),
                     ],
                   );
                 } else {
@@ -1027,6 +1245,18 @@ class UserFormScreenState extends State<UserFormScreen>
                       roleWidget,
                       const SizedBox(height: 12),
                       branchWidget,
+                      const SizedBox(height: 12),
+                      designationWidget,
+                      const SizedBox(height: 12),
+                      autoRecWidget,
+                      const SizedBox(height: 12),
+                      allowPlusTypeWidget,
+                      const SizedBox(height: 12),
+                      allowPlusValueWidget,
+                      const SizedBox(height: 12),
+                      allowMinusTypeWidget,
+                      const SizedBox(height: 12),
+                      allowMinusValueWidget,
                       const SizedBox(height: 8),
                       activeWidget,
                     ],
@@ -1388,6 +1618,60 @@ class UserFormScreenState extends State<UserFormScreen>
             padding: const EdgeInsets.all(8.0),
             alignment: Alignment.centerLeft,
             child: const Text('Branch',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ),
+        GridColumn(
+          columnName: 'Designation',
+          label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.centerLeft,
+            child: const Text('Designation',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ),
+        GridColumn(
+          columnName: 'Auto Rec',
+          label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: const Text('Auto Rec',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ),
+        GridColumn(
+          columnName: 'Allow Plus Type',
+          label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: const Text('+ Type',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ),
+        GridColumn(
+          columnName: 'Allow Plus Value',
+          label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.centerRight,
+            child: const Text('+ Value',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ),
+        GridColumn(
+          columnName: 'Allow Minus Type',
+          label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.center,
+            child: const Text('- Type',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ),
+        GridColumn(
+          columnName: 'Allow Minus Value',
+          label: Container(
+            padding: const EdgeInsets.all(8.0),
+            alignment: Alignment.centerRight,
+            child: const Text('- Value',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
           ),
         ),

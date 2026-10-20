@@ -51,6 +51,10 @@ class PurchaseDataGridSource extends DataGridSource {
           columnName: 'ID',
           value: purchase.roughPurMstID ?? 0,
         ),
+        DataGridCell<dynamic>(
+          columnName: 'CrId',
+          value: purchase.crId ?? '',
+        ),
         DataGridCell<String>(
           columnName: 'Invoice No',
           value: purchase.invoiceNo ?? '',
@@ -236,9 +240,9 @@ class PurchaseDataGridSource extends DataGridSource {
         Alignment alignment = Alignment.centerLeft;
         String text = '';
 
-        if (colName == 'ID') {
+        if (colName == 'ID' || colName == 'CrId') {
           alignment = Alignment.center;
-          text = value.toString();
+          text = value?.toString() ?? '';
         } else if (colName == 'Inv. Date' ||
             colName == 'Rec Date' ||
             colName == 'Rs / \$' ||

@@ -19,8 +19,6 @@ import 'package:real_web_rough_entry_system/rough/rough_details_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
-import 'package:real_web_rough_entry_system/charni/charni_model.dart';
-import 'package:real_web_rough_entry_system/quality/quality_model.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_controller.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -346,6 +344,41 @@ String getCharniName(dynamic charniCode) {
       (c) => c.charniCode.toString() == charniCode.toString() ||
              c.charniMstID.toString() == charniCode.toString());
   return item?.charniName ?? charniCode.toString();
+}
+
+String getPolishTypeName(dynamic code) {
+  if (code == null || code.toString().isEmpty) return '-';
+  final item = defaultController.polishTypeModelList.firstWhereOrNull(
+      (p) => p.polishTypeCode.toString() == code.toString() ||
+             p.polishTypeMstId.toString() == code.toString() ||
+             p.polishTypeName?.toLowerCase() == code.toString().toLowerCase());
+  return item?.polishTypeName ?? code.toString();
+}
+
+String getShapeName(dynamic code) {
+  if (code == null || code.toString().isEmpty) return '-';
+  final item = defaultController.shapeModelList.firstWhereOrNull(
+      (s) => s.shapeCode.toString() == code.toString() ||
+             s.shapeMstId.toString() == code.toString() ||
+             s.shapeName?.toLowerCase() == code.toString().toLowerCase());
+  return item?.shapeName ?? code.toString();
+}
+
+String getClarityName(dynamic code) {
+  if (code == null || code.toString().isEmpty) return '-';
+  final item = defaultController.clarityModelList.firstWhereOrNull(
+      (c) => c.clarityMstID.toString() == code.toString() ||
+             c.clarityName?.toLowerCase() == code.toString().toLowerCase());
+  return item?.clarityName ?? code.toString();
+}
+
+String getColorName(dynamic code) {
+  if (code == null || code.toString().isEmpty) return '-';
+  final item = defaultController.colorModelList.firstWhereOrNull(
+      (c) => c.colorCode.toString() == code.toString() ||
+             c.colorMstID.toString() == code.toString() ||
+             c.colorName?.toLowerCase() == code.toString().toLowerCase());
+  return item?.colorName ?? code.toString();
 }
 
 String getPartyType(int? typeCode) {

@@ -86,9 +86,11 @@ class PurchaseDetailsModel {
   dynamic finalAmtD;
   dynamic roundOfRs;
   dynamic roundOfD;
+  int? crId;
 
   PurchaseDetailsModel(
       {this.roughPurMstID,
+        this.crId,
         this.finalAmtRs,
         this.finalAmtD,
         this.roundOfRs,
@@ -267,11 +269,13 @@ class PurchaseDetailsModel {
     finalAmtD = json['FinalAmtD'];
     roundOfRs = json['RoundOfRs'];
     roundOfD = json['RoundOfD'];
+    crId = json['CrId'] is int ? json['CrId'] : int.tryParse(json['CrId']?.toString() ?? '');
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['RoughPurMstID'] = roughPurMstID;
+    if (crId != null) data['CrId'] = crId;
     data['RPType'] = rPType;
     data['DayBookCode'] = dayBookCode;
     data['InvoiceNo'] = invoiceNo;

@@ -1,8 +1,8 @@
-/// Models for User Master and its 4 Modules:
-/// 1. Basic User Profile & CRUD
-/// 2. Menu Rights Matrix
-/// 3. Allow Issue (Transfer Screen Mapping)
-/// 4. Report Rights
+// Models for User Master and its 4 Modules:
+// 1. Basic User Profile & CRUD
+// 2. Menu Rights Matrix
+// 3. Allow Issue (Transfer Screen Mapping)
+// 4. Report Rights
 
 class UserModel {
   int? counterMstId;
@@ -11,6 +11,13 @@ class UserModel {
   String? userName;
   String? userGrp;
   int? branchCode;
+  int? desiCode;
+  String? desiName;
+  String? autoRec;
+  String? allowPlusType;
+  double? allowPlusValue;
+  String? allowMinusType;
+  double? allowMinusValue;
   double? stockLimit;
   String? loginTimeFrom;
   String? loginTimeTo;
@@ -22,6 +29,11 @@ class UserModel {
   dynamic pcId;
   int? ever;
 
+  double? get allowPlusVal => allowPlusValue;
+  set allowPlusVal(double? v) => allowPlusValue = v;
+  double? get allowMinusVal => allowMinusValue;
+  set allowMinusVal(double? v) => allowMinusValue = v;
+
   UserModel({
     this.counterMstId,
     this.loginName,
@@ -29,6 +41,13 @@ class UserModel {
     this.userName,
     this.userGrp,
     this.branchCode,
+    this.desiCode,
+    this.desiName,
+    this.autoRec = 'N',
+    this.allowPlusType,
+    this.allowPlusValue,
+    this.allowMinusType,
+    this.allowMinusValue,
     this.stockLimit,
     this.loginTimeFrom,
     this.loginTimeTo,
@@ -39,7 +58,24 @@ class UserModel {
     this.logId,
     this.pcId,
     this.ever,
-  });
+    int? designationCode,
+    String? designationName,
+    double? allowPlusVal,
+    double? allowMinusVal,
+  }) {
+    if (desiCode == null && designationCode != null) {
+      desiCode = designationCode;
+    }
+    if (desiName == null && designationName != null) {
+      desiName = designationName;
+    }
+    if (allowPlusValue == null && allowPlusVal != null) {
+      allowPlusValue = allowPlusVal;
+    }
+    if (allowMinusValue == null && allowMinusVal != null) {
+      allowMinusValue = allowMinusVal;
+    }
+  }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     int? parseInt(dynamic v) {
@@ -85,6 +121,35 @@ class UserModel {
       branchCode: parseInt(json['BranchCode'] ??
           json['branchCode'] ??
           json['Branchcode']),
+      desiCode: parseInt(json['DesiCode'] ??
+          json['desiCode'] ??
+          json['DesiMstID'] ??
+          json['desiMstId'] ??
+          json['DesignationCode'] ??
+          json['designationCode']),
+      desiName: json['DesiName']?.toString() ??
+          json['desiName']?.toString() ??
+          json['DesignationName']?.toString() ??
+          json['designationName']?.toString() ??
+          json['Designation']?.toString() ??
+          json['designation']?.toString(),
+      autoRec: json['AutoRec']?.toString() ??
+          json['autoRec']?.toString() ??
+          json['AutoRecv']?.toString() ??
+          json['autoRecv']?.toString() ??
+          'N',
+      allowPlusType: json['AllowPlusType']?.toString() ??
+          json['allowPlusType']?.toString(),
+      allowPlusValue: parseDouble(json['AllowPlusValue'] ??
+          json['allowPlusValue'] ??
+          json['AllowPlusVal'] ??
+          json['allowPlusVal']),
+      allowMinusType: json['AllowMinusType']?.toString() ??
+          json['allowMinusType']?.toString(),
+      allowMinusValue: parseDouble(json['AllowMinusValue'] ??
+          json['allowMinusValue'] ??
+          json['AllowMinusVal'] ??
+          json['allowMinusVal']),
       stockLimit: parseDouble(json['StockLimit'] ?? json['stockLimit']),
       loginTimeFrom: json['LoginTimeFrom']?.toString() ??
           json['loginTimeFrom']?.toString(),
@@ -106,11 +171,18 @@ class UserModel {
     return {
       if (counterMstId != null) 'CounterMstID': counterMstId,
       if (loginName != null) 'LoginName': loginName,
-      if (loginName != null) 'CrName': loginName,
       if (password != null && password!.isNotEmpty) 'Password': password,
       if (userName != null) 'UserName': userName,
       if (userGrp != null) 'UserGrp': userGrp,
       if (branchCode != null) 'BranchCode': branchCode,
+      if (desiCode != null) 'DesiCode': desiCode,
+      if (autoRec != null && autoRec!.isNotEmpty) 'AutoRec': autoRec,
+      if (allowPlusType != null && allowPlusType!.isNotEmpty)
+        'AllowPlusType': allowPlusType,
+      if (allowPlusValue != null) 'AllowPlusValue': allowPlusValue,
+      if (allowMinusType != null && allowMinusType!.isNotEmpty)
+        'AllowMinusType': allowMinusType,
+      if (allowMinusValue != null) 'AllowMinusValue': allowMinusValue,
       if (stockLimit != null) 'StockLimit': stockLimit,
       if (loginTimeFrom != null && loginTimeFrom!.isNotEmpty)
         'LoginTimeFrom': loginTimeFrom,

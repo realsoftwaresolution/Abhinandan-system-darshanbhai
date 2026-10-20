@@ -18,6 +18,9 @@ import 'package:real_web_rough_entry_system/payment/payment_form_screen.dart';
 import 'package:real_web_rough_entry_system/charni/charni_form_screen.dart';
 import 'package:real_web_rough_entry_system/clarity/clarity_form_screen.dart';
 import 'package:real_web_rough_entry_system/color/color_form_screen.dart';
+import 'package:real_web_rough_entry_system/designation/designation_form_screen.dart';
+import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_form_screen.dart';
+import 'package:real_web_rough_entry_system/polish_purchase/polish_purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/quality/quality_form_screen.dart';
 import 'package:real_web_rough_entry_system/report/report_screen.dart';
@@ -33,7 +36,6 @@ import 'package:real_web_rough_entry_system/branch/branch_form_screen.dart';
 import 'package:real_web_rough_entry_system/user/user_form_screen.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_controller.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_item.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Ultra-clean, modern left sidebar for Abhinandan Diamond ERP.
 /// Supports dynamic menu API structure, collapsible accordion groups,
@@ -149,6 +151,16 @@ class _AppSidebarState extends State<AppSidebar> {
       return;
     }
 
+    // Designation Form
+    if (formLower == 'frmdesignationform' ||
+        formLower == 'frmdesignation' ||
+        nameLower == 'designation' ||
+        nameLower == 'designation master' ||
+        nameLower == 'designation mst') {
+      _openTab(name, icon, const DesignationFormScreen(showHeader: false));
+      return;
+    }
+
     // Shape Form
     if (formLower == 'frmshapeform' || nameLower == 'shape') {
       _openTab(name, icon, const ShapeFormScreen(showHeader: false));
@@ -201,7 +213,37 @@ class _AppSidebarState extends State<AppSidebar> {
 
     // 3. Polish Purchase Form
     if (formLower == 'frmpolishpurchaseform' || nameLower == 'polish purchase') {
-      _openTab(name, icon, const PurchaseFormScreen(showHeader: false));
+      _openTab(name, icon, const PolishPurchaseFormScreen(showHeader: false));
+      return;
+    }
+
+    // Branch Transfer Form
+    if (formLower == 'frmbranchtransferform' ||
+        formLower == 'frmbranchtransfer' ||
+        formLower == 'frmstockissueform' ||
+        formLower == 'frmstockissue' ||
+        nameLower == 'branch transfer' ||
+        nameLower == 'stock issue') {
+      _openTab(name, icon, const BranchTransferFormScreen(showHeader: false));
+      return;
+    }
+
+    // Branch Transfer Confirm Form
+    if (formLower == 'frmbranchtransferconfirmform' ||
+        formLower == 'frmbranchtransferconfirm' ||
+        formLower == 'frmstockconfirmform' ||
+        formLower == 'frmstockconfirm' ||
+        nameLower == 'branch transfer confirm' ||
+        nameLower == 'stock confirm') {
+      _openTab(
+        name,
+        icon,
+        PlaceholderFormScreen(
+          title: name,
+          formName: form.isNotEmpty ? form : 'FrmBranchTransferConfirmForm',
+          icon: icon,
+        ),
+      );
       return;
     }
 
@@ -441,12 +483,7 @@ class _AppSidebarState extends State<AppSidebar> {
                   // Register reactive dependency on user access permissions matrix
                   final _ = _defaultController.userAccessMap.length;
 
-                  final List<MainMenuModel> displayMenus =
-                      _defaultController.menuList.isNotEmpty
-                          ? _defaultController.menuList
-                          : defaultMenuListJson
-                              .map((j) => MainMenuModel.fromJson(j))
-                              .toList();
+                  final List<MainMenuModel> displayMenus = _defaultController.menuList;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

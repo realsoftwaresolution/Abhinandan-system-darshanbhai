@@ -49,9 +49,7 @@ class ClarityFormScreenState extends State<ClarityFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.clarityModelList.isEmpty) {
-        defaultController.getClarityData();
-      }
+      defaultController.getClarityData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -152,7 +150,7 @@ class ClarityFormScreenState extends State<ClarityFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getClarityData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -162,7 +160,11 @@ class ClarityFormScreenState extends State<ClarityFormScreen> {
     final dynamic targetId = _selectedClarityMstID.value;
     if (targetId == 0 || targetId == null) return;
 
-    await defaultController.deleteClarityData(id: targetId);
+    await defaultController.deleteClarityData(
+      id: targetId,
+      companyCodeParam: defaultController.companyCode.value,
+    );
+    await defaultController.getClarityData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

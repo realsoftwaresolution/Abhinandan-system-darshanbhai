@@ -57,9 +57,7 @@ class BranchFormScreenState extends State<BranchFormScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.branchModelList.isEmpty) {
-        defaultController.getBranchData();
-      }
+      defaultController.getBranchData(companyCodeParam: defaultController.companyCode.value);
     });
   }
 
@@ -175,7 +173,7 @@ class BranchFormScreenState extends State<BranchFormScreen> {
         companyCodeParam: defaultController.companyCode.value,
       );
     }
-
+    await defaultController.getBranchData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 
@@ -192,6 +190,7 @@ class BranchFormScreenState extends State<BranchFormScreen> {
       id: targetId,
       companyCodeParam: defaultController.companyCode.value,
     );
+    await defaultController.getBranchData(companyCodeParam: defaultController.companyCode.value);
     _clearFormFields();
   }
 

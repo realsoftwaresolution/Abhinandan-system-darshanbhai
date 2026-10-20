@@ -116,12 +116,8 @@ class PartyFormState extends State<PartyForm> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (defaultController.partyMstList.isEmpty) {
-        defaultController.getPartyData();
-      }
-      if (defaultController.partyTypeMstList.isEmpty) {
-        defaultController.getPartyTypeData();
-      }
+      defaultController.getPartyData(force: true);
+      defaultController.getPartyTypeData(force: true);
     });
 
     // Auto capitalize PAN
@@ -361,6 +357,7 @@ class PartyFormState extends State<PartyForm> {
       );
     }
 
+    await defaultController.getPartyData(force: true);
     _clearFormFields();
     partyGridList.value = defaultController.partyMstList;
   }
@@ -368,6 +365,7 @@ class PartyFormState extends State<PartyForm> {
   Future<void> _handleDelete() async {
     if (!_isFromEdit || selectedPartyMstID.value == 0) return;
     await defaultController.deletePartyData(id: selectedPartyMstID.value);
+    await defaultController.getPartyData(force: true);
     _clearFormFields();
     partyGridList.value = defaultController.partyMstList;
   }
