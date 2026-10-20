@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_datagrid.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_mst_model.dart';
 import 'package:real_web_rough_entry_system/common/components/app_button.dart';
 import 'package:real_web_rough_entry_system/common/components/app_data_grid.dart';
 import 'package:real_web_rough_entry_system/common/components/app_dropdown.dart';
@@ -40,6 +42,16 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchFromDateController =
+      TextEditingController();
+  final TextEditingController _searchToDateController = TextEditingController();
+
+  DateTime? _searchFromDate;
+  DateTime? _searchToDate;
+  final RxBool _isDateFiltered = false.obs;
+
+  // Search view toggle
+  bool _isSearch = false;
 
   // Focus Nodes
   final FocusNode _idFocus = FocusNode();
@@ -64,6 +76,10 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
   // Form edit state
   bool _isEnabled = false;
   bool _isFromEdit = false;
+  bool get isEnabled => _isEnabled;
+  bool get isFromEdit => _isFromEdit;
+
+  Future<void> loadTransferById(dynamic id) => _loadTransferById(id);
 
   final RxBool _isLoadingUsers = false.obs;
   Worker? _userListWorker;
@@ -123,6 +139,29 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
     return stock;
   }
 
+  double getMinAllowedIssueWt(BranchTransferItemModel item) {
+    final stock = item.stockWt;
+    final manager = selectedFromManagerUser;
+    if (manager == null) return 0.0;
+
+    final minusType = manager.allowMinusType?.trim().toUpperCase();
+    final minusVal = manager.allowMinusValue ?? 0.0;
+
+    if (minusVal <= 0.0 || minusType == null || minusType.isEmpty) {
+      return 0.0;
+    }
+
+    if (minusType == 'WT') {
+      final min = stock - minusVal;
+      return min < 0.0 ? 0.0 : min;
+    } else if (minusType == 'PER') {
+      final min = stock - (stock * (minusVal / 100.0));
+      return min < 0.0 ? 0.0 : min;
+    }
+
+    return 0.0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -133,6 +172,7 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
       initialItems: _displayItems,
       isEnabled: _isEnabled,
       getMaxAllowedIssueWt: (item) => getMaxAllowedIssueWt(item),
+      getMinAllowedIssueWt: (item) => getMinAllowedIssueWt(item),
       onValidationWarning: (msg) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -258,6 +298,8 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
     _idController.dispose();
     _dateController.dispose();
     _searchController.dispose();
+    _searchFromDateController.dispose();
+    _searchToDateController.dispose();
     _idFocus.dispose();
     _dateFocus.dispose();
     _fromManagerFocus.dispose();
@@ -469,6 +511,7 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
       _selectedToManagerId.value = null;
     });
 
+    _gridSource.setShowCheckbox(true);
     _gridSource.setEnabled(true);
     _initFromManager();
 
@@ -488,6 +531,7 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
     setState(() {
       _isEnabled = false;
       _isFromEdit = false;
+      _isSearch = false;
       _idController.clear();
       _selectedDate = DateTime.now();
       _dateController.text = DateFormat('dd-MM-yyyy').format(_selectedDate);
@@ -498,14 +542,164 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
         _clearTableItems();
       }
     });
+    _gridSource.setShowCheckbox(true);
     _gridSource.setEnabled(false);
     _gridSource.toggleSelectAll(false);
     _initFromManager();
   }
 
+  /// Load a single branch transfer by its ID via GET /branch-transfer/<ID>
+  Future<void> _loadTransferById(dynamic id) async {
+    if (id == null || id.toString().trim().isEmpty) return;
+    final BranchTransferMstModel? transfer =
+        await defaultController.getBranchTransferById(id);
+    if (transfer == null) return;
+
+    setState(() {
+      _isSearch = false;
+      _isFromEdit = true;
+      _isEnabled = false;
+      _idController.text =
+          transfer.branchTransferMstID?.toString() ?? id.toString();
+
+      if (transfer.transferDate != null && transfer.transferDate!.isNotEmpty) {
+        final parsed = DateTime.tryParse(transfer.transferDate!);
+        if (parsed != null) {
+          _selectedDate = parsed;
+        } else if (transfer.transferDate!.contains('-') &&
+            transfer.transferDate!.split('-').first.length == 4) {
+          final p = transfer.transferDate!.split('-');
+          _selectedDate =
+              DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+        }
+        _dateController.text = DateFormat('dd-MM-yyyy').format(_selectedDate);
+      }
+
+      _selectedFromManagerId.value = transfer.fromCrId;
+      if (transfer.fromCrId != null && transfer.fromCrId! > 0) {
+        _loadToManagersFor(transfer.fromCrId!);
+      }
+      _selectedToManagerId.value = transfer.toCrId;
+
+      _allItems.clear();
+      _displayItems.clear();
+      for (var item in transfer.items) {
+        item.isSelected = true;
+        _allItems.add(item);
+        _displayItems.add(item);
+      }
+      _gridSource.setShowCheckbox(false);
+      _gridSource.updateItems(_displayItems);
+      _gridSource.setEnabled(false);
+    });
+  }
+
+  /// Action button: Delete entry via DELETE /branch-transfer/<ID>
+  Future<void> _handleDelete() async {
+    final idStr = _idController.text.trim();
+    if (!_isFromEdit || idStr.isEmpty) return;
+
+    Get.defaultDialog(
+      title: 'Confirm Delete',
+      middleText: 'Are you sure you want to delete Branch Transfer #$idStr?',
+      textConfirm: 'Delete',
+      textCancel: 'Cancel',
+      confirmTextColor: Colors.white,
+      buttonColor: AppColors.danger,
+      onConfirm: () async {
+        Get.back();
+        final ok = await defaultController.deleteBranchTransferData(id: idStr);
+        if (ok) {
+          _handleCancel();
+        }
+      },
+    );
+  }
+
   /// Action button: Save entry
   Future<void> _handleSave() async {
     if (!_isEnabled) return;
+
+    // Collect candidate items for saving (items where issueWt > 0, or selected items)
+    final itemsWithIssue = _allItems.where((i) => i.issueWt > 0.0).toList();
+    final candidateItems = itemsWithIssue.isNotEmpty
+        ? itemsWithIssue
+        : _allItems.where((i) => i.isSelected).toList();
+
+    final compCode = defaultController.companyCode.value != 0
+        ? defaultController.companyCode.value
+        : 3;
+    final totalStockPc = candidateItems.fold<int>(0, (sum, i) => sum + i.stockPc);
+    final totalStockWt = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.stockWt).toStringAsFixed(3));
+    final totalRateDollar = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.stockRateDollar).toStringAsFixed(2));
+    final totalRateRs = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.stockRateRs).toStringAsFixed(2));
+    final totalAmtDollar = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.stockAmtDollar).toStringAsFixed(2));
+    final totalAmtRs = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.stockAmtRs).toStringAsFixed(2));
+
+    final totalIssuePc = candidateItems.fold<int>(0, (sum, i) => sum + i.issuePc);
+    final totalIssueWt = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.issueWt).toStringAsFixed(3));
+    final totalIssueRate = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.issueRate).toStringAsFixed(2));
+    final totalIssueAmt = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.issueAmt).toStringAsFixed(2));
+
+    final totalDiffWt = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.diffWt).toStringAsFixed(3));
+    final totalDiffRate = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.diffRate).toStringAsFixed(2));
+    final totalDiffAmt = double.parse(
+        candidateItems.fold<double>(0.0, (sum, i) => sum + i.diffAmt).toStringAsFixed(2));
+
+    final String formattedTransferDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    final candidateSerializedItems = candidateItems.map((i) => i.toSaveJson(
+      type: _gridSource.resolveTypeName(i),
+      quality: _gridSource.resolveQuality(i),
+      charni: _gridSource.resolveCharni(i),
+      shape: _gridSource.resolveShape(i),
+      color: _gridSource.resolveColor(i),
+      clarity: _gridSource.resolveClarity(i),
+    )).toList();
+
+    // Build payload to print on click of save button (strictly matches BranchTransferMst and BranchTransferDet, no duplicate keys)
+    final payloadToPrint = {
+      'CompanyCode': compCode,
+      'FromCrId': _selectedFromManagerId.value,
+      'ToCrId': _selectedToManagerId.value,
+      'TransferDate': formattedTransferDate,
+      'TotalItems': candidateItems.length,
+      'TotalStockPc': totalStockPc,
+      'TotalStockWt': totalStockWt,
+      'TotalRateDollar': totalRateDollar,
+      'TotalRateRs': totalRateRs,
+      'TotalAmtDollar': totalAmtDollar,
+      'TotalAmtRs': totalAmtRs,
+      'TotalIssuePc': totalIssuePc,
+      'TotalIssueWt': totalIssueWt,
+      'TotalIssueRate': totalIssueRate,
+      'TotalIssueAmt': totalIssueAmt,
+      'TotalDiffWt': totalDiffWt,
+      'TotalDiffRate': totalDiffRate,
+      'TotalDiffAmt': totalDiffAmt,
+      'items': candidateSerializedItems,
+    };
+
+    const encoder = JsonEncoder.withIndent('  ');
+    final formattedPayload = encoder.convert(payloadToPrint);
+    debugPrint('======================================================================');
+    debugPrint('🚀 [BRANCH TRANSFER SAVE] PAYLOAD ON CLICK ON SAVE BUTTON:');
+    debugPrint('======================================================================');
+    for (var line in formattedPayload.split('\n')) {
+      debugPrint(line);
+    }
+    debugPrint('======================================================================');
+    log('Branch Transfer Save Payload: $formattedPayload');
 
     final hasBranch = defaultController.effectiveBranchCode > 0;
     final isDesiCode4 = defaultController.effectiveDesiCode == 4;
@@ -553,25 +747,60 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
       return;
     }
 
-    // Validate max allowed issue Wt for each row to save
+    // Validate min and max allowed issue Wt for each row to save
     for (var item in itemsToSave) {
       final maxAllowed = getMaxAllowedIssueWt(item);
+      final minAllowed = getMinAllowedIssueWt(item);
+      final name = _gridSource.resolveTypeName(item);
+
       if (item.issueWt > maxAllowed) {
-        final name = _gridSource.resolveTypeName(item);
         infoDialog(
           messageText:
               'Issue Wt (${item.issueWt.toStringAsFixed(3)}) cannot exceed max allowed (${maxAllowed.toStringAsFixed(3)}) for $name.',
         );
         return;
       }
+
+      if (minAllowed > 0.0 && item.issueWt < minAllowed) {
+        infoDialog(
+          messageText:
+              'Issue Wt (${item.issueWt.toStringAsFixed(3)}) cannot be less than min allowed (${minAllowed.toStringAsFixed(3)}) for $name.',
+        );
+        return;
+      }
     }
 
-    final success = await defaultController.saveBranchTransferData(
-      fromUserId: _selectedFromManagerId.value!,
-      toUserId: _selectedToManagerId.value!,
-      date: _dateController.text.trim(),
-      items: itemsToSave,
-    );
+    final itemsToSaveSerialized = itemsToSave.map((i) => i.toSaveJson(
+      type: _gridSource.resolveTypeName(i),
+      quality: _gridSource.resolveQuality(i),
+      charni: _gridSource.resolveCharni(i),
+      shape: _gridSource.resolveShape(i),
+      color: _gridSource.resolveColor(i),
+      clarity: _gridSource.resolveClarity(i),
+    )).toList();
+
+    final bool success;
+    if (_isFromEdit) {
+      final mstId = _idController.text.trim();
+      success = await defaultController.updateBranchTransferData(
+        id: mstId,
+        fromUserId: _selectedFromManagerId.value!,
+        toUserId: _selectedToManagerId.value!,
+        transferDate: formattedTransferDate,
+        date: _dateController.text.trim(),
+        items: itemsToSave,
+        serializedItems: itemsToSaveSerialized,
+      );
+    } else {
+      success = await defaultController.saveBranchTransferData(
+        fromUserId: _selectedFromManagerId.value!,
+        toUserId: _selectedToManagerId.value!,
+        transferDate: formattedTransferDate,
+        date: _dateController.text.trim(),
+        items: itemsToSave,
+        serializedItems: itemsToSaveSerialized,
+      );
+    }
 
     if (success) {
       setState(() {
@@ -586,6 +815,7 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
         }
       });
 
+      _gridSource.setShowCheckbox(true);
       _gridSource.setEnabled(false);
       _gridSource.toggleSelectAll(false);
       if (isCurrentUserTypeUser && _selectedFromManagerId.value != null) {
@@ -640,33 +870,41 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          if (widget.showHeader) const Header(title: 'Branch Transfer'),
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: Padding(
-                padding: EdgeInsets.all(Responsive.isMobile(context) ? 10 : 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Main Form Card with single row: id, from, to and date
-                    _buildFormCard(),
-                    const SizedBox(height: 10),
-
-                    // DataTable Card
-                    Expanded(
-                      child: _buildDataTableCard(),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Action buttons row at the bottom
-                    _buildActionButtonsCard(),
-                  ],
-                ),
-              ),
+          if (widget.showHeader)
+            Header(
+              title:
+                  _isSearch ? 'Branch Transfer Search' : 'Branch Transfer',
             ),
+          Expanded(
+            child: _isSearch ? _buildSearchView() : _buildFormView(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFormView() {
+    return Form(
+      key: _formKey,
+      child: Padding(
+        padding: EdgeInsets.all(Responsive.isMobile(context) ? 10 : 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Main Form Card with single row: id, from, to and date
+            _buildFormCard(),
+            const SizedBox(height: 10),
+
+            // DataTable Card
+            Expanded(
+              child: _buildDataTableCard(),
+            ),
+            const SizedBox(height: 10),
+
+            // Action buttons row at the bottom
+            _buildActionButtonsCard(),
+          ],
+        ),
       ),
     );
   }
@@ -709,11 +947,14 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
                   label: 'Id',
                   controller: _idController,
                   focusNode: _idFocus,
-                  enabled: false,
-                  hintText: 'Auto Generated',
+                  enabled: !_isEnabled && !_isFromEdit,
+                  hintText: _isEnabled ? 'Auto Generated' : 'Search ID...',
                   prefixIcon: const Icon(Icons.tag_rounded, size: 16),
-                  onFieldSubmitted: (_) {
-                    if (_isFromManagerEnabled) {
+                  onFieldSubmitted: (val) {
+                    final trimmed = val.trim();
+                    if (trimmed.isNotEmpty) {
+                      _loadTransferById(trimmed);
+                    } else if (_isFromManagerEnabled) {
                       _fromManagerFocus.requestFocus();
                     } else {
                       _toManagerFocus.requestFocus();
@@ -730,7 +971,7 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
                     dropdownItems: _buildFromManagerAppDropdownItems(),
                     focusNode: _fromManagerFocus,
                     nextFocusNode: _toManagerFocus,
-                    isEnabled: _isEnabled && _isFromManagerEnabled,
+                    isEnabled: _isEnabled && _isFromManagerEnabled && !_isFromEdit,
                     hintText: 'Select From Man',
                     searchHint: 'Search manager...',
                     prefixIcon: const Icon(Icons.person_rounded, size: 16),
@@ -757,7 +998,9 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
                     dropdownItems: _buildToManagerAppDropdownItems(),
                     focusNode: _toManagerFocus,
                     nextFocusNode: _dateFocus,
-                    isEnabled: _isEnabled && _selectedFromManagerId.value != null,
+                    isEnabled: _isEnabled &&
+                        _selectedFromManagerId.value != null &&
+                        !_isFromEdit,
                     hintText: _selectedFromManagerId.value == null
                         ? 'Select From Man first'
                         : (_isLoadingToManagers.value
@@ -888,13 +1131,35 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
                 isLoading: defaultController.isLoading.value,
                 onPressed: _handleSave,
               ),
-            if (_isEnabled)
+            if (_isFromEdit)
+              Obx(
+                () => AppButton(
+                  text: 'Delete',
+                  variant: AppButtonVariant.danger,
+                  icon: Icons.delete_outline_rounded,
+                  isLoading:
+                      defaultController.isDeleteLoadingBranchTransfer.value,
+                  onPressed: _handleDelete,
+                ),
+              ),
+            if (_isEnabled || _isFromEdit)
               AppButton(
                 text: 'Cancel',
                 variant: AppButtonVariant.outline,
                 icon: Icons.cancel_outlined,
                 onPressed: _handleCancel,
               ),
+            AppButton(
+              text: 'Search',
+              variant: AppButtonVariant.secondary,
+              icon: Icons.search_rounded,
+              onPressed: () {
+                setState(() {
+                  _isSearch = true;
+                });
+                defaultController.getBranchTransferList(force: true);
+              },
+            ),
             AppButton(
               text: 'Exit',
               variant: AppButtonVariant.secondary,
@@ -915,37 +1180,38 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
         isDark ? const Color(0xFFFEF08A) : const Color(0xFF713F12);
 
     return [
-      // 1. Checkbox Select Column
-      GridColumn(
-        columnName: 'select',
-        width: 48,
-        allowSorting: false,
-        allowFiltering: false,
-        label: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: Checkbox(
-              value: _gridSource.isAllSelected
-                  ? true
-                  : (_gridSource.hasSomeSelected ? null : false),
-              tristate: true,
-              activeColor: AppColors.primary,
-              side: BorderSide(
-                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                width: 1.5,
+      // 1. Checkbox Select Column (Hidden in edit mode)
+      if (!_isFromEdit)
+        GridColumn(
+          columnName: 'select',
+          width: 48,
+          allowSorting: false,
+          allowFiltering: false,
+          label: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: _gridSource.isAllSelected
+                    ? true
+                    : (_gridSource.hasSomeSelected ? null : false),
+                tristate: true,
+                activeColor: AppColors.primary,
+                side: BorderSide(
+                  color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                  width: 1.5,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+                onChanged: _isEnabled
+                    ? (val) {
+                        _gridSource.toggleSelectAll(val ?? false);
+                        setState(() {});
+                      }
+                    : null,
               ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
-              onChanged: _isEnabled
-                  ? (val) {
-                      _gridSource.toggleSelectAll(val ?? false);
-                      setState(() {});
-                    }
-                  : null,
             ),
           ),
         ),
-      ),
 
       // 2. Source (Rough / Polish)
       AppDataGrid.buildColumn(
@@ -1559,5 +1825,278 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildSearchView() {
+    return Column(
+      children: [
+        // Top Filter Bar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(bottom: BorderSide(color: AppColors.borderLight)),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 150,
+                child: AppTextField(
+                  label: 'From Date :',
+                  controller: _searchFromDateController,
+                  readOnly: true,
+                  prefixIcon:
+                      const Icon(Icons.calendar_today_rounded, size: 16),
+                  onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: _searchFromDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _searchFromDate = picked;
+                        _searchFromDateController.text =
+                            DateFormat('dd-MM-yyyy').format(picked);
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 150,
+                child: AppTextField(
+                  label: 'To :',
+                  controller: _searchToDateController,
+                  readOnly: true,
+                  prefixIcon:
+                      const Icon(Icons.calendar_today_rounded, size: 16),
+                  onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: _searchToDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _searchToDate = picked;
+                        _searchToDateController.text =
+                            DateFormat('dd-MM-yyyy').format(picked);
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              AppButton(
+                text: 'Show',
+                icon: Icons.filter_alt_rounded,
+                onPressed: () {
+                  setState(() {
+                    _isDateFiltered.value = true;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              AppButton(
+                text: 'Clear Filter',
+                variant: AppButtonVariant.outline,
+                icon: Icons.clear_all_rounded,
+                onPressed: () {
+                  setState(() {
+                    _searchFromDate = null;
+                    _searchToDate = null;
+                    _searchFromDateController.clear();
+                    _searchToDateController.clear();
+                    _isDateFiltered.value = false;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              AppButton(
+                text: 'Refresh',
+                variant: AppButtonVariant.outline,
+                icon: Icons.refresh_rounded,
+                onPressed: () =>
+                    defaultController.getBranchTransferList(force: true),
+              ),
+              const Spacer(),
+              AppButton(
+                text: 'Back to Form',
+                variant: AppButtonVariant.secondary,
+                icon: Icons.arrow_back_rounded,
+                onPressed: () {
+                  setState(() {
+                    _isSearch = false;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+
+        // Search Data Grid
+        Expanded(
+          child: Obx(() {
+            if (defaultController.isLoadingBranchTransferList.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            var list = defaultController.branchTransferList;
+            if (_isDateFiltered.value) {
+              list = list.where((item) {
+                if (item.transferDate == null) return false;
+                final dt = DateTime.tryParse(item.transferDate!);
+                if (dt == null) return true;
+                if (_searchFromDate != null &&
+                    dt.isBefore(_searchFromDate!)) {
+                  return false;
+                }
+                if (_searchToDate != null &&
+                    dt.isAfter(
+                        _searchToDate!.add(const Duration(days: 1)))) {
+                  return false;
+                }
+                return true;
+              }).toList().obs;
+            }
+
+            if (list.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.inventory_2_outlined,
+                        size: 48, color: AppColors.textSecondary),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No branch transfer records found.',
+                      style: TextStyle(
+                          fontSize: 14, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final searchSource = BranchTransferSearchDataGridSource(
+              list: list,
+              onSelect: (item) => _loadTransferById(item.branchTransferMstID),
+            );
+
+            return AppDataGrid(
+              source: searchSource,
+              columns: _buildSearchGridColumns(),
+              allowSorting: true,
+              allowFiltering: true,
+              gridLinesVisibility: GridLinesVisibility.both,
+              headerGridLinesVisibility: GridLinesVisibility.both,
+              onCellDoubleTap: (details) {
+                if (details.rowColumnIndex.rowIndex <= 0) return;
+                final int dataRowIndex = details.rowColumnIndex.rowIndex - 1;
+                final rows = searchSource.effectiveRows;
+                if (dataRowIndex >= 0 && dataRowIndex < rows.length) {
+                  final row = rows[dataRowIndex];
+                  final idCell = row
+                      .getCells()
+                      .firstWhereOrNull((c) => c.columnName == 'ID');
+                  if (idCell?.value != null) {
+                    _loadTransferById(idCell!.value);
+                  }
+                }
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  List<GridColumn> _buildSearchGridColumns() {
+    return [
+      GridColumn(
+        columnName: 'ID',
+        width: 80,
+        label: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('ID',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'Date',
+        width: 110,
+        label: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('Date',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'FromMan',
+        width: 160,
+        label: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('From Man',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'ToMan',
+        width: 160,
+        label: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('To Man',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'Items',
+        width: 80,
+        label: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('Items',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'StockWt',
+        width: 110,
+        label: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('Stock Wt',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'IssueWt',
+        width: 110,
+        label: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('Iss Wt',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+      GridColumn(
+        columnName: 'IssueAmt',
+        width: 130,
+        label: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Text('Iss Amt ₹',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+      ),
+    ];
   }
 }

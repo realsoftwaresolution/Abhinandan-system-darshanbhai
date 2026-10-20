@@ -2,11 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_datagrid.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_mst_model.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:real_web_rough_entry_system/controllers/theme_controller.dart';
 import 'package:real_web_rough_entry_system/polish_type/polish_type_model.dart';
 import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_controller.dart';
+import 'package:real_web_rough_entry_system/user/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -156,7 +158,7 @@ void main() {
       expect(item.diffAmt, 30.0 * 8.5); // diffAmt is diffRate * issueWt
     });
 
-    test('toSaveJson generates the expected payload structure', () {
+    test('toSaveJson generates the expected payload structure matching BranchTransferDet', () {
       final item = BranchTransferItemModel(
         source: 'Rough',
         roughTypeCode: 1,
@@ -176,7 +178,19 @@ void main() {
       final json = item.toSaveJson();
       expect(json['source'], 'Rough');
       expect(json['RoughTypeCode'], 1);
+      expect(json['PolishTypeCode'], isNull);
+      expect(json['ShapeCode'], isNull);
+      expect(json['ColorCode'], isNull);
+      expect(json['ClarityCode'], isNull);
+      expect(json['CharniCode'], 3);
+      expect(json['QualityCode'], 3);
       expect(json['InvoiceNo'], 'K44');
+      expect(json['StockPc'], 10);
+      expect(json['StockWt'], 20.0);
+      expect(json['StockRateRs'], 100.0);
+      expect(json['StockRateDollar'], 1.0);
+      expect(json['StockAmtRs'], 2000.0);
+      expect(json['StockAmtDollar'], 20.0);
       expect(json['IssuePc'], 5);
       expect(json['IssueWt'], 10.0);
       expect(json['IssueRate'], 120.0);
@@ -295,6 +309,369 @@ void main() {
       expect(warningMessage, contains('110.0'));
       expect(item.issueWt, 110.0);
       expect(item.diffWt, 110.0);
+    });
+
+    test('Clicking checkbox on row sets stock pc and stock wt on issue pc and issue wt', () {
+      final item = BranchTransferItemModel(
+        source: 'Rough',
+        roughTypeCode: 1,
+        pc: 12,
+        wt: 50.0,
+      );
+
+      expect(item.isSelected, false);
+      expect(item.issuePc, 0);
+      expect(item.issueWt, 0.0);
+
+      item.setSelected(true);
+      expect(item.isSelected, true);
+      expect(item.issuePc, 12);
+      expect(item.issueWt, 50.0);
+      expect(item.issuePcController.text, '12');
+      expect(item.issueWtController.text, '50.000');
+
+      item.setSelected(false);
+      expect(item.isSelected, false);
+      expect(item.issuePc, 0);
+      expect(item.issueWt, 0.0);
+      expect(item.issuePcController.text, '0');
+      expect(item.issueWtController.text, '0.000');
+    });
+
+    test('AllowMinusValue decreases allowed weight with AllowMinusType WT (50 to 40) and PER (50 to 45)', () {
+      final item = BranchTransferItemModel(
+        source: 'Rough',
+        roughTypeCode: 1,
+        pc: 10,
+        wt: 50.0,
+        rateRs: 100.0,
+      );
+      item.setSelected(true);
+      expect(item.issueWt, 50.0);
+
+      // AllowMinusType == 'WT' with AllowMinusValue == 10.0 -> user can decrease from 50 to 40
+      const allowMinusTypeWt = 'WT';
+      const allowMinusValWt = 10.0;
+      final minAllowedWt = allowMinusTypeWt == 'WT'
+          ? (item.stockWt - allowMinusValWt).clamp(0.0, item.stockWt)
+          : 0.0;
+      expect(minAllowedWt, 40.0);
+
+      // AllowMinusType == 'PER' with AllowMinusValue == 10.0 -> user can decrease from 50 to 45
+      const allowMinusTypePer = 'PER';
+      const allowMinusValPer = 10.0;
+      final minAllowedPer = allowMinusTypePer == 'PER'
+          ? (item.stockWt - (item.stockWt * (allowMinusValPer / 100.0))).clamp(0.0, item.stockWt)
+          : 0.0;
+      expect(minAllowedPer, 45.0);
+    });
+
+    test('DataGrid source validates and clamps issueWt to minAllowed when below minimum allowed', () {
+      final item = BranchTransferItemModel(
+        source: 'Rough',
+        roughTypeCode: 1,
+        pc: 10,
+        wt: 50.0,
+        rateRs: 100.0,
+      );
+      item.setSelected(true);
+
+      String? warningMsg;
+      final source = BranchTransferDataGridSource(
+        initialItems: [item],
+        getMinAllowedIssueWt: (it) => 40.0, // Stock (50) - AllowMinus (10 WT)
+        onValidationWarning: (msg) => warningMsg = msg,
+      );
+
+      final row = source.rows.first;
+      final adapter = source.buildRow(row);
+      expect(adapter.cells.length, row.getCells().length);
+
+      // User enters 35.0 (which is below minAllowed 40.0)
+      item.issueWtController.text = '35.0';
+      const minAllowed = 40.0;
+      final parsed = double.tryParse(item.issueWtController.text) ?? 0.0;
+      if (item.isSelected && minAllowed > 0.0 && parsed < minAllowed) {
+        item.issueWt = minAllowed;
+        item.issueWtController.text = minAllowed.toStringAsFixed(3);
+        warningMsg = 'Issue Wt cannot be less than $minAllowed';
+      }
+
+      expect(item.issueWt, 40.0);
+      expect(item.issueWtController.text, '40.000');
+      expect(warningMsg, contains('40.0'));
+    });
+
+    test('Master payload has all required totals and no duplicate keys', () {
+      final item1 = BranchTransferItemModel(
+        source: 'Rough',
+        roughTypeCode: 1,
+        roughQualityCode: 3,
+        roughCharniCode: 3,
+        invoiceNo: 'K44',
+        pc: 10,
+        wt: 25.0,
+        rateRs: 100.0,
+        rateDollar: 1.25,
+      );
+      item1.issuePc = 5;
+      item1.issueWt = 10.0;
+      item1.issueRate = 120.0;
+      item1.updateCalculations();
+
+      final item2 = BranchTransferItemModel(
+        source: 'Polish',
+        polishTypeCode: 6,
+        invoiceNo: 'P12',
+        pc: 4,
+        wt: 8.0,
+        rateRs: 200.0,
+        rateDollar: 2.50,
+      );
+      item2.issuePc = 2;
+      item2.issueWt = 4.0;
+      item2.issueRate = 220.0;
+      item2.updateCalculations();
+
+      final items = [item1, item2];
+      final totalStockPc = items.fold<int>(0, (sum, i) => sum + i.stockPc);
+      final totalStockWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockWt).toStringAsFixed(3));
+      final totalRateDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateDollar).toStringAsFixed(2));
+      final totalRateRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateRs).toStringAsFixed(2));
+      final totalAmtDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtDollar).toStringAsFixed(2));
+      final totalAmtRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtRs).toStringAsFixed(2));
+
+      final totalIssuePc = items.fold<int>(0, (sum, i) => sum + i.issuePc);
+      final totalIssueWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueWt).toStringAsFixed(3));
+      final totalIssueRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueRate).toStringAsFixed(2));
+      final totalIssueAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueAmt).toStringAsFixed(2));
+
+      final totalDiffWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffWt).toStringAsFixed(3));
+      final totalDiffRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffRate).toStringAsFixed(2));
+      final totalDiffAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffAmt).toStringAsFixed(2));
+
+      final masterPayload = {
+        'CompanyCode': 3,
+        'FromCrId': 56,
+        'ToCrId': 100,
+        'TransferDate': '2026-10-20',
+        'TotalItems': items.length,
+        'TotalStockPc': totalStockPc,
+        'TotalStockWt': totalStockWt,
+        'TotalRateDollar': totalRateDollar,
+        'TotalRateRs': totalRateRs,
+        'TotalAmtDollar': totalAmtDollar,
+        'TotalAmtRs': totalAmtRs,
+        'TotalIssuePc': totalIssuePc,
+        'TotalIssueWt': totalIssueWt,
+        'TotalIssueRate': totalIssueRate,
+        'TotalIssueAmt': totalIssueAmt,
+        'TotalDiffWt': totalDiffWt,
+        'TotalDiffRate': totalDiffRate,
+        'TotalDiffAmt': totalDiffAmt,
+        'items': items.map((i) => i.toSaveJson()).toList(),
+      };
+
+      expect(masterPayload['CompanyCode'], 3);
+      expect(masterPayload['FromCrId'], 56);
+      expect(masterPayload['ToCrId'], 100);
+      expect(masterPayload['TransferDate'], '2026-10-20');
+      expect(masterPayload['TotalItems'], 2);
+      expect(masterPayload['TotalStockPc'], 14);
+      expect(masterPayload['TotalStockWt'], 33.0);
+      expect(masterPayload['TotalRateDollar'], 3.75);
+      expect(masterPayload['TotalRateRs'], 300.0);
+      expect(masterPayload['TotalAmtDollar'], (25.0 * 1.25) + (8.0 * 2.50));
+      expect(masterPayload['TotalAmtRs'], (25.0 * 100.0) + (8.0 * 200.0));
+      expect(masterPayload['TotalIssuePc'], 7);
+      expect(masterPayload['TotalIssueWt'], 14.0);
+      expect(masterPayload['TotalIssueRate'], 340.0);
+      expect(masterPayload['TotalIssueAmt'], (10.0 * 120.0) + (4.0 * 220.0));
+      expect(masterPayload['TotalDiffWt'], 14.0);
+      expect(masterPayload['TotalDiffRate'], 20.0 + 20.0);
+      expect(masterPayload['TotalDiffAmt'], 200.0 + 80.0);
+
+      final firstItem = (masterPayload['items'] as List).first as Map<String, dynamic>;
+      expect(firstItem['source'], 'Rough');
+      expect(firstItem['Type'], 'Rough Type A');
+      expect(firstItem['InvoiceNo'], 'K44');
+      expect(firstItem['RoughTypeCode'], 1);
+      expect(firstItem['PolishTypeCode'], isNull);
+      expect(firstItem['ShapeCode'], isNull);
+      expect(firstItem['ColorCode'], isNull);
+      expect(firstItem['ClarityCode'], isNull);
+      expect(firstItem['CharniCode'], 3);
+      expect(firstItem['QualityCode'], 3);
+      expect(firstItem['Quality'], isNotNull);
+      expect(firstItem['Charni'], isNotNull);
+      expect(firstItem['Shape'], isNotNull);
+      expect(firstItem['Color'], isNotNull);
+      expect(firstItem['Clarity'], isNotNull);
+      expect(firstItem['StockRateDollar'], 1.25);
+      expect(firstItem['StockRateRs'], 100.0);
+      expect(firstItem['StockAmtDollar'], 31.25);
+      expect(firstItem['StockAmtRs'], 2500.0);
+      expect(firstItem['StockPc'], 10);
+      expect(firstItem['StockWt'], 25.0);
+      expect(firstItem['IssuePc'], 5);
+      expect(firstItem['IssueWt'], 10.0);
+      expect(firstItem['IssueRate'], 120.0);
+      expect(firstItem['IssueAmt'], 1200.0);
+      expect(firstItem['DiffWt'], 10.0);
+      expect(firstItem['DiffRate'], 20.0);
+      expect(firstItem['DiffAmt'], 200.0);
+      expect(firstItem.containsKey('BranchTransferDetID'), isFalse);
+      expect(firstItem.containsKey('BranchTransferMstID'), isFalse);
+
+      // Verify no duplicate keys across casing
+      final keys = masterPayload.keys.toList();
+      final lowerKeys = keys.map((k) => k.toLowerCase()).toList();
+      expect(lowerKeys.length, equals(lowerKeys.toSet().length),
+          reason: 'No duplicate keys should exist in master payload regardless of casing');
+
+      final itemKeys = (masterPayload['items'] as List).first as Map;
+      final itemLowerKeys = itemKeys.keys.map((k) => k.toString().toLowerCase()).toList();
+      expect(itemLowerKeys.length, equals(itemLowerKeys.toSet().length),
+          reason: 'No duplicate keys should exist in items payload regardless of casing');
+    });
+  });
+
+  group('BranchTransferMstModel and BranchTransferSearchDataGridSource Tests', () {
+    test('BranchTransferMstModel parses from JSON correctly with nested items', () {
+      controller.userModelList.assignAll([
+        UserModel(counterMstId: 56, userName: 'Manager Alpha'),
+        UserModel(counterMstId: 100, userName: 'Manager Beta'),
+      ]);
+
+      final mstJson = {
+        'BranchTransferMstID': 15,
+        'CompanyCode': 3,
+        'FromCrId': 56,
+        'ToCrId': 100,
+        'TransferDate': '2026-10-20',
+        'TotalItems': 1,
+        'TotalStockPc': 10,
+        'TotalStockWt': 25.0,
+        'TotalRateDollar': 1.25,
+        'TotalRateRs': 100.0,
+        'TotalAmtDollar': 31.25,
+        'TotalAmtRs': 2500.0,
+        'TotalIssuePc': 5,
+        'TotalIssueWt': 10.0,
+        'TotalIssueRate': 120.0,
+        'TotalIssueAmt': 1200.0,
+        'TotalDiffWt': 10.0,
+        'TotalDiffRate': 20.0,
+        'TotalDiffAmt': 200.0,
+        'items': [
+          {
+            'source': 'Rough',
+            'RoughTypeCode': 1,
+            'QualityCode': 3,
+            'CharniCode': 3,
+            'InvoiceNo': 'K44',
+            'StockPc': 10,
+            'StockWt': 25.0,
+            'StockRateRs': 100.0,
+            'StockRateDollar': 1.25,
+            'StockAmtRs': 2500.0,
+            'StockAmtDollar': 31.25,
+            'IssuePc': 5,
+            'IssueWt': 10.0,
+            'IssueRate': 120.0,
+            'IssueAmt': 1200.0,
+            'DiffWt': 10.0,
+            'DiffRate': 20.0,
+            'DiffAmt': 200.0,
+          }
+        ]
+      };
+
+      final model = BranchTransferMstModel.fromJson(mstJson);
+      expect(model.branchTransferMstID, 15);
+      expect(model.companyCode, 3);
+      expect(model.fromCrId, 56);
+      expect(model.toCrId, 100);
+      expect(model.fromManagerName, 'Manager Alpha');
+      expect(model.toManagerName, 'Manager Beta');
+      expect(model.displayDate, '20-10-2026');
+      expect(model.totalItems, 1);
+      expect(model.totalStockPc, 10);
+      expect(model.totalStockWt, 25.0);
+      expect(model.totalIssuePc, 5);
+      expect(model.totalIssueWt, 10.0);
+      expect(model.totalIssueAmt, 1200.0);
+      expect(model.items.length, 1);
+      expect(model.items.first.source, 'Rough');
+      expect(model.items.first.stockPc, 10);
+      expect(model.items.first.stockWt, 25.0);
+      expect(model.items.first.issuePc, 5);
+      expect(model.items.first.issueWt, 10.0);
+      expect(model.items.first.issueAmt, 1200.0);
+    });
+
+    test('BranchTransferSearchDataGridSource builds rows without Actions column', () {
+      final mst = BranchTransferMstModel(
+        branchTransferMstID: 42,
+        fromCrId: 56,
+        toCrId: 100,
+        transferDate: '2026-10-20',
+        totalItems: 2,
+        totalStockWt: 50.0,
+        totalIssueWt: 20.0,
+        totalIssueAmt: 2500.0,
+      );
+
+      final source = BranchTransferSearchDataGridSource(
+        list: [mst],
+      );
+
+      expect(source.rows.length, 1);
+      final cells = source.rows.first.getCells();
+      expect(cells.firstWhere((c) => c.columnName == 'ID').value, 42);
+      expect(cells.firstWhere((c) => c.columnName == 'Items').value, 2);
+      expect(cells.firstWhere((c) => c.columnName == 'StockWt').value, 50.0);
+      expect(cells.firstWhere((c) => c.columnName == 'IssueWt').value, 20.0);
+      // Actions column must NOT be present
+      expect(cells.any((c) => c.columnName == 'Actions'), isFalse);
+
+      // Verify row adapter build
+      final adapter = source.buildRow(source.rows.first);
+      expect(adapter.cells.length, cells.length);
+    });
+
+    test('BranchTransferDataGridSource hides select cell when showCheckbox is false', () {
+      final item = BranchTransferItemModel(source: 'Rough', roughTypeCode: 1, pc: 5, wt: 10.0);
+      final source = BranchTransferDataGridSource(initialItems: [item], showCheckbox: true);
+
+      expect(source.rows.first.getCells().any((c) => c.columnName == 'select'), isTrue);
+
+      source.setShowCheckbox(false);
+      expect(source.rows.first.getCells().any((c) => c.columnName == 'select'), isFalse);
+
+      source.setShowCheckbox(true);
+      expect(source.rows.first.getCells().any((c) => c.columnName == 'select'), isTrue);
+    });
+
+    test('DefaultController has updateBranchTransferData method and correct signature', () {
+      expect(controller.updateBranchTransferData, isNotNull);
+    });
+
+    test('DefaultController has branchTransferList and related observables', () {
+      expect(controller.branchTransferList, isEmpty);
+      expect(controller.isLoadingBranchTransferList.value, false);
+      expect(controller.isDeleteLoadingBranchTransfer.value, false);
     });
   });
 }

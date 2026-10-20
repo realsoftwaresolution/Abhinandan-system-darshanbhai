@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:real_web_rough_entry_system/app_theme.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_mst_model.dart';
 import 'package:real_web_rough_entry_system/common/widgets.dart';
 import 'package:real_web_rough_entry_system/controllers/default_controller.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -13,17 +14,21 @@ class BranchTransferDataGridSource extends DataGridSource {
   List<BranchTransferItemModel> items = [];
   List<DataGridRow> _dataGridRows = [];
   bool isEnabled = false;
+  bool showCheckbox = true;
   final void Function(BranchTransferItemModel item)? onRowChanged;
   final void Function()? onSelectAllToggled;
   final double Function(BranchTransferItemModel item)? getMaxAllowedIssueWt;
+  final double Function(BranchTransferItemModel item)? getMinAllowedIssueWt;
   final void Function(String message)? onValidationWarning;
 
   BranchTransferDataGridSource({
     required List<BranchTransferItemModel> initialItems,
     this.isEnabled = false,
+    this.showCheckbox = true,
     this.onRowChanged,
     this.onSelectAllToggled,
     this.getMaxAllowedIssueWt,
+    this.getMinAllowedIssueWt,
     this.onValidationWarning,
   }) {
     items = initialItems;
@@ -39,6 +44,14 @@ class BranchTransferDataGridSource extends DataGridSource {
   void setEnabled(bool enabled) {
     isEnabled = enabled;
     notifyListeners();
+  }
+
+  void setShowCheckbox(bool show) {
+    if (showCheckbox != show) {
+      showCheckbox = show;
+      _rebuildAllRows();
+      notifyListeners();
+    }
   }
 
   bool get isAllSelected => items.isNotEmpty && items.every((e) => e.isSelected);
@@ -110,7 +123,8 @@ class BranchTransferDataGridSource extends DataGridSource {
 
   DataGridRow _createDataGridRow(BranchTransferItemModel item) {
     return DataGridRow(cells: [
-      DataGridCell<bool>(columnName: 'select', value: item.isSelected),
+      if (showCheckbox)
+        DataGridCell<bool>(columnName: 'select', value: item.isSelected),
       DataGridCell<String>(columnName: 'source', value: item.source),
       DataGridCell<String>(columnName: 'type', value: resolveTypeName(item)),
       DataGridCell<String>(columnName: 'invoiceNo', value: item.invoiceNo ?? '-'),
@@ -274,51 +288,81 @@ class BranchTransferDataGridSource extends DataGridSource {
             ),
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: TextField(
-              controller: item.issueWtController,
-              focusNode: item.issueWtFocusNode,
-              enabled: isEnabled,
-              textAlign: TextAlign.right,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-              ],
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 4),
-                border: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-              ),
-              onChanged: (val) {
-                final parsed = double.tryParse(val) ?? 0.0;
-                final maxAllowed = getMaxAllowedIssueWt?.call(item) ?? item.stockWt;
-
-                if (parsed > maxAllowed) {
-                  item.issueWt = maxAllowed;
-                  item.issueWtController.text = maxAllowed.toStringAsFixed(3);
-                  item.issueWtController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: item.issueWtController.text.length),
-                  );
-                  onValidationWarning?.call(
-                    'Issue Wt cannot exceed ${maxAllowed.toStringAsFixed(3)} (Stock: ${item.stockWt.toStringAsFixed(3)})',
-                  );
-                } else {
-                  item.issueWt = parsed;
+            child: Focus(
+              onFocusChange: (hasFocus) {
+                if (!hasFocus) {
+                  final parsed = double.tryParse(item.issueWtController.text) ?? 0.0;
+                  final minAllowed = getMinAllowedIssueWt?.call(item) ?? 0.0;
+                  if (item.isSelected && minAllowed > 0.0 && parsed < minAllowed) {
+                    item.issueWt = minAllowed;
+                    item.issueWtController.text = minAllowed.toStringAsFixed(3);
+                    onValidationWarning?.call(
+                      'Issue Wt cannot be less than ${minAllowed.toStringAsFixed(3)} (Min allowed: ${minAllowed.toStringAsFixed(3)})',
+                    );
+                    updateRowCalculations(item);
+                    onRowChanged?.call(item);
+                  }
                 }
-
-                if (item.issueWt > 0.0 && !item.isSelected) {
-                  item.isSelected = true;
-                }
-                updateRowCalculations(item);
-                onRowChanged?.call(item);
               },
+              child: TextField(
+                controller: item.issueWtController,
+                focusNode: item.issueWtFocusNode,
+                enabled: isEnabled,
+                textAlign: TextAlign.right,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 4),
+                  border: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                ),
+                onSubmitted: (val) {
+                  final parsed = double.tryParse(val) ?? 0.0;
+                  final minAllowed = getMinAllowedIssueWt?.call(item) ?? 0.0;
+                  if (item.isSelected && minAllowed > 0.0 && parsed < minAllowed) {
+                    item.issueWt = minAllowed;
+                    item.issueWtController.text = minAllowed.toStringAsFixed(3);
+                    onValidationWarning?.call(
+                      'Issue Wt cannot be less than ${minAllowed.toStringAsFixed(3)} (Min allowed: ${minAllowed.toStringAsFixed(3)})',
+                    );
+                    updateRowCalculations(item);
+                    onRowChanged?.call(item);
+                  }
+                },
+                onChanged: (val) {
+                  final parsed = double.tryParse(val) ?? 0.0;
+                  final maxAllowed = getMaxAllowedIssueWt?.call(item) ?? item.stockWt;
+
+                  if (parsed > maxAllowed) {
+                    item.issueWt = maxAllowed;
+                    item.issueWtController.text = maxAllowed.toStringAsFixed(3);
+                    item.issueWtController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: item.issueWtController.text.length),
+                    );
+                    onValidationWarning?.call(
+                      'Issue Wt cannot exceed ${maxAllowed.toStringAsFixed(3)} (Stock: ${item.stockWt.toStringAsFixed(3)})',
+                    );
+                  } else {
+                    item.issueWt = parsed;
+                  }
+
+                  if (item.issueWt > 0.0 && !item.isSelected) {
+                    item.isSelected = true;
+                  }
+                  updateRowCalculations(item);
+                  onRowChanged?.call(item);
+                },
+              ),
             ),
           );
         }
@@ -434,3 +478,82 @@ class BranchTransferDataGridSource extends DataGridSource {
     );
   }
 }
+
+/// DataGridSource for displaying Branch Transfer master records in Search View
+class BranchTransferSearchDataGridSource extends DataGridSource {
+  List<DataGridRow> _dataGridRows = [];
+  List<BranchTransferMstModel> _list = [];
+  final void Function(BranchTransferMstModel item)? onSelect;
+  final void Function(BranchTransferMstModel item)? onDelete;
+
+  BranchTransferSearchDataGridSource({
+    required List<BranchTransferMstModel> list,
+    this.onSelect,
+    this.onDelete,
+  }) {
+    updateList(list);
+  }
+
+  void updateList(List<BranchTransferMstModel> newList) {
+    _list = List.from(newList);
+    _buildRows();
+    notifyListeners();
+  }
+
+  void _buildRows() {
+    _dataGridRows = _list.map<DataGridRow>((item) {
+      return DataGridRow(cells: [
+        DataGridCell<int>(columnName: 'ID', value: item.branchTransferMstID ?? 0),
+        DataGridCell<String>(columnName: 'Date', value: item.displayDate),
+        DataGridCell<String>(columnName: 'FromMan', value: item.fromManagerName),
+        DataGridCell<String>(columnName: 'ToMan', value: item.toManagerName),
+        DataGridCell<int>(columnName: 'Items', value: item.totalItems ?? item.items.length),
+        DataGridCell<double>(columnName: 'StockWt', value: item.totalStockWt ?? 0.0),
+        DataGridCell<double>(columnName: 'IssueWt', value: item.totalIssueWt ?? 0.0),
+        DataGridCell<double>(columnName: 'IssueAmt', value: item.totalIssueAmt ?? 0.0),
+      ]);
+    }).toList();
+  }
+
+  @override
+  List<DataGridRow> get rows => _dataGridRows;
+
+  @override
+  DataGridRowAdapter buildRow(DataGridRow row) {
+    return DataGridRowAdapter(
+      color: Colors.transparent,
+      cells: row.getCells().map<Widget>((cell) {
+
+        String displayVal = cell.value?.toString() ?? '-';
+        if (cell.columnName == 'StockWt' || cell.columnName == 'IssueWt') {
+          displayVal = (cell.value as double? ?? 0.0).toStringAsFixed(3);
+        } else if (cell.columnName == 'IssueAmt') {
+          displayVal =
+              NumberFormat('#,##0.00').format(cell.value as double? ?? 0.0);
+        }
+
+        final isNumeric = cell.columnName == 'ID' ||
+            cell.columnName == 'Items' ||
+            cell.columnName == 'StockWt' ||
+            cell.columnName == 'IssueWt' ||
+            cell.columnName == 'IssueAmt';
+
+        return Container(
+          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            displayVal,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: cell.columnName == 'ID'
+                  ? FontWeight.w600
+                  : FontWeight.normal,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+

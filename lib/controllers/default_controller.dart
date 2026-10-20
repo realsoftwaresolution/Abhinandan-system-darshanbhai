@@ -53,6 +53,7 @@ import 'package:real_web_rough_entry_system/rough/rough_model.dart';
 import 'package:real_web_rough_entry_system/sale/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_mst_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -85,6 +86,10 @@ class DefaultController extends GetxController {
   RxList<BranchTransferItemModel> branchTransferCombinedList =
       <BranchTransferItemModel>[].obs;
   RxBool isLoadingBranchTransfer = false.obs;
+  RxList<BranchTransferMstModel> branchTransferList =
+      <BranchTransferMstModel>[].obs;
+  RxBool isLoadingBranchTransferList = false.obs;
+  RxBool isDeleteLoadingBranchTransfer = false.obs;
 
   // RxList<RoughPurchaseModel> polishSaleList = <RoughPurchaseModel>[].obs;
   RxList<PartyTypeMstModel> partyTypeMstList = <PartyTypeMstModel>[].obs;
@@ -3225,12 +3230,10 @@ class DefaultController extends GetxController {
         if (branchCode != null) 'BranchCode': branchCode,
         if (desiCode != null) 'DesiCode': desiCode,
         if (autoRec != null && autoRec.isNotEmpty) 'AutoRec': autoRec,
-        if (allowPlusType != null && allowPlusType.isNotEmpty)
-          'AllowPlusType': allowPlusType,
-        if (allowPlusValue != null) 'AllowPlusValue': allowPlusValue,
-        if (allowMinusType != null && allowMinusType.isNotEmpty)
-          'AllowMinusType': allowMinusType,
-        if (allowMinusValue != null) 'AllowMinusValue': allowMinusValue,
+          'AllowPlusType': allowPlusType ?? '',
+       'AllowPlusValue': allowPlusValue ?? 0.0,
+        'AllowMinusType': allowMinusType ?? '',
+        'AllowMinusValue': allowMinusValue ?? 0.0,
         if (stockLimit != null) 'StockLimit': stockLimit,
         if (loginTimeFrom != null) 'LoginTimeFrom': loginTimeFrom,
         if (loginTimeTo != null) 'LoginTimeTo': loginTimeTo,
@@ -3513,36 +3516,149 @@ class DefaultController extends GetxController {
   }
 
   Future<bool> saveBranchTransferData({
+    dynamic id,
     required int fromUserId,
     required int toUserId,
-    required String date,
+    String? transferDate,
+    String? date,
     required List<BranchTransferItemModel> items,
+    List<Map<String, dynamic>>? serializedItems,
+    int? companyCodeParam,
   }) async {
+    if (id != null && id.toString().trim().isNotEmpty) {
+      return await updateBranchTransferData(
+        id: id,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        transferDate: transferDate,
+        date: date,
+        items: items,
+        serializedItems: serializedItems,
+        companyCodeParam: companyCodeParam,
+      );
+    }
     isLoading.value = true;
     try {
-      final body = {
-        'companyCode': companyCode.value != 0 ? companyCode.value : 3,
-        'fromCrId': fromUserId,
-        'toCrId': toUserId,
-        'date': date,
-        'items': items.map((i) => i.toSaveJson()).toList(),
-      };
-      log('Saving branch transfer with body: $body');
+      final codeToUse = companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : 3);
+      final totalStockPc = items.fold<int>(0, (sum, i) => sum + i.stockPc);
+      final totalStockWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockWt).toStringAsFixed(3));
+      final totalRateDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateDollar).toStringAsFixed(2));
+      final totalRateRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateRs).toStringAsFixed(2));
+      final totalAmtDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtDollar).toStringAsFixed(2));
+      final totalAmtRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtRs).toStringAsFixed(2));
 
-      final response = await ApiService.to.dio.post(
-        '${ApiService.to.baseUrl}branch-transfer/save',
-        data: body,
-      );
+      final totalIssuePc = items.fold<int>(0, (sum, i) => sum + i.issuePc);
+      final totalIssueWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueWt).toStringAsFixed(3));
+      final totalIssueRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueRate).toStringAsFixed(2));
+      final totalIssueAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueAmt).toStringAsFixed(2));
+
+      final totalDiffWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffWt).toStringAsFixed(3));
+      final totalDiffRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffRate).toStringAsFixed(2));
+      final totalDiffAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffAmt).toStringAsFixed(2));
+
+      final formattedDate = (transferDate != null && transferDate.isNotEmpty)
+          ? transferDate
+          : (date != null && date.isNotEmpty
+              ? (date.contains('-') && date.split('-').first.length == 2
+                  ? date.split('-').reversed.join('-')
+                  : date)
+              : DateFormat('yyyy-MM-dd').format(DateTime.now()));
+
+      final itemsPayload =
+          serializedItems ?? items.map((i) => i.toSaveJson()).toList();
+
+      final body = {
+        'CompanyCode': codeToUse,
+        'FromCrId': fromUserId,
+        'ToCrId': toUserId,
+        'TransferDate': formattedDate,
+        'TotalItems': items.length,
+        'TotalStockPc': totalStockPc,
+        'TotalStockWt': totalStockWt,
+        'TotalRateDollar': totalRateDollar,
+        'TotalRateRs': totalRateRs,
+        'TotalAmtDollar': totalAmtDollar,
+        'TotalAmtRs': totalAmtRs,
+        'TotalIssuePc': totalIssuePc,
+        'TotalIssueWt': totalIssueWt,
+        'TotalIssueRate': totalIssueRate,
+        'TotalIssueAmt': totalIssueAmt,
+        'TotalDiffWt': totalDiffWt,
+        'TotalDiffRate': totalDiffRate,
+        'TotalDiffAmt': totalDiffAmt,
+        'items': itemsPayload,
+      };
+
+      const encoder = JsonEncoder.withIndent('  ');
+      final formattedJson = encoder.convert(body);
+      debugPrint('======================================================================');
+      debugPrint('🚀 [DEFAULT_CONTROLLER] SENDING PAYLOAD TO BRANCH TRANSFER SAVE API:');
+      debugPrint('======================================================================');
+      for (var line in formattedJson.split('\n')) {
+        debugPrint(line);
+      }
+      debugPrint('======================================================================');
+      log('Saving branch transfer with body: $formattedJson');
+
+      dynamic response;
+      try {
+        response = await ApiService.to.dio.post(
+          '${ApiService.to.baseUrl}branch-transfer/save',
+          data: body,
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          try {
+            response = await ApiService.to.dio.post(
+              '${ApiService.to.baseUrl}branch-transfer/add',
+              data: body,
+            );
+          } on DioException catch (fallbackErr) {
+            if (fallbackErr.response?.statusCode == 404) {
+              try {
+                response = await ApiService.to.dio.post(
+                  '${ApiService.to.baseUrl}rough-entry/branch-transfer/add',
+                  data: body,
+                );
+              } on DioException catch (_) {
+                isLoading.value = false;
+                await successDialog(
+                  messageText:
+                      'Branch Transfer payload generated and printed to console.\n(Server endpoint not yet deployed - 404)\nItems: ${items.length} | Iss Pc: $totalIssuePc | Iss Wt: ${totalIssueWt.toStringAsFixed(3)} | Iss Amt: ₹${NumberFormat('#,##0.00').format(totalIssueAmt)}',
+                );
+                return true;
+              }
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          rethrow;
+        }
+      }
 
       isLoading.value = false;
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
         final msg = (response.data is Map && response.data['message'] != null)
             ? response.data['message'].toString()
             : 'Branch Transfer saved successfully.';
         await successDialog(messageText: msg);
+        await getBranchTransferList(force: true);
         return true;
       } else {
-        final err = (response.data is Map && response.data['message'] != null)
+        final String err = (response?.data is Map && response?.data['message'] != null)
             ? response.data['message'].toString()
             : 'Failed to save Branch Transfer';
         await errorDialog(messageText: err);
@@ -3555,23 +3671,291 @@ class DefaultController extends GetxController {
               dioErr.response?.data['message'] != null)
           ? dioErr.response?.data['message'].toString() ?? 'Server error saving transfer'
           : (dioErr.message ?? 'Server error saving transfer');
-      // If endpoint not yet deployed on remote server (404), save locally and inform user
-      if (dioErr.response?.statusCode == 404) {
-        final totalPc = items.fold(0, (sum, i) => sum + i.issuePc);
-        final totalWt = items.fold(0.0, (sum, i) => sum + i.issueWt);
-        final totalAmt = items.fold(0.0, (sum, i) => sum + i.issueAmt);
-        await successDialog(
-          messageText:
-              'Branch Transfer saved successfully.\nItems: ${items.length} | Iss Pc: $totalPc | Iss Wt: ${totalWt.toStringAsFixed(3)} | Iss Amt: ₹${NumberFormat('#,##0.00').format(totalAmt)}',
-        );
-        return true;
-      }
       await errorDialog(messageText: msg);
       return false;
     } catch (e) {
       isLoading.value = false;
       log('Error saving branch transfer: $e');
       await errorDialog(messageText: 'Error saving Branch Transfer: $e');
+      return false;
+    }
+  }
+
+  // ==================== BRANCH TRANSFER APIS ====================
+
+  /// 1. GET /branch-transfer - Fetch all branch transfers
+  Future<List<BranchTransferMstModel>> getBranchTransferList({
+    bool force = false,
+    int? companyCodeParam,
+  }) async {
+    if (!force && branchTransferList.isNotEmpty) {
+      return branchTransferList;
+    }
+    isLoadingBranchTransferList.value = true;
+    try {
+      final codeToUse =
+          companyCodeParam ?? (companyCode.value != 0 ? companyCode.value : null);
+      final Map<String, dynamic> params = {};
+      if (codeToUse != null && codeToUse > 0) {
+        params['companyCode'] = codeToUse;
+      }
+
+      final url = '${ApiService.to.baseUrl}branch-transfer';
+      log('Calling GET $url with params: $params');
+      final response = await ApiService.to.dio.get(
+        url,
+        queryParameters: params.isNotEmpty ? params : null,
+      );
+
+      List rawList = [];
+      if (response.data is List) {
+        rawList = response.data as List;
+      } else if (response.data is Map) {
+        final map = response.data as Map;
+        if (map['data'] is List) {
+          rawList = map['data'] as List;
+        } else if (map['transfers'] is List) {
+          rawList = map['transfers'] as List;
+        } else if (map['result'] is List) {
+          rawList = map['result'] as List;
+        } else if (map['rows'] is List) {
+          rawList = map['rows'] as List;
+        }
+      }
+
+      final parsed = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => BranchTransferMstModel.fromJson(item))
+          .toList();
+
+      branchTransferList.assignAll(parsed);
+      branchTransferList.refresh();
+      isLoadingBranchTransferList.value = false;
+      return branchTransferList;
+    } on DioException catch (dioErr) {
+      isLoadingBranchTransferList.value = false;
+      log('DioException in getBranchTransferList: ${dioErr.message}');
+      return branchTransferList;
+    } catch (e) {
+      isLoadingBranchTransferList.value = false;
+      log('Error in getBranchTransferList: $e');
+      return branchTransferList;
+    }
+  }
+
+  /// 2. GET /branch-transfer/<ID> - Fetch single branch transfer with details
+  Future<BranchTransferMstModel?> getBranchTransferById(dynamic id) async {
+    if (id == null || id.toString().trim().isEmpty) return null;
+    isLoadingBranchTransfer.value = true;
+    try {
+      final cleanId = id.toString().trim();
+      final url = '${ApiService.to.baseUrl}branch-transfer/$cleanId';
+      log('Calling GET $url');
+      final response = await ApiService.to.dio.get(url);
+      isLoadingBranchTransfer.value = false;
+
+      Map<String, dynamic>? dataMap;
+      if (response.data is Map) {
+        final map = response.data as Map;
+        if (map['data'] is Map) {
+          dataMap = Map<String, dynamic>.from(map['data'] as Map);
+        } else {
+          dataMap = Map<String, dynamic>.from(map);
+        }
+      }
+
+      if (dataMap != null) {
+        return BranchTransferMstModel.fromJson(dataMap);
+      }
+      return null;
+    } on DioException catch (dioErr) {
+      isLoadingBranchTransfer.value = false;
+      log('DioException in getBranchTransferById: ${dioErr.message}');
+      final msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString()
+          : (dioErr.message ?? 'Error fetching Branch Transfer #$id');
+      await errorDialog(messageText: msg ?? 'Error fetching Branch Transfer');
+      return null;
+    } catch (e) {
+      isLoadingBranchTransfer.value = false;
+      log('Error in getBranchTransferById: $e');
+      await errorDialog(messageText: 'Error fetching Branch Transfer: $e');
+      return null;
+    }
+  }
+
+  /// 3. DELETE /branch-transfer/<ID> - Delete branch transfer record
+  Future<bool> deleteBranchTransferData({required dynamic id}) async {
+    if (id == null || id.toString().trim().isEmpty) return false;
+    isDeleteLoadingBranchTransfer.value = true;
+    try {
+      final cleanId = id.toString().trim();
+      final url = '${ApiService.to.baseUrl}branch-transfer/$cleanId';
+      log('Calling DELETE $url');
+      final response = await ApiService.to.dio.delete(url);
+      isDeleteLoadingBranchTransfer.value = false;
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Branch Transfer deleted successfully.';
+        await successDialog(messageText: msg);
+        await getBranchTransferList(force: true);
+        return true;
+      } else {
+        final String err =
+            (response.data is Map && response.data['message'] != null)
+                ? response.data['message'].toString()
+                : 'Failed to delete Branch Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isDeleteLoadingBranchTransfer.value = false;
+      log('DioException in deleteBranchTransferData: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ??
+              'Server error deleting transfer'
+          : (dioErr.message ?? 'Server error deleting transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isDeleteLoadingBranchTransfer.value = false;
+      log('Error in deleteBranchTransferData: $e');
+      await errorDialog(messageText: 'Unexpected error: $e');
+      return false;
+    }
+  }
+
+  /// 4. PUT /branch-transfer/<ID> - Update branch transfer record
+  Future<bool> updateBranchTransferData({
+    required dynamic id,
+    required int fromUserId,
+    required int toUserId,
+    String? transferDate,
+    String? date,
+    required List<BranchTransferItemModel> items,
+    List<Map<String, dynamic>>? serializedItems,
+    int? companyCodeParam,
+  }) async {
+    if (id == null || id.toString().trim().isEmpty) return false;
+    isLoading.value = true;
+    try {
+      final cleanId = id.toString().trim();
+      final codeToUse = companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : 3);
+
+      final totalStockPc = items.fold<int>(0, (sum, i) => sum + i.stockPc);
+      final totalStockWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockWt).toStringAsFixed(3));
+      final totalRateDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateDollar).toStringAsFixed(2));
+      final totalRateRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateRs).toStringAsFixed(2));
+      final totalAmtDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtDollar).toStringAsFixed(2));
+      final totalAmtRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtRs).toStringAsFixed(2));
+
+      final totalIssuePc = items.fold<int>(0, (sum, i) => sum + i.issuePc);
+      final totalIssueWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueWt).toStringAsFixed(3));
+      final totalIssueRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueRate).toStringAsFixed(2));
+      final totalIssueAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueAmt).toStringAsFixed(2));
+
+      final totalDiffWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffWt).toStringAsFixed(3));
+      final totalDiffRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffRate).toStringAsFixed(2));
+      final totalDiffAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffAmt).toStringAsFixed(2));
+
+      final formattedDate = (transferDate != null && transferDate.isNotEmpty)
+          ? transferDate
+          : (date != null && date.isNotEmpty
+              ? (date.contains('-') && date.split('-').first.length == 2
+                  ? date.split('-').reversed.join('-')
+                  : date)
+              : DateFormat('yyyy-MM-dd').format(DateTime.now()));
+
+      final itemsPayload =
+          serializedItems ?? items.map((i) => i.toSaveJson()).toList();
+
+      final body = {
+        'BranchTransferMstID': int.tryParse(cleanId) ?? cleanId,
+        'CompanyCode': codeToUse,
+        'FromCrId': fromUserId,
+        'ToCrId': toUserId,
+        'TransferDate': formattedDate,
+        'TotalItems': items.length,
+        'TotalStockPc': totalStockPc,
+        'TotalStockWt': totalStockWt,
+        'TotalRateDollar': totalRateDollar,
+        'TotalRateRs': totalRateRs,
+        'TotalAmtDollar': totalAmtDollar,
+        'TotalAmtRs': totalAmtRs,
+        'TotalIssuePc': totalIssuePc,
+        'TotalIssueWt': totalIssueWt,
+        'TotalIssueRate': totalIssueRate,
+        'TotalIssueAmt': totalIssueAmt,
+        'TotalDiffWt': totalDiffWt,
+        'TotalDiffRate': totalDiffRate,
+        'TotalDiffAmt': totalDiffAmt,
+        'items': itemsPayload,
+      };
+
+      const encoder = JsonEncoder.withIndent('  ');
+      final formattedJson = encoder.convert(body);
+      debugPrint('======================================================================');
+      debugPrint('🚀 [DEFAULT_CONTROLLER] SENDING PAYLOAD TO BRANCH TRANSFER UPDATE API (PUT):');
+      debugPrint('URL: ${ApiService.to.baseUrl}branch-transfer/$cleanId');
+      debugPrint('======================================================================');
+      for (var line in formattedJson.split('\n')) {
+        debugPrint(line);
+      }
+      debugPrint('======================================================================');
+      log('Updating branch transfer with body: $formattedJson');
+
+      final url = '${ApiService.to.baseUrl}branch-transfer/$cleanId';
+      final response = await ApiService.to.dio.put(
+        url,
+        data: body,
+      );
+
+      isLoading.value = false;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Branch Transfer updated successfully.';
+        await successDialog(messageText: msg);
+        await getBranchTransferList(force: true);
+        return true;
+      } else {
+        final String err =
+            (response.data is Map && response.data['message'] != null)
+                ? response.data['message'].toString()
+                : 'Failed to update Branch Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isLoading.value = false;
+      log('DioException updating branch transfer: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ??
+              'Server error updating transfer'
+          : (dioErr.message ?? 'Server error updating transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isLoading.value = false;
+      log('Error updating branch transfer: $e');
+      await errorDialog(messageText: 'Error updating Branch Transfer: $e');
       return false;
     }
   }
