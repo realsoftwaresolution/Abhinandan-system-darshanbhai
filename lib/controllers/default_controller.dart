@@ -54,6 +54,8 @@ import 'package:real_web_rough_entry_system/sale/invoice_generator.dart';
 import 'package:real_web_rough_entry_system/sale/sale_details_model.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item_model.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_mst_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer_confirm/branch_transfer_confirm_item_model.dart';
+import 'package:real_web_rough_entry_system/branch_transfer_confirm/branch_transfer_confirm_mst_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -90,6 +92,11 @@ class DefaultController extends GetxController {
       <BranchTransferMstModel>[].obs;
   RxBool isLoadingBranchTransferList = false.obs;
   RxBool isDeleteLoadingBranchTransfer = false.obs;
+  RxList<BranchTransferConfirmMstModel> branchTransferConfirmList =
+      <BranchTransferConfirmMstModel>[].obs;
+  RxBool isLoadingBranchTransferConfirmList = false.obs;
+  RxBool isLoadingBranchTransferConfirmDetails = false.obs;
+  RxBool isSavingBranchTransferConfirm = false.obs;
 
   // RxList<RoughPurchaseModel> polishSaleList = <RoughPurchaseModel>[].obs;
   RxList<PartyTypeMstModel> partyTypeMstList = <PartyTypeMstModel>[].obs;
@@ -3956,6 +3963,281 @@ class DefaultController extends GetxController {
       isLoading.value = false;
       log('Error updating branch transfer: $e');
       await errorDialog(messageText: 'Error updating Branch Transfer: $e');
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // --- Branch Transfer Confirm APIs ---
+  // =========================================================================
+
+  /// 1. GET /branch-transfer/confirm/list - Fetch list of confirmed branch transfers
+  Future<List<BranchTransferConfirmMstModel>> getBranchTransferConfirmList({
+    bool force = false,
+  }) async {
+    if (!force && branchTransferConfirmList.isNotEmpty) {
+      return branchTransferConfirmList;
+    }
+    isLoadingBranchTransferConfirmList.value = true;
+    try {
+      final url = '${ApiService.to.baseUrl}branch-transfer/confirm/list';
+      log('Calling GET $url');
+      final response = await ApiService.to.dio.get(
+        url,
+        options: Options(
+          headers: {'Accept': 'application/json'},
+        ),
+      );
+
+      List rawList = [];
+      if (response.data is List) {
+        rawList = response.data as List;
+      } else if (response.data is Map) {
+        final map = response.data as Map;
+        if (map['data'] is List) {
+          rawList = map['data'] as List;
+        } else if (map['transfers'] is List) {
+          rawList = map['transfers'] as List;
+        } else if (map['result'] is List) {
+          rawList = map['result'] as List;
+        } else if (map['rows'] is List) {
+          rawList = map['rows'] as List;
+        } else if (map['list'] is List) {
+          rawList = map['list'] as List;
+        }
+      }
+
+      final parsed = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => BranchTransferConfirmMstModel.fromJson(item))
+          .toList();
+
+      branchTransferConfirmList.assignAll(parsed);
+      branchTransferConfirmList.refresh();
+      isLoadingBranchTransferConfirmList.value = false;
+      return branchTransferConfirmList;
+    } on DioException catch (dioErr) {
+      isLoadingBranchTransferConfirmList.value = false;
+      log('DioException in getBranchTransferConfirmList: ${dioErr.message}');
+      return branchTransferConfirmList;
+    } catch (e) {
+      isLoadingBranchTransferConfirmList.value = false;
+      log('Error in getBranchTransferConfirmList: $e');
+      return branchTransferConfirmList;
+    }
+  }
+
+  /// 2. GET /branch-transfer/details/<toCrId> - Fetch transfer detail records for a manager
+  Future<List<BranchTransferConfirmItemModel>> getBranchTransferConfirmDetails(
+    dynamic toCrId,
+  ) async {
+    if (toCrId == null || toCrId.toString().trim().isEmpty) return [];
+    isLoadingBranchTransferConfirmDetails.value = true;
+    try {
+      final cleanId = toCrId.toString().trim();
+      final url = '${ApiService.to.baseUrl}branch-transfer/details/$cleanId';
+      log('Calling GET $url');
+      final response = await ApiService.to.dio.get(
+        url,
+        options: Options(
+          headers: {'Accept': 'application/json'},
+        ),
+      );
+      isLoadingBranchTransferConfirmDetails.value = false;
+
+      List rawList = [];
+      if (response.data is List) {
+        rawList = response.data as List;
+      } else if (response.data is Map) {
+        final map = response.data as Map;
+        if (map['data'] is List) {
+          rawList = map['data'] as List;
+        } else if (map['details'] is List) {
+          rawList = map['details'] as List;
+        } else if (map['result'] is List) {
+          rawList = map['result'] as List;
+        } else if (map['rows'] is List) {
+          rawList = map['rows'] as List;
+        }
+      }
+
+      final items = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => BranchTransferConfirmItemModel.fromJson(item))
+          .toList();
+
+      return items;
+    } on DioException catch (dioErr) {
+      isLoadingBranchTransferConfirmDetails.value = false;
+      log('DioException in getBranchTransferConfirmDetails: ${dioErr.message}');
+      return [];
+    } catch (e) {
+      isLoadingBranchTransferConfirmDetails.value = false;
+      log('Error in getBranchTransferConfirmDetails: $e');
+      return [];
+    }
+  }
+
+  /// 3. GET /branch-transfer/confirm/details/<confirmMstId> - Fetch confirmed transfer details by confirmMstId
+  Future<List<BranchTransferConfirmItemModel>>
+      getBranchTransferConfirmDetailsById(
+    dynamic confirmMstId, {
+    dynamic toCrId,
+  }) async {
+    if (confirmMstId == null || confirmMstId.toString().trim().isEmpty) {
+      return [];
+    }
+    isLoadingBranchTransferConfirmDetails.value = true;
+    try {
+      final cleanId = confirmMstId.toString().trim();
+      final base = ApiService.to.baseUrl.endsWith('/')
+          ? ApiService.to.baseUrl
+          : '${ApiService.to.baseUrl}/';
+      final url = '${base}branch-transfer/confirm/details/$cleanId';
+      log('Calling GET $url');
+      debugPrint('======================================================================');
+      debugPrint('🚀 [GET CONFIRMED DETAILS] Calling: $url');
+      debugPrint('======================================================================');
+
+      final response = await ApiService.to.dio.get(
+        url,
+        options: Options(
+          headers: {'Accept': 'application/json'},
+        ),
+      );
+      isLoadingBranchTransferConfirmDetails.value = false;
+
+      List rawList = [];
+      if (response.data is List) {
+        rawList = response.data as List;
+      } else if (response.data is Map) {
+        final map = response.data as Map;
+        if (map['data'] is List) {
+          rawList = map['data'] as List;
+        } else if (map['data'] is Map && map['data']['details'] is List) {
+          rawList = map['data']['details'] as List;
+        } else if (map['details'] is List) {
+          rawList = map['details'] as List;
+        } else if (map['items'] is List) {
+          rawList = map['items'] as List;
+        } else if (map['result'] is List) {
+          rawList = map['result'] as List;
+        } else if (map['rows'] is List) {
+          rawList = map['rows'] as List;
+        } else if (map['transfers'] is List) {
+          rawList = map['transfers'] as List;
+        }
+      }
+
+      final items = rawList.map((item) {
+        final itemMap = item is Map<String, dynamic>
+            ? item
+            : Map<String, dynamic>.from(item as Map);
+        final model = BranchTransferConfirmItemModel.fromJson(itemMap);
+        model.isSelected = true;
+        return model;
+      }).toList();
+
+      return items;
+    } on DioException catch (dioErr) {
+      isLoadingBranchTransferConfirmDetails.value = false;
+      log('DioException in getBranchTransferConfirmDetailsById: ${dioErr.message}');
+      // Fallback: if server endpoint has alternative path or toCrId fallback
+      if (toCrId != null && toCrId.toString().trim().isNotEmpty) {
+        final allDetails = await getBranchTransferConfirmDetails(toCrId);
+        final matched = allDetails.where((i) {
+          if (i.branchTransferConfirmMstId != null) {
+            return i.branchTransferConfirmMstId.toString() ==
+                confirmMstId.toString().trim();
+          }
+          return i.branchTransformConfirm == true;
+        }).toList();
+        if (matched.isNotEmpty) {
+          for (var m in matched) {
+            m.isSelected = true;
+          }
+          return matched;
+        }
+      }
+      return [];
+    } catch (e) {
+      isLoadingBranchTransferConfirmDetails.value = false;
+      log('Error in getBranchTransferConfirmDetailsById: $e');
+      return [];
+    }
+  }
+
+  /// Alias for backward compatibility
+  Future<List<BranchTransferConfirmItemModel>> getConfirmedDetailsById({
+    required dynamic confirmMstId,
+    dynamic toCrId,
+  }) async {
+    return await getBranchTransferConfirmDetailsById(confirmMstId, toCrId: toCrId);
+  }
+
+  /// 4. POST /branch-transfer/confirm - Confirm branch transfer items
+  Future<bool> saveBranchTransferConfirm({
+    required int managerId,
+    required List<int> detailIds,
+  }) async {
+    isSavingBranchTransferConfirm.value = true;
+    try {
+      final url = '${ApiService.to.baseUrl}branch-transfer/confirm';
+      final body = {
+        'managerId': managerId,
+        'detailIds': detailIds,
+      };
+
+      const encoder = JsonEncoder.withIndent('  ');
+      final formattedJson = encoder.convert(body);
+      debugPrint('======================================================================');
+      debugPrint('🚀 [BRANCH TRANSFER CONFIRM SAVE] POST /branch-transfer/confirm PAYLOAD:');
+      debugPrint(formattedJson);
+      debugPrint('======================================================================');
+      log('Calling POST $url with body: $formattedJson');
+
+      final response = await ApiService.to.dio.post(
+        url,
+        data: body,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      isSavingBranchTransferConfirm.value = false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Branch Transfer confirmed successfully.';
+        await successDialog(messageText: msg);
+        await getBranchTransferConfirmList(force: true);
+        return true;
+      } else {
+        final String err =
+            (response.data is Map && response.data['message'] != null)
+                ? response.data['message'].toString()
+                : 'Failed to confirm Branch Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isSavingBranchTransferConfirm.value = false;
+      log('DioException in saveBranchTransferConfirm: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ??
+              'Server error confirming transfer'
+          : (dioErr.message ?? 'Server error confirming transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isSavingBranchTransferConfirm.value = false;
+      log('Error in saveBranchTransferConfirm: $e');
+      await errorDialog(messageText: 'Error confirming Branch Transfer: $e');
       return false;
     }
   }

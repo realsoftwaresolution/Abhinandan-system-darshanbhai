@@ -20,6 +20,7 @@ import 'package:real_web_rough_entry_system/clarity/clarity_form_screen.dart';
 import 'package:real_web_rough_entry_system/color/color_form_screen.dart';
 import 'package:real_web_rough_entry_system/designation/designation_form_screen.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_form_screen.dart';
+import 'package:real_web_rough_entry_system/branch_transfer_confirm/branch_transfer_confirm_form_screen.dart';
 import 'package:real_web_rough_entry_system/polish_purchase/polish_purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/quality/quality_form_screen.dart';
@@ -238,11 +239,7 @@ class _AppSidebarState extends State<AppSidebar> {
       _openTab(
         name,
         icon,
-        PlaceholderFormScreen(
-          title: name,
-          formName: form.isNotEmpty ? form : 'FrmBranchTransferConfirmForm',
-          icon: icon,
-        ),
+        const BranchTransferConfirmFormScreen(showHeader: false),
       );
       return;
     }
@@ -483,7 +480,10 @@ class _AppSidebarState extends State<AppSidebar> {
                   // Register reactive dependency on user access permissions matrix
                   final _ = _defaultController.userAccessMap.length;
 
-                  final List<MainMenuModel> displayMenus = _defaultController.menuList;
+                  final List<MainMenuModel> displayMenus =
+                  List<MainMenuModel>.from(_defaultController.menuList)
+                    ..sort((a, b) =>
+                        (a.mainMenuMstID ?? 0).compareTo(b.mainMenuMstID ?? 0));
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -522,11 +522,16 @@ class _AppSidebarState extends State<AppSidebar> {
                           final int menuId = mainMenu.mainMenuMstID ?? 0;
                           final List<SubMenuModel> validSubMenus = mainMenu.subMenus
                               .where((s) =>
-                                  s.valid != 0 &&
-                                  (s.menuName ?? '').toUpperCase().trim() != 'LOGOUT' &&
-                                  (s.menuName ?? '').toUpperCase().trim() != 'EXIT' &&
-                                  _defaultController.canViewMenu(s.menuMstID, categoryKey: catIndex))
-                              .toList();
+                          s.valid != 0 &&
+                              (s.menuName ?? '').toUpperCase().trim() != 'LOGOUT' &&
+                              (s.menuName ?? '').toUpperCase().trim() != 'EXIT' &&
+                              _defaultController.canViewMenu(
+                                s.menuMstID,
+                                categoryKey: catIndex,
+                              ))
+                              .toList()
+                            ..sort((a, b) =>
+                                (a.sortID ?? 0).compareTo(b.sortID ?? 0));
 
                           // CASE A: Menu has submenus (Accordion Category)
                           if (validSubMenus.isNotEmpty) {

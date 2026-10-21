@@ -548,12 +548,125 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
     _initFromManager();
   }
 
+  /// Compares whether a combined stock item matches a branch transfer detail item
+  bool _isSameTransferItem(
+      BranchTransferItemModel a, BranchTransferItemModel b) {
+    if (a.source.toLowerCase() != b.source.toLowerCase()) {
+      return false;
+    }
+
+    if (a.source.toLowerCase() == 'rough') {
+      final invA = (a.invoiceNo ?? '').trim().toLowerCase();
+      final invB = (b.invoiceNo ?? '').trim().toLowerCase();
+      if (invA != invB) return false;
+
+      if (a.roughTypeCode != null && b.roughTypeCode != null) {
+        if (a.roughTypeCode != b.roughTypeCode) return false;
+      }
+
+      final qA = a.roughQualityCode;
+      final qB = b.roughQualityCode;
+      if (qA != null && qB != null && qA != qB) return false;
+
+      final cA = a.roughCharniCode ?? a.charniCode;
+      final cB = b.roughCharniCode ?? b.charniCode;
+      if (cA != null && cB != null && cA != cB) return false;
+
+      return true;
+    } else {
+      // Polish
+      if (a.polishTypeCode != null && b.polishTypeCode != null) {
+        if (a.polishTypeCode != b.polishTypeCode) return false;
+      }
+
+      if (a.shapeCode != null && b.shapeCode != null) {
+        if (a.shapeCode != b.shapeCode) return false;
+      }
+
+      if (a.colorCode != null && b.colorCode != null) {
+        if (a.colorCode != b.colorCode) return false;
+      }
+
+      if (a.clarityCode != null && b.clarityCode != null) {
+        if (a.clarityCode != b.clarityCode) return false;
+      }
+
+      final cA = a.charniCode ?? a.roughCharniCode;
+      final cB = b.charniCode ?? b.roughCharniCode;
+      if (cA != null && cB != null && cA != cB) return false;
+
+      return true;
+    }
+  }
+
   /// Load a single branch transfer by its ID via GET /branch-transfer/<ID>
+  /// and then fetch combined stock items and merge with the existing transfer details.
   Future<void> _loadTransferById(dynamic id) async {
     if (id == null || id.toString().trim().isEmpty) return;
     final BranchTransferMstModel? transfer =
         await defaultController.getBranchTransferById(id);
     if (transfer == null) return;
+
+    List<BranchTransferItemModel> combinedList = [];
+    if (transfer.fromCrId != null && transfer.fromCrId! > 0) {
+      combinedList = await defaultController.getBranchTransferCombinedData(
+        companyCodeParam: transfer.companyCode,
+        fromUserId: transfer.fromCrId,
+      );
+    }
+
+    final Set<BranchTransferItemModel> matchedDetails = {};
+    for (var cItem in combinedList) {
+      BranchTransferItemModel? matched;
+      for (var dItem in transfer.items) {
+        if (!matchedDetails.contains(dItem) &&
+            _isSameTransferItem(cItem, dItem)) {
+          matched = dItem;
+          matchedDetails.add(dItem);
+          break;
+        }
+      }
+
+      if (matched != null) {
+        cItem.isSelected = true;
+        cItem.issuePc = matched.issuePc;
+        cItem.issueWt = matched.issueWt;
+        cItem.issueRate = matched.issueRate > 0.0
+            ? matched.issueRate
+            : (matched.stockRateRs > 0.0 ? matched.stockRateRs : cItem.stockRateRs);
+        cItem.issueAmt = matched.issueAmt > 0.0
+            ? matched.issueAmt
+            : (cItem.issueWt * cItem.issueRate);
+        cItem.diffWt = matched.diffWt > 0.0 ? matched.diffWt : cItem.issueWt;
+        cItem.diffRate = matched.diffRate;
+        cItem.diffAmt = matched.diffAmt;
+        cItem.issuePcController.text = matched.issuePc.toString();
+        cItem.issueWtController.text = matched.issueWt > 0.0
+            ? matched.issueWt.toStringAsFixed(3)
+            : '0.000';
+        cItem.updateCalculations();
+      } else {
+        cItem.isSelected = false;
+        cItem.issuePc = 0;
+        cItem.issueWt = 0.0;
+        cItem.issuePcController.text = '0';
+        cItem.issueWtController.text = '0.000';
+        cItem.updateCalculations();
+      }
+    }
+
+    // Include any transfer items that were not found in current combined stock
+    for (var dItem in transfer.items) {
+      if (!matchedDetails.contains(dItem)) {
+        dItem.isSelected = true;
+        dItem.issuePcController.text = dItem.issuePc.toString();
+        dItem.issueWtController.text = dItem.issueWt > 0.0
+            ? dItem.issueWt.toStringAsFixed(3)
+            : '0.000';
+        dItem.updateCalculations();
+        combinedList.add(dItem);
+      }
+    }
 
     setState(() {
       _isSearch = false;
@@ -581,14 +694,18 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
       }
       _selectedToManagerId.value = transfer.toCrId;
 
+      for (var old in _allItems) {
+        old.dispose();
+      }
       _allItems.clear();
       _displayItems.clear();
-      for (var item in transfer.items) {
-        item.isSelected = true;
-        _allItems.add(item);
-        _displayItems.add(item);
-      }
-      _gridSource.setShowCheckbox(false);
+
+      final listToDisplay =
+          combinedList.isNotEmpty ? combinedList : transfer.items;
+      _allItems.addAll(listToDisplay);
+      _displayItems.addAll(listToDisplay);
+
+      _gridSource.setShowCheckbox(true);
       _gridSource.updateItems(_displayItems);
       _gridSource.setEnabled(false);
     });
@@ -1180,8 +1297,8 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
         isDark ? const Color(0xFFFEF08A) : const Color(0xFF713F12);
 
     return [
-      // 1. Checkbox Select Column (Hidden in edit mode)
-      if (!_isFromEdit)
+      // 1. Checkbox Select Column
+      if (_gridSource.showCheckbox)
         GridColumn(
           columnName: 'select',
           width: 48,
@@ -1838,6 +1955,7 @@ class BranchTransferFormScreenState extends State<BranchTransferFormScreen> {
             border: Border(bottom: BorderSide(color: AppColors.borderLight)),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               SizedBox(
                 width: 150,

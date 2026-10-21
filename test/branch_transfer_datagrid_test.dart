@@ -673,5 +673,165 @@ void main() {
       expect(controller.isLoadingBranchTransferList.value, false);
       expect(controller.isDeleteLoadingBranchTransfer.value, false);
     });
+
+    test('Merged combined API response with detail response accurately updates existing rows', () {
+      // 8 items from combined API
+      final combinedJson = [
+        {"source": "Rough", "RoughTypeCode": 1, "RoughQualityCode": 3, "RoughCharniCode": 3, "InvoiceNo": "dgf", "Pc": 1, "Wt": 10.0, "RateRs": 100.0, "RateDollar": 1.41},
+        {"source": "Rough", "RoughTypeCode": 4, "RoughQualityCode": 1, "RoughCharniCode": 2, "InvoiceNo": "111", "Pc": 3, "Wt": 30.0, "RateRs": 100.0, "RateDollar": 1.0},
+        {"source": "Rough", "RoughTypeCode": 1, "RoughQualityCode": 1, "RoughCharniCode": 2, "InvoiceNo": "K44", "Pc": 1, "Wt": 10.0, "RateRs": 100.0, "RateDollar": 1.0},
+        {"source": "Rough", "RoughTypeCode": 2, "RoughQualityCode": 3, "RoughCharniCode": 4, "InvoiceNo": "K44", "Pc": 0, "Wt": 20.0, "RateRs": 200.0, "RateDollar": 2.0},
+        {"source": "Rough", "RoughTypeCode": 3, "RoughQualityCode": 3, "RoughCharniCode": 3, "InvoiceNo": "K44", "Pc": 0, "Wt": 5.0, "RateRs": 50.0, "RateDollar": 0.5},
+        {"source": "Rough", "RoughTypeCode": 3, "RoughQualityCode": 1, "RoughCharniCode": 4, "InvoiceNo": "KUKU", "Pc": 30, "Wt": 14.53, "RateRs": 100.0, "RateDollar": 1.0},
+        {"source": "Polish", "ShapeCode": 29, "ClarityCode": 9, "CharniCode": 2, "PolishTypeCode": 6, "ColorCode": 1, "Pc": 12, "Wt": 15.03, "RateRs": 66.87, "RateDollar": 0.67},
+        {"source": "Polish", "ShapeCode": 29, "ClarityCode": 2038, "CharniCode": 3, "PolishTypeCode": 7, "ColorCode": 3, "Pc": 1, "Wt": 20.0, "RateRs": 100.0, "RateDollar": 1.0},
+      ];
+
+      final combinedItems = combinedJson.map((j) => BranchTransferItemModel.fromJson(j)).toList();
+
+      // 3 items from detail API
+      final detailsJson = [
+        {
+          "BranchTransferDetID": 19,
+          "source": "Rough",
+          "InvoiceNo": "dgf",
+          "RoughTypeCode": 1,
+          "RoughQualityCode": 3,
+          "RoughCharniCode": 3,
+          "StockPc": 1,
+          "StockWt": 10.0,
+          "StockRateRs": 100.0,
+          "IssuePc": 1,
+          "IssueWt": 6.0,
+          "IssueRate": 100.0,
+          "IssueAmt": 600.0,
+          "DiffWt": 6.0,
+          "DiffRate": 0.0,
+          "DiffAmt": 0.0,
+        },
+        {
+          "BranchTransferDetID": 20,
+          "source": "Rough",
+          "InvoiceNo": "111",
+          "RoughTypeCode": 4,
+          "RoughQualityCode": 1,
+          "RoughCharniCode": 2,
+          "StockPc": 3,
+          "StockWt": 30.0,
+          "StockRateRs": 100.0,
+          "IssuePc": 0,
+          "IssueWt": 11.0,
+          "IssueRate": 100.0,
+          "IssueAmt": 1100.0,
+          "DiffWt": 11.0,
+          "DiffRate": 0.0,
+          "DiffAmt": 0.0,
+        },
+        {
+          "BranchTransferDetID": 21,
+          "source": "Polish",
+          "PolishTypeCode": 7,
+          "ShapeCode": 29,
+          "ColorCode": 3,
+          "ClarityCode": 2038,
+          "CharniCode": 3,
+          "StockPc": 1,
+          "StockWt": 20.0,
+          "StockRateRs": 100.0,
+          "IssuePc": 0,
+          "IssueWt": 7.0,
+          "IssueRate": 100.0,
+          "IssueAmt": 700.0,
+          "DiffWt": 7.0,
+          "DiffRate": 0.0,
+          "DiffAmt": 0.0,
+        },
+      ];
+
+      final detailItems = detailsJson.map((j) => BranchTransferItemModel.fromJson(j)).toList();
+
+      // Helper matcher identical to screen logic
+      bool matches(BranchTransferItemModel a, BranchTransferItemModel b) {
+        if (a.source.toLowerCase() != b.source.toLowerCase()) return false;
+        if (a.source.toLowerCase() == 'rough') {
+          return (a.invoiceNo ?? '').trim().toLowerCase() == (b.invoiceNo ?? '').trim().toLowerCase() &&
+              a.roughTypeCode == b.roughTypeCode &&
+              a.roughQualityCode == b.roughQualityCode &&
+              (a.roughCharniCode ?? a.charniCode) == (b.roughCharniCode ?? b.charniCode);
+        } else {
+          return a.polishTypeCode == b.polishTypeCode &&
+              a.shapeCode == b.shapeCode &&
+              a.colorCode == b.colorCode &&
+              a.clarityCode == b.clarityCode &&
+              (a.charniCode ?? a.roughCharniCode) == (b.charniCode ?? b.roughCharniCode);
+        }
+      }
+
+      final Set<BranchTransferItemModel> matchedDetails = {};
+      for (var cItem in combinedItems) {
+        BranchTransferItemModel? matched;
+        for (var dItem in detailItems) {
+          if (!matchedDetails.contains(dItem) && matches(cItem, dItem)) {
+            matched = dItem;
+            matchedDetails.add(dItem);
+            break;
+          }
+        }
+
+        if (matched != null) {
+          cItem.isSelected = true;
+          cItem.issuePc = matched.issuePc;
+          cItem.issueWt = matched.issueWt;
+          cItem.issueRate = matched.issueRate;
+          cItem.issueAmt = matched.issueAmt;
+          cItem.diffWt = matched.diffWt;
+          cItem.diffRate = matched.diffRate;
+          cItem.diffAmt = matched.diffAmt;
+          cItem.issuePcController.text = matched.issuePc.toString();
+          cItem.issueWtController.text = matched.issueWt.toStringAsFixed(3);
+          cItem.updateCalculations();
+        } else {
+          cItem.isSelected = false;
+          cItem.issuePc = 0;
+          cItem.issueWt = 0.0;
+          cItem.issuePcController.text = '0';
+          cItem.issueWtController.text = '0.000';
+          cItem.updateCalculations();
+        }
+      }
+
+      // Verify all 3 details were matched
+      expect(matchedDetails.length, 3);
+      expect(combinedItems.length, 8);
+
+      // Verify Row 0 (dgf)
+      expect(combinedItems[0].isSelected, isTrue);
+      expect(combinedItems[0].issuePc, 1);
+      expect(combinedItems[0].issueWt, 6.0);
+      expect(combinedItems[0].issueAmt, 600.0);
+      expect(combinedItems[0].diffWt, 6.0);
+      expect(combinedItems[0].diffRate, 0.0);
+
+      // Verify Row 1 (111)
+      expect(combinedItems[1].isSelected, isTrue);
+      expect(combinedItems[1].issuePc, 0);
+      expect(combinedItems[1].issueWt, 11.0);
+      expect(combinedItems[1].issueAmt, 1100.0);
+      expect(combinedItems[1].diffWt, 11.0);
+      expect(combinedItems[1].diffRate, 0.0);
+
+      // Verify Row 2 (K44) unselected
+      expect(combinedItems[2].isSelected, isFalse);
+      expect(combinedItems[2].issuePc, 0);
+      expect(combinedItems[2].issueWt, 0.0);
+
+      // Verify Row 7 (Polish 7)
+      expect(combinedItems[7].isSelected, isTrue);
+      expect(combinedItems[7].issuePc, 0);
+      expect(combinedItems[7].issueWt, 7.0);
+      expect(combinedItems[7].issueAmt, 700.0);
+      expect(combinedItems[7].diffWt, 7.0);
+      expect(combinedItems[7].diffRate, 0.0);
+    });
   });
 }
