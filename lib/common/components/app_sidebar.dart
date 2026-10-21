@@ -21,6 +21,8 @@ import 'package:real_web_rough_entry_system/color/color_form_screen.dart';
 import 'package:real_web_rough_entry_system/designation/designation_form_screen.dart';
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_form_screen.dart';
 import 'package:real_web_rough_entry_system/branch_transfer_confirm/branch_transfer_confirm_form_screen.dart';
+import 'package:real_web_rough_entry_system/internal_stock_transfer/internal_stock_transfer_form_screen.dart';
+import 'package:real_web_rough_entry_system/internal_stock_transfer_confirm/internal_stock_transfer_confirm_form_screen.dart';
 import 'package:real_web_rough_entry_system/polish_purchase/polish_purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/purchase/purchase_form_screen.dart';
 import 'package:real_web_rough_entry_system/quality/quality_form_screen.dart';
@@ -240,6 +242,32 @@ class _AppSidebarState extends State<AppSidebar> {
         name,
         icon,
         const BranchTransferConfirmFormScreen(showHeader: false),
+      );
+      return;
+    }
+
+    // Internal Stock Transfer Form
+    if (formLower == 'frminternalstocktransferform' ||
+        formLower == 'frminternalstocktransfer' ||
+        formLower == 'frminternaltransferform' ||
+        formLower == 'frminternaltransfer' ||
+        nameLower == 'internal stock transfer' ||
+        nameLower == 'internal transfer') {
+      _openTab(name, icon, const InternalStockTransferFormScreen(showHeader: false));
+      return;
+    }
+
+    // Internal Stock Transfer Confirm Form
+    if (formLower == 'frminternalstocktransferconfirmform' ||
+        formLower == 'frminternalstocktransferconfirm' ||
+        formLower == 'frminternaltransferconfirmform' ||
+        formLower == 'frminternaltransferconfirm' ||
+        nameLower == 'internal stock transfer confirm' ||
+        nameLower == 'internal transfer confirm') {
+      _openTab(
+        name,
+        icon,
+        const InternalStockTransferConfirmFormScreen(showHeader: false),
       );
       return;
     }

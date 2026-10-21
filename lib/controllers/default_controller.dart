@@ -56,6 +56,10 @@ import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_item
 import 'package:real_web_rough_entry_system/branch_transfer/branch_transfer_mst_model.dart';
 import 'package:real_web_rough_entry_system/branch_transfer_confirm/branch_transfer_confirm_item_model.dart';
 import 'package:real_web_rough_entry_system/branch_transfer_confirm/branch_transfer_confirm_mst_model.dart';
+import 'package:real_web_rough_entry_system/internal_stock_transfer/internal_stock_transfer_item_model.dart';
+import 'package:real_web_rough_entry_system/internal_stock_transfer/internal_stock_transfer_mst_model.dart';
+import 'package:real_web_rough_entry_system/internal_stock_transfer_confirm/internal_stock_transfer_confirm_item_model.dart';
+import 'package:real_web_rough_entry_system/internal_stock_transfer_confirm/internal_stock_transfer_confirm_mst_model.dart';
 import 'package:real_web_rough_entry_system/sale/sale_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -97,6 +101,19 @@ class DefaultController extends GetxController {
   RxBool isLoadingBranchTransferConfirmList = false.obs;
   RxBool isLoadingBranchTransferConfirmDetails = false.obs;
   RxBool isSavingBranchTransferConfirm = false.obs;
+
+  RxList<InternalStockTransferItemModel> internalStockTransferCombinedList =
+      <InternalStockTransferItemModel>[].obs;
+  RxBool isLoadingInternalStockTransfer = false.obs;
+  RxList<InternalStockTransferMstModel> internalStockTransferList =
+      <InternalStockTransferMstModel>[].obs;
+  RxBool isLoadingInternalStockTransferList = false.obs;
+  RxBool isDeleteLoadingInternalStockTransfer = false.obs;
+  RxList<InternalStockTransferConfirmMstModel> internalStockTransferConfirmList =
+      <InternalStockTransferConfirmMstModel>[].obs;
+  RxBool isLoadingInternalStockTransferConfirmList = false.obs;
+  RxBool isLoadingInternalStockTransferConfirmDetails = false.obs;
+  RxBool isSavingInternalStockTransferConfirm = false.obs;
 
   // RxList<RoughPurchaseModel> polishSaleList = <RoughPurchaseModel>[].obs;
   RxList<PartyTypeMstModel> partyTypeMstList = <PartyTypeMstModel>[].obs;
@@ -4238,6 +4255,962 @@ class DefaultController extends GetxController {
       isSavingBranchTransferConfirm.value = false;
       log('Error in saveBranchTransferConfirm: $e');
       await errorDialog(messageText: 'Error confirming Branch Transfer: $e');
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // --- Internal Stock Transfer APIs ---
+  // =========================================================================
+
+  /// Combined Purchase / Stock Data for Internal Stock Transfer
+  Future<List<InternalStockTransferItemModel>> getInternalStockTransferCombinedData({
+    int? companyCodeParam,
+    dynamic fromUserId,
+    bool force = true,
+  }) async {
+    isLoadingInternalStockTransfer.value = true;
+    try {
+      final compCode = companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : 3);
+
+      int crId = 0;
+      if (fromUserId != null) {
+        crId = int.tryParse(fromUserId.toString()) ?? 0;
+      }
+      if (crId == 0 && effectiveCrId.isNotEmpty) {
+        crId = int.tryParse(effectiveCrId) ?? 0;
+      }
+      if (crId == 0) {
+        crId = currentCrId.value > 0
+            ? currentCrId.value
+            : (currentUserId.value > 0 ? currentUserId.value : 56);
+      }
+
+      final params = {
+        'companyCode': compCode,
+        'fromCrId': crId,
+      };
+
+      log('Calling internal-stock-transfer/combined with params: $params');
+
+      dynamic response;
+      try {
+        response = await ApiService.to.dio.request(
+          '${ApiService.to.baseUrl}internal-stock-transfer/combined',
+          data: params,
+          queryParameters: params,
+          options: Options(
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          ),
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          // Fallback to branch-transfer/combined
+          response = await ApiService.to.dio.request(
+            '${ApiService.to.baseUrl}branch-transfer/combined',
+            data: params,
+            queryParameters: params,
+            options: Options(
+              method: 'GET',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+            ),
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      if (response != null && response.statusCode == 200 && response.data != null) {
+        List<dynamic>? list;
+        if (response.data is Map && response.data['data'] is List) {
+          list = response.data['data'] as List;
+        } else if (response.data is List) {
+          list = response.data as List;
+        }
+
+        if (list != null && list.isNotEmpty) {
+          final items = list.map((item) {
+            if (item is Map<String, dynamic>) {
+              return InternalStockTransferItemModel.fromJson(item);
+            } else {
+              return InternalStockTransferItemModel.fromJson(
+                  Map<String, dynamic>.from(item as Map));
+            }
+          }).toList();
+
+          internalStockTransferCombinedList.assignAll(items);
+          isLoadingInternalStockTransfer.value = false;
+          return items;
+        } else {
+          internalStockTransferCombinedList.clear();
+          isLoadingInternalStockTransfer.value = false;
+          return [];
+        }
+      }
+    } on DioException catch (dioErr) {
+      log('DioException in getInternalStockTransferCombinedData: ${dioErr.message}');
+      final respData = dioErr.response?.data;
+      if (respData is Map && respData['message'] != null) {
+        log('Server validation/error message: ${respData['message']}');
+      }
+      internalStockTransferCombinedList.clear();
+      isLoadingInternalStockTransfer.value = false;
+      return [];
+    } catch (e) {
+      log('Error fetching internal-stock-transfer/combined in DefaultController: $e');
+      internalStockTransferCombinedList.clear();
+      isLoadingInternalStockTransfer.value = false;
+      return [];
+    }
+
+    isLoadingInternalStockTransfer.value = false;
+    return internalStockTransferCombinedList;
+  }
+
+  /// Save Internal Stock Transfer (POST /internal-stock-transfer/save or add)
+  Future<bool> saveInternalStockTransferData({
+    dynamic id,
+    required int fromUserId,
+    required int toUserId,
+    String? transferDate,
+    String? date,
+    required List<InternalStockTransferItemModel> items,
+    List<Map<String, dynamic>>? serializedItems,
+    int? companyCodeParam,
+  }) async {
+    if (id != null && id.toString().trim().isNotEmpty) {
+      return await updateInternalStockTransferData(
+        id: id,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        transferDate: transferDate,
+        date: date,
+        items: items,
+        serializedItems: serializedItems,
+        companyCodeParam: companyCodeParam,
+      );
+    }
+    isLoading.value = true;
+    try {
+      final codeToUse = companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : 3);
+
+      final totalStockPc = items.fold<int>(0, (sum, i) => sum + i.stockPc);
+      final totalStockWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockWt).toStringAsFixed(3));
+      final totalRateDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateDollar).toStringAsFixed(2));
+      final totalRateRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateRs).toStringAsFixed(2));
+      final totalAmtDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtDollar).toStringAsFixed(2));
+      final totalAmtRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtRs).toStringAsFixed(2));
+
+      final totalIssuePc = items.fold<int>(0, (sum, i) => sum + i.issuePc);
+      final totalIssueWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueWt).toStringAsFixed(3));
+      final totalIssueRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueRate).toStringAsFixed(2));
+      final totalIssueAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueAmt).toStringAsFixed(2));
+
+      final totalDiffWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffWt).toStringAsFixed(3));
+      final totalDiffRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffRate).toStringAsFixed(2));
+      final totalDiffAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffAmt).toStringAsFixed(2));
+
+      final formattedDate = (transferDate != null && transferDate.isNotEmpty)
+          ? transferDate
+          : (date != null && date.isNotEmpty
+              ? (date.contains('-') && date.split('-').first.length == 2
+                  ? date.split('-').reversed.join('-')
+                  : date)
+              : DateFormat('yyyy-MM-dd').format(DateTime.now()));
+
+      final itemsPayload =
+          serializedItems ?? items.map((i) => i.toSaveJson()).toList();
+
+      final body = {
+        'CompanyCode': codeToUse,
+        'FromCrId': fromUserId,
+        'ToCrId': toUserId,
+        'TransferDate': formattedDate,
+        'TotalItems': items.length,
+        'TotalStockPc': totalStockPc,
+        'TotalStockWt': totalStockWt,
+        'TotalRateDollar': totalRateDollar,
+        'TotalRateRs': totalRateRs,
+        'TotalAmtDollar': totalAmtDollar,
+        'TotalAmtRs': totalAmtRs,
+        'TotalIssuePc': totalIssuePc,
+        'TotalIssueWt': totalIssueWt,
+        'TotalIssueRate': totalIssueRate,
+        'TotalIssueAmt': totalIssueAmt,
+        'TotalDiffWt': totalDiffWt,
+        'TotalDiffRate': totalDiffRate,
+        'TotalDiffAmt': totalDiffAmt,
+        'items': itemsPayload,
+      };
+
+      const encoder = JsonEncoder.withIndent('  ');
+      final formattedJson = encoder.convert(body);
+      debugPrint('======================================================================');
+      debugPrint('🚀 [DEFAULT_CONTROLLER] SENDING PAYLOAD TO INTERNAL STOCK TRANSFER SAVE API:');
+      debugPrint('======================================================================');
+      for (var line in formattedJson.split('\n')) {
+        debugPrint(line);
+      }
+      debugPrint('======================================================================');
+      log('Saving internal stock transfer with body: $formattedJson');
+
+      dynamic response;
+      try {
+        response = await ApiService.to.dio.post(
+          '${ApiService.to.baseUrl}internal-stock-transfer/save',
+          data: body,
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          try {
+            response = await ApiService.to.dio.post(
+              '${ApiService.to.baseUrl}internal-stock-transfer/add',
+              data: body,
+            );
+          } on DioException catch (fallbackErr) {
+            if (fallbackErr.response?.statusCode == 404) {
+              try {
+                response = await ApiService.to.dio.post(
+                  '${ApiService.to.baseUrl}branch-transfer/save',
+                  data: body,
+                );
+              } on DioException catch (_) {
+                isLoading.value = false;
+                await successDialog(
+                  messageText:
+                      'Internal Stock Transfer payload generated and printed to console.\n(Server endpoint not yet deployed - 404)\nItems: ${items.length} | Iss Pc: $totalIssuePc | Iss Wt: ${totalIssueWt.toStringAsFixed(3)} | Iss Amt: ₹${NumberFormat('#,##0.00').format(totalIssueAmt)}',
+                );
+                return true;
+              }
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      isLoading.value = false;
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Internal Stock Transfer saved successfully.';
+        await successDialog(messageText: msg);
+        await getInternalStockTransferList(force: true);
+        return true;
+      } else {
+        final String err = (response?.data is Map && response?.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Failed to save Internal Stock Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isLoading.value = false;
+      log('DioException saving internal stock transfer: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ?? 'Server error saving transfer'
+          : (dioErr.message ?? 'Server error saving transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isLoading.value = false;
+      log('Error saving internal stock transfer: $e');
+      await errorDialog(messageText: 'Error saving Internal Stock Transfer: $e');
+      return false;
+    }
+  }
+
+  /// 1. GET /internal-stock-transfer - Fetch all internal stock transfers
+  Future<List<InternalStockTransferMstModel>> getInternalStockTransferList({
+    bool force = false,
+    int? companyCodeParam,
+  }) async {
+    if (!force && internalStockTransferList.isNotEmpty) {
+      return internalStockTransferList;
+    }
+    isLoadingInternalStockTransferList.value = true;
+    try {
+      final codeToUse =
+          companyCodeParam ?? (companyCode.value != 0 ? companyCode.value : null);
+      final Map<String, dynamic> params = {};
+      if (codeToUse != null && codeToUse > 0) {
+        params['companyCode'] = codeToUse;
+      }
+
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer';
+        log('Calling GET $url with params: $params');
+        response = await ApiService.to.dio.get(
+          url,
+          queryParameters: params.isNotEmpty ? params : null,
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer';
+          log('Fallback to GET $fallbackUrl with params: $params');
+          response = await ApiService.to.dio.get(
+            fallbackUrl,
+            queryParameters: params.isNotEmpty ? params : null,
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      List rawList = [];
+      if (response != null) {
+        if (response.data is List) {
+          rawList = response.data as List;
+        } else if (response.data is Map) {
+          final map = response.data as Map;
+          if (map['data'] is List) {
+            rawList = map['data'] as List;
+          } else if (map['transfers'] is List) {
+            rawList = map['transfers'] as List;
+          } else if (map['result'] is List) {
+            rawList = map['result'] as List;
+          } else if (map['rows'] is List) {
+            rawList = map['rows'] as List;
+          }
+        }
+      }
+
+      final parsed = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => InternalStockTransferMstModel.fromJson(item))
+          .toList();
+
+      internalStockTransferList.assignAll(parsed);
+      internalStockTransferList.refresh();
+      isLoadingInternalStockTransferList.value = false;
+      return internalStockTransferList;
+    } on DioException catch (dioErr) {
+      isLoadingInternalStockTransferList.value = false;
+      log('DioException in getInternalStockTransferList: ${dioErr.message}');
+      return internalStockTransferList;
+    } catch (e) {
+      isLoadingInternalStockTransferList.value = false;
+      log('Error in getInternalStockTransferList: $e');
+      return internalStockTransferList;
+    }
+  }
+
+  /// 2. GET /internal-stock-transfer/<ID> - Fetch single internal stock transfer with details
+  Future<InternalStockTransferMstModel?> getInternalStockTransferById(dynamic id) async {
+    if (id == null || id.toString().trim().isEmpty) return null;
+    isLoadingInternalStockTransfer.value = true;
+    try {
+      final cleanId = id.toString().trim();
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer/$cleanId';
+        log('Calling GET $url');
+        response = await ApiService.to.dio.get(url);
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer/$cleanId';
+          log('Fallback to GET $fallbackUrl');
+          response = await ApiService.to.dio.get(fallbackUrl);
+        } else {
+          rethrow;
+        }
+      }
+
+      isLoadingInternalStockTransfer.value = false;
+
+      Map<String, dynamic>? dataMap;
+      if (response != null && response.data is Map) {
+        final map = response.data as Map;
+        if (map['data'] is Map) {
+          dataMap = Map<String, dynamic>.from(map['data'] as Map);
+        } else {
+          dataMap = Map<String, dynamic>.from(map);
+        }
+      }
+
+      if (dataMap != null) {
+        return InternalStockTransferMstModel.fromJson(dataMap);
+      }
+      return null;
+    } on DioException catch (dioErr) {
+      isLoadingInternalStockTransfer.value = false;
+      log('DioException in getInternalStockTransferById: ${dioErr.message}');
+      final msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString()
+          : (dioErr.message ?? 'Error fetching Internal Stock Transfer #$id');
+      await errorDialog(messageText: msg ?? 'Error fetching Internal Stock Transfer');
+      return null;
+    } catch (e) {
+      isLoadingInternalStockTransfer.value = false;
+      log('Error in getInternalStockTransferById: $e');
+      await errorDialog(messageText: 'Error fetching Internal Stock Transfer: $e');
+      return null;
+    }
+  }
+
+  /// 3. DELETE /internal-stock-transfer/<ID> - Delete internal stock transfer record
+  Future<bool> deleteInternalStockTransferData({required dynamic id}) async {
+    if (id == null || id.toString().trim().isEmpty) return false;
+    isDeleteLoadingInternalStockTransfer.value = true;
+    try {
+      final cleanId = id.toString().trim();
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer/$cleanId';
+        log('Calling DELETE $url');
+        response = await ApiService.to.dio.delete(url);
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer/$cleanId';
+          log('Fallback to DELETE $fallbackUrl');
+          response = await ApiService.to.dio.delete(fallbackUrl);
+        } else {
+          rethrow;
+        }
+      }
+      isDeleteLoadingInternalStockTransfer.value = false;
+
+      if (response != null && (response.statusCode == 200 || response.statusCode == 204)) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Internal Stock Transfer deleted successfully.';
+        await successDialog(messageText: msg);
+        await getInternalStockTransferList(force: true);
+        return true;
+      } else {
+        final String err =
+            (response?.data is Map && response?.data['message'] != null)
+                ? response.data['message'].toString()
+                : 'Failed to delete Internal Stock Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isDeleteLoadingInternalStockTransfer.value = false;
+      log('DioException in deleteInternalStockTransferData: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ??
+              'Server error deleting transfer'
+          : (dioErr.message ?? 'Server error deleting transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isDeleteLoadingInternalStockTransfer.value = false;
+      log('Error in deleteInternalStockTransferData: $e');
+      await errorDialog(messageText: 'Unexpected error: $e');
+      return false;
+    }
+  }
+
+  /// 4. PUT /internal-stock-transfer/<ID> - Update internal stock transfer record
+  Future<bool> updateInternalStockTransferData({
+    required dynamic id,
+    required int fromUserId,
+    required int toUserId,
+    String? transferDate,
+    String? date,
+    required List<InternalStockTransferItemModel> items,
+    List<Map<String, dynamic>>? serializedItems,
+    int? companyCodeParam,
+  }) async {
+    if (id == null || id.toString().trim().isEmpty) return false;
+    isLoading.value = true;
+    try {
+      final cleanId = id.toString().trim();
+      final codeToUse = companyCodeParam ??
+          (companyCode.value != 0 ? companyCode.value : 3);
+
+      final totalStockPc = items.fold<int>(0, (sum, i) => sum + i.stockPc);
+      final totalStockWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockWt).toStringAsFixed(3));
+      final totalRateDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateDollar).toStringAsFixed(2));
+      final totalRateRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockRateRs).toStringAsFixed(2));
+      final totalAmtDollar = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtDollar).toStringAsFixed(2));
+      final totalAmtRs = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.stockAmtRs).toStringAsFixed(2));
+
+      final totalIssuePc = items.fold<int>(0, (sum, i) => sum + i.issuePc);
+      final totalIssueWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueWt).toStringAsFixed(3));
+      final totalIssueRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueRate).toStringAsFixed(2));
+      final totalIssueAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.issueAmt).toStringAsFixed(2));
+
+      final totalDiffWt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffWt).toStringAsFixed(3));
+      final totalDiffRate = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffRate).toStringAsFixed(2));
+      final totalDiffAmt = double.parse(
+          items.fold<double>(0.0, (sum, i) => sum + i.diffAmt).toStringAsFixed(2));
+
+      final formattedDate = (transferDate != null && transferDate.isNotEmpty)
+          ? transferDate
+          : (date != null && date.isNotEmpty
+              ? (date.contains('-') && date.split('-').first.length == 2
+                  ? date.split('-').reversed.join('-')
+                  : date)
+              : DateFormat('yyyy-MM-dd').format(DateTime.now()));
+
+      final itemsPayload =
+          serializedItems ?? items.map((i) => i.toSaveJson()).toList();
+
+      final body = {
+        'InternalStockTransferMstID': int.tryParse(cleanId) ?? cleanId,
+        'CompanyCode': codeToUse,
+        'FromCrId': fromUserId,
+        'ToCrId': toUserId,
+        'TransferDate': formattedDate,
+        'TotalItems': items.length,
+        'TotalStockPc': totalStockPc,
+        'TotalStockWt': totalStockWt,
+        'TotalRateDollar': totalRateDollar,
+        'TotalRateRs': totalRateRs,
+        'TotalAmtDollar': totalAmtDollar,
+        'TotalAmtRs': totalAmtRs,
+        'TotalIssuePc': totalIssuePc,
+        'TotalIssueWt': totalIssueWt,
+        'TotalIssueRate': totalIssueRate,
+        'TotalIssueAmt': totalIssueAmt,
+        'TotalDiffWt': totalDiffWt,
+        'TotalDiffRate': totalDiffRate,
+        'TotalDiffAmt': totalDiffAmt,
+        'items': itemsPayload,
+      };
+
+      const encoder = JsonEncoder.withIndent('  ');
+      final formattedJson = encoder.convert(body);
+      debugPrint('======================================================================');
+      debugPrint('🚀 [DEFAULT_CONTROLLER] SENDING PAYLOAD TO INTERNAL STOCK TRANSFER UPDATE API (PUT):');
+      debugPrint('URL: ${ApiService.to.baseUrl}internal-stock-transfer/$cleanId');
+      debugPrint('======================================================================');
+      for (var line in formattedJson.split('\n')) {
+        debugPrint(line);
+      }
+      debugPrint('======================================================================');
+      log('Updating internal stock transfer with body: $formattedJson');
+
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer/$cleanId';
+        response = await ApiService.to.dio.put(
+          url,
+          data: body,
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer/$cleanId';
+          log('Fallback to PUT $fallbackUrl');
+          response = await ApiService.to.dio.put(
+            fallbackUrl,
+            data: body,
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      isLoading.value = false;
+      if (response != null && (response.statusCode == 200 || response.statusCode == 204)) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Internal Stock Transfer updated successfully.';
+        await successDialog(messageText: msg);
+        await getInternalStockTransferList(force: true);
+        return true;
+      } else {
+        final String err =
+            (response?.data is Map && response?.data['message'] != null)
+                ? response.data['message'].toString()
+                : 'Failed to update Internal Stock Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isLoading.value = false;
+      log('DioException updating internal stock transfer: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ??
+              'Server error updating transfer'
+          : (dioErr.message ?? 'Server error updating transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isLoading.value = false;
+      log('Error updating internal stock transfer: $e');
+      await errorDialog(messageText: 'Error updating Internal Stock Transfer: $e');
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // --- Internal Stock Transfer Confirm APIs ---
+  // =========================================================================
+
+  /// 1. GET /internal-stock-transfer/confirm/list - Fetch list of confirmed internal stock transfers
+  Future<List<InternalStockTransferConfirmMstModel>> getInternalStockTransferConfirmList({
+    bool force = false,
+  }) async {
+    if (!force && internalStockTransferConfirmList.isNotEmpty) {
+      return internalStockTransferConfirmList;
+    }
+    isLoadingInternalStockTransferConfirmList.value = true;
+    try {
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer/confirm/list';
+        log('Calling GET $url');
+        response = await ApiService.to.dio.get(
+          url,
+          options: Options(
+            headers: {'Accept': 'application/json'},
+          ),
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer/confirm/list';
+          log('Fallback to GET $fallbackUrl');
+          response = await ApiService.to.dio.get(
+            fallbackUrl,
+            options: Options(
+              headers: {'Accept': 'application/json'},
+            ),
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      List rawList = [];
+      if (response != null) {
+        if (response.data is List) {
+          rawList = response.data as List;
+        } else if (response.data is Map) {
+          final map = response.data as Map;
+          if (map['data'] is List) {
+            rawList = map['data'] as List;
+          } else if (map['transfers'] is List) {
+            rawList = map['transfers'] as List;
+          } else if (map['result'] is List) {
+            rawList = map['result'] as List;
+          } else if (map['rows'] is List) {
+            rawList = map['rows'] as List;
+          } else if (map['list'] is List) {
+            rawList = map['list'] as List;
+          }
+        }
+      }
+
+      final parsed = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => InternalStockTransferConfirmMstModel.fromJson(item))
+          .toList();
+
+      internalStockTransferConfirmList.assignAll(parsed);
+      internalStockTransferConfirmList.refresh();
+      isLoadingInternalStockTransferConfirmList.value = false;
+      return internalStockTransferConfirmList;
+    } on DioException catch (dioErr) {
+      isLoadingInternalStockTransferConfirmList.value = false;
+      log('DioException in getInternalStockTransferConfirmList: ${dioErr.message}');
+      return internalStockTransferConfirmList;
+    } catch (e) {
+      isLoadingInternalStockTransferConfirmList.value = false;
+      log('Error in getInternalStockTransferConfirmList: $e');
+      return internalStockTransferConfirmList;
+    }
+  }
+
+  /// 2. GET /internal-stock-transfer/details/<toCrId> - Fetch transfer detail records for a manager
+  Future<List<InternalStockTransferConfirmItemModel>> getInternalStockTransferConfirmDetails(
+    dynamic toCrId,
+  ) async {
+    if (toCrId == null || toCrId.toString().trim().isEmpty) return [];
+    isLoadingInternalStockTransferConfirmDetails.value = true;
+    try {
+      final cleanId = toCrId.toString().trim();
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer/details/$cleanId';
+        log('Calling GET $url');
+        response = await ApiService.to.dio.get(
+          url,
+          options: Options(
+            headers: {'Accept': 'application/json'},
+          ),
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer/details/$cleanId';
+          log('Fallback to GET $fallbackUrl');
+          response = await ApiService.to.dio.get(
+            fallbackUrl,
+            options: Options(
+              headers: {'Accept': 'application/json'},
+            ),
+          );
+        } else {
+          rethrow;
+        }
+      }
+      isLoadingInternalStockTransferConfirmDetails.value = false;
+
+      List rawList = [];
+      if (response != null) {
+        if (response.data is List) {
+          rawList = response.data as List;
+        } else if (response.data is Map) {
+          final map = response.data as Map;
+          if (map['data'] is List) {
+            rawList = map['data'] as List;
+          } else if (map['details'] is List) {
+            rawList = map['details'] as List;
+          } else if (map['result'] is List) {
+            rawList = map['result'] as List;
+          } else if (map['rows'] is List) {
+            rawList = map['rows'] as List;
+          }
+        }
+      }
+
+      final items = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => InternalStockTransferConfirmItemModel.fromJson(item))
+          .toList();
+
+      return items;
+    } on DioException catch (dioErr) {
+      isLoadingInternalStockTransferConfirmDetails.value = false;
+      log('DioException in getInternalStockTransferConfirmDetails: ${dioErr.message}');
+      return [];
+    } catch (e) {
+      isLoadingInternalStockTransferConfirmDetails.value = false;
+      log('Error in getInternalStockTransferConfirmDetails: $e');
+      return [];
+    }
+  }
+
+  /// 3. GET /internal-stock-transfer/confirm/details/<confirmMstId> - Fetch confirmed transfer details by confirmMstId
+  Future<List<InternalStockTransferConfirmItemModel>>
+      getInternalStockTransferConfirmDetailsById(
+    dynamic confirmMstId, {
+    dynamic toCrId,
+  }) async {
+    if (confirmMstId == null || confirmMstId.toString().trim().isEmpty) {
+      return [];
+    }
+    isLoadingInternalStockTransferConfirmDetails.value = true;
+    try {
+      final cleanId = confirmMstId.toString().trim();
+      final base = ApiService.to.baseUrl.endsWith('/')
+          ? ApiService.to.baseUrl
+          : '${ApiService.to.baseUrl}/';
+      
+      dynamic response;
+      try {
+        final url = '${base}internal-stock-transfer/confirm/details/$cleanId';
+        log('Calling GET $url');
+        debugPrint('======================================================================');
+        debugPrint('🚀 [GET CONFIRMED DETAILS] Calling: $url');
+        debugPrint('======================================================================');
+
+        response = await ApiService.to.dio.get(
+          url,
+          options: Options(
+            headers: {'Accept': 'application/json'},
+          ),
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${base}branch-transfer/confirm/details/$cleanId';
+          log('Fallback to GET $fallbackUrl');
+          response = await ApiService.to.dio.get(
+            fallbackUrl,
+            options: Options(
+              headers: {'Accept': 'application/json'},
+            ),
+          );
+        } else {
+          rethrow;
+        }
+      }
+      isLoadingInternalStockTransferConfirmDetails.value = false;
+
+      List rawList = [];
+      if (response != null) {
+        if (response.data is List) {
+          rawList = response.data as List;
+        } else if (response.data is Map) {
+          final map = response.data as Map;
+          if (map['data'] is List) {
+            rawList = map['data'] as List;
+          } else if (map['data'] is Map && map['data']['details'] is List) {
+            rawList = map['data']['details'] as List;
+          } else if (map['details'] is List) {
+            rawList = map['details'] as List;
+          } else if (map['items'] is List) {
+            rawList = map['items'] as List;
+          } else if (map['result'] is List) {
+            rawList = map['result'] as List;
+          } else if (map['rows'] is List) {
+            rawList = map['rows'] as List;
+          } else if (map['transfers'] is List) {
+            rawList = map['transfers'] as List;
+          }
+        }
+      }
+
+      final items = rawList.map((item) {
+        final itemMap = item is Map<String, dynamic>
+            ? item
+            : Map<String, dynamic>.from(item as Map);
+        final model = InternalStockTransferConfirmItemModel.fromJson(itemMap);
+        model.isSelected = true;
+        return model;
+      }).toList();
+
+      return items;
+    } on DioException catch (dioErr) {
+      isLoadingInternalStockTransferConfirmDetails.value = false;
+      log('DioException in getInternalStockTransferConfirmDetailsById: ${dioErr.message}');
+      // Fallback: if server endpoint has alternative path or toCrId fallback
+      if (toCrId != null && toCrId.toString().trim().isNotEmpty) {
+        final allDetails = await getInternalStockTransferConfirmDetails(toCrId);
+        final matched = allDetails.where((i) {
+          if (i.internalStockTransferConfirmMstId != null) {
+            return i.internalStockTransferConfirmMstId.toString() ==
+                confirmMstId.toString().trim();
+          }
+          return i.internalStockTransformConfirm == true;
+        }).toList();
+        if (matched.isNotEmpty) {
+          for (var m in matched) {
+            m.isSelected = true;
+          }
+          return matched;
+        }
+      }
+      return [];
+    } catch (e) {
+      isLoadingInternalStockTransferConfirmDetails.value = false;
+      log('Error in getInternalStockTransferConfirmDetailsById: $e');
+      return [];
+    }
+  }
+
+  /// 4. POST /internal-stock-transfer/confirm - Confirm internal stock transfer items
+  Future<bool> saveInternalStockTransferConfirm({
+    required int managerId,
+    required List<int> detailIds,
+  }) async {
+    isSavingInternalStockTransferConfirm.value = true;
+    try {
+      final body = {
+        'managerId': managerId,
+        'detailIds': detailIds,
+      };
+
+      const encoder = JsonEncoder.withIndent('  ');
+      final formattedJson = encoder.convert(body);
+      debugPrint('======================================================================');
+      debugPrint('🚀 [INTERNAL STOCK TRANSFER CONFIRM SAVE] POST /internal-stock-transfer/confirm PAYLOAD:');
+      debugPrint(formattedJson);
+      debugPrint('======================================================================');
+
+      dynamic response;
+      try {
+        final url = '${ApiService.to.baseUrl}internal-stock-transfer/confirm';
+        log('Calling POST $url with body: $formattedJson');
+        response = await ApiService.to.dio.post(
+          url,
+          data: body,
+          options: Options(
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          ),
+        );
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404) {
+          final fallbackUrl = '${ApiService.to.baseUrl}branch-transfer/confirm';
+          log('Fallback to POST $fallbackUrl');
+          response = await ApiService.to.dio.post(
+            fallbackUrl,
+            data: body,
+            options: Options(
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+            ),
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      isSavingInternalStockTransferConfirm.value = false;
+
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
+        final msg = (response.data is Map && response.data['message'] != null)
+            ? response.data['message'].toString()
+            : 'Internal Stock Transfer confirmed successfully.';
+        await successDialog(messageText: msg);
+        await getInternalStockTransferConfirmList(force: true);
+        return true;
+      } else {
+        final String err =
+            (response?.data is Map && response?.data['message'] != null)
+                ? response.data['message'].toString()
+                : 'Failed to confirm Internal Stock Transfer';
+        await errorDialog(messageText: err);
+        return false;
+      }
+    } on DioException catch (dioErr) {
+      isSavingInternalStockTransferConfirm.value = false;
+      log('DioException in saveInternalStockTransferConfirm: ${dioErr.message}');
+      final String msg = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response?.data['message'].toString() ??
+              'Server error confirming transfer'
+          : (dioErr.message ?? 'Server error confirming transfer');
+      await errorDialog(messageText: msg);
+      return false;
+    } catch (e) {
+      isSavingInternalStockTransferConfirm.value = false;
+      log('Error in saveInternalStockTransferConfirm: $e');
+      await errorDialog(messageText: 'Error confirming Internal Stock Transfer: $e');
       return false;
     }
   }

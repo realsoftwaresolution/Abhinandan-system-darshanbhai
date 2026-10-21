@@ -18,7 +18,6 @@ import 'package:real_web_rough_entry_system/responsive.dart';
 import 'package:real_web_rough_entry_system/sale/sale_form_screen.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/advanced_dashboard.dart';
 import 'package:real_web_rough_entry_system/tab-view-dashboard/tab_item.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardWithDynamicTabs extends StatelessWidget {
   const DashboardWithDynamicTabs({super.key});

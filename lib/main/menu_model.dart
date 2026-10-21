@@ -153,6 +153,12 @@ IconData getSubMenuIcon(String? menuName, {String? formName}) {
   }
   if (name.contains('branch transfer confirm') || form.contains('branchtransferconfirm')) return Icons.check_circle_outline_rounded;
   if (name.contains('branch transfer') || form.contains('branchtransfer')) return Icons.swap_horiz_rounded;
+  if (name.contains('internal stock transfer confirm') || form.contains('internalstocktransferconfirm') || name.contains('internal transfer confirm') || form.contains('internaltransferconfirm')) {
+    return Icons.check_circle_outline_rounded;
+  }
+  if (name.contains('internal stock transfer') || form.contains('internalstocktransfer') || name.contains('internal transfer') || form.contains('internaltransfer')) {
+    return Icons.swap_horiz_rounded;
+  }
   if (name.contains('stock issue') || form.contains('stockissue')) return Icons.swap_horiz_rounded;
   if (name.contains('stock confirm') || form.contains('stockconfirm')) return Icons.check_circle_outline_rounded;
   if (name.contains('payment') || form.contains('payment')) return Icons.payment_rounded;
