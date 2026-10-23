@@ -17,7 +17,7 @@ class ApiClient {
   late Dio dio;
   Timer? _refreshTimer;
 
-  String baseUrl = 'https://depot-paradise-calendars-little.trycloudflare.com/';
+  String baseUrl = 'http://localhost:8080/';
 
   ApiClient._internal() {
     dio = Dio(

@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
 
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Abhinandan Diamond',
+      title: 'Shakti Trading',
       theme: buildThemeData(AppThemes.light),
       darkTheme: buildThemeData(AppThemes.dark),
       themeMode: themeController.isDarkMode.value ? ThemeMode.dark : ThemeMode.light,

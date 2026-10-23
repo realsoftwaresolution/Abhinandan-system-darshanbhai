@@ -1075,24 +1075,6 @@ class DefaultController extends GetxController {
       isLoadingDashboardData.value = false;
       if (kDebugMode) log('getPolishPurchaseData error: $error');
       if (polishPurchaseList.isEmpty) {
-        polishPurchaseList.assignAll([
-          PolishPurchaseModel(
-            polishPurMstID: 1,
-            invoiceNo: 'HH03H01',
-            invoiceDate: '2026-10-14T00:00:00.000Z',
-            partyName: 'MIRA',
-            brokerName: 'VIPUL GOLI BROKER',
-            type: 'LOOSE',
-            totPcs: 2,
-            totWt: 20.0,
-            rateRs: 50.0,
-            totAmtRs: 1000.0,
-            rateDollar: 0.5,
-            totAmtDollar: 10.0,
-            netAmtDollar: 10.0,
-            netAmtRs: 1000.0,
-          ),
-        ]);
         polishPurchaseList.refresh();
       }
     }

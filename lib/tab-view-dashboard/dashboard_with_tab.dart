@@ -283,7 +283,7 @@ class DashboardWithDynamicTabs extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Abhinandan Diamond ERP',
+                            'Shakti Trading ERP',
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 20,

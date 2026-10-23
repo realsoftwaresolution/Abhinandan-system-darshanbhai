@@ -87,7 +87,7 @@ class SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Abhinandan Diamond',
+                'Shakti Trading',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 26,

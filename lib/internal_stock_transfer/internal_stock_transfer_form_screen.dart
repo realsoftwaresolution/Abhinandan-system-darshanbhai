@@ -628,7 +628,7 @@ class InternalStockTransferFormScreenState extends State<InternalStockTransferFo
       }
 
       if (matched != null) {
-        cItem.isSelected = true;
+        cItem.isSelected = false;
         cItem.issuePc = matched.issuePc;
         cItem.issueWt = matched.issueWt;
         cItem.issueRate = matched.issueRate > 0.0
@@ -705,7 +705,7 @@ class InternalStockTransferFormScreenState extends State<InternalStockTransferFo
       _allItems.addAll(listToDisplay);
       _displayItems.addAll(listToDisplay);
 
-      _gridSource.setShowCheckbox(true);
+      _gridSource.setShowCheckbox(false);
       _gridSource.updateItems(_displayItems);
       _gridSource.setEnabled(false);
     });

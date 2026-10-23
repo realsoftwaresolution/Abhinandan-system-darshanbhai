@@ -809,7 +809,7 @@ class _LoginDialogState extends State<LoginDialog> {
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'For Abhinandan Diamond',
+                    'For Shakti Trading',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w500,
